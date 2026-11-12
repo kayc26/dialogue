@@ -11,7 +11,7 @@ adr teaching map: the example is not the teaching — these are the up-links fro
 - **Date**: 2026-11-12
 - **Iteration**: 1
 - **Status**: Draft
-- **Deciders**: Kay, Tessera (Claude Opus 5.5)
+- **Deciders**: Kay, Nibble (Claude Opus 5.5)
 
 **TL;DR**: Kay fixed Vue, scoped CSS, and free GitHub Pages hosting. What's still open is the build toolchain and language, where the testable game logic lives, and which repo name and URL the site deploys under.
 
@@ -55,7 +55,7 @@ Options:
 - **C — No build step (Vue from a CDN)**: One HTML file, no npm, no bundler. The simplest possible hosting. But `<style scoped>` doesn't exist without the single-file-component compiler, so **this contradicts Kay's scoped-CSS requirement**. It's listed so the exclusion is visible rather than silent.
 - **D — Nuxt with static generation**: A full framework (routing, layouts, static site generation) on top of Vue. Far more than a single-screen game needs, with more config to get right for a Pages subpath.
 
-**Recommendation**: (by Tessera, Claude Opus 5.5, 2026-11-12)
+**Recommendation**: (by Nibble, Claude Opus 5.5, 2026-11-12)
 
 **A — Vite + Vue 3 + TypeScript + Vitest.** *Rationale*: Kay's scoped-CSS requirement rules out C, and D's routing and static generation solve problems a one-screen game doesn't have. A and B share the decision that matters most: logic in plain modules, separate from rendering. That's what makes the Fifth Directive's three bug classes testable without mocks, and it's what keeps ADR-0002's two modes cheap. Between A and B, TypeScript adds a type check to the gate at the cost of one checkbox in the official scaffold, and the letter-state and word-list shapes are exactly the kind of data where a typo slips through silently. *Confidence*: 0.75 — because Vite + SFC follows directly from the scoped-CSS requirement, and logic-out-of-components is standard practice I can point to in the gate's own bug list. TypeScript over JavaScript is the judgment part, and it depends on Kay's comfort with TypeScript, which I don't know. *If wrong*: if TypeScript errors start costing Kay more time than the game does (fighting types rather than catching bugs), flip to **B**. The module boundary survives that switch unchanged.
 
@@ -74,7 +74,7 @@ Options:
 - **B — Keep `harness`**: The site is `kayc26.github.io/harness/`. Nothing changes, but the URL names the methodology scaffold, not the game.
 - **C — Separate `bytle` repo for the game**: Game code goes in a new public repo, and this one keeps the records. The public game repo stays clean, but decisions and code drift apart, a change touches two repos, and the "commit the ADR with the work" habit spans two histories.
 
-**Recommendation**: (by Tessera, Claude Opus 5.5, 2026-11-12)
+**Recommendation**: (by Nibble, Claude Opus 5.5, 2026-11-12)
 
 **A — Rename this repo to `bytle`.** *Rationale*: The URL is what players see, and `harness` describes the scaffold, not the game. Keeping records and code together is the template's own premise (CLAUDE.md, Prime Directive corollary: substrate committed alongside the work), and C splits that. A rename is a one-time settings change that GitHub redirects for us. *Confidence*: 0.85 — because the mechanics (Pages subpath, `base`, rename redirects) are standard GitHub behavior. What I can't see is any outside constraint on this repo. *If wrong*: if CIS7000 or an instructor tracks this repo by the name `harness` (for example, it was created from a course template and gets graded at that URL), flip to **B**.
 
@@ -93,9 +93,9 @@ Pending the answers to QST-STACK and QST-REPO-HOME.
 
 *(After both questions are answered; nothing here starts before then.)*
 
-- [ ] Scaffold the app per QST-STACK, and wire `npm run gate` as the **first** code commit (CLAUDE.md, Fifth Directive) - Owner: Tessera
-- [ ] Set Vite `base` per QST-REPO-HOME, and add a gate check that fails if `base` and the repo name disagree - Owner: Tessera
-- [ ] Add the GitHub Actions Pages workflow (pin Node LTS) - Owner: Tessera
+- [ ] Scaffold the app per QST-STACK, and wire `npm run gate` as the **first** code commit (CLAUDE.md, Fifth Directive) - Owner: Nibble
+- [ ] Set Vite `base` per QST-REPO-HOME, and add a gate check that fails if `base` and the repo name disagree - Owner: Nibble
+- [ ] Add the GitHub Actions Pages workflow (pin Node LTS) - Owner: Nibble
 - [ ] Enable Pages (Settings → Pages → Source: GitHub Actions) and do the repo rename if chosen. These are repo-settings actions only Kay can take - Owner: Kay
 
 ---
@@ -104,7 +104,7 @@ Pending the answers to QST-STACK and QST-REPO-HOME.
 
 ### Iteration 1 (2026-11-12)
 - Trigger: Kay's founding prompt asking for the 2–3 decisions to settle before code
-- Contributors: Kay, Tessera (Claude Opus 5.5)
+- Contributors: Kay, Nibble (Claude Opus 5.5)
 - Changes: Initial draft; QST-STACK and QST-REPO-HOME posed with recommendations. QST-REPO-HOME surfaced while checking the repo: its name `harness` sets the Pages URL.
 - Outcome: Draft
 

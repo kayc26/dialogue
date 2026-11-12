@@ -11,7 +11,7 @@ adr teaching map: the example is not the teaching — these are the up-links fro
 - **Date**: 2026-11-12
 - **Iteration**: 1
 - **Status**: Draft
-- **Deciders**: Kay, Tessera (Claude Opus 5.5)
+- **Deciders**: Kay, Nibble (Claude Opus 5.5)
 
 **TL;DR**: Decide whether Bytle is one shared puzzle a day, unlimited random games, or both, because that sets how the answer is picked, what the browser stores, and how fast the word list runs out.
 
@@ -54,7 +54,7 @@ Options:
 - **B — Unlimited only**: A random answer every game, with a "New game" button. The simplest option: no dates, no streaks, and the easiest to test by just playing. You lose the shared "everyone got today's word" moment, and a shared result means little when everyone had a different word.
 - **C — Daily + practice**: A as the main mode, plus a practice mode that draws random answers and never touches daily stats. Cost over A: one mode switch, and keeping the two game states separate.
 
-**Recommendation**: (by Tessera, Claude Opus 5.5, 2026-11-12)
+**Recommendation**: (by Nibble, Claude Opus 5.5, 2026-11-12)
 
 **C — Daily + practice.** *Rationale*: Under ADR-0003's recommended structure, the game engine takes the answer as an input and doesn't care where it came from. The two modes differ only in the one-line function that picks the answer (date to index, or random), so C adds little over A once the engine exists. Daily gives the social hook. Practice turns it into a CS vocabulary trainer, and it lets us and any testers play many rounds in one sitting, which A alone doesn't allow. *Confidence*: 0.65 — because this is mostly a scope call about Kay's goals, not something evidence settles. The low-cost claim depends on ADR-0003's engine/UI split, which isn't decided yet. *If wrong*: if Kay wants the smallest possible v1, flip to **B** (no date logic, ships sooner, daily can be added later without rework). If the shared daily moment is the whole point and practice feels like dilution, flip to **A**.
 
@@ -80,7 +80,7 @@ Pending the answer to QST-PLAY-MODEL.
 
 ### Iteration 1 (2026-11-12)
 - Trigger: Kay's founding prompt asking for the 2–3 decisions to settle before code
-- Contributors: Kay, Tessera (Claude Opus 5.5)
+- Contributors: Kay, Nibble (Claude Opus 5.5)
 - Changes: Initial draft; QST-PLAY-MODEL posed with a recommendation
 - Outcome: Draft
 

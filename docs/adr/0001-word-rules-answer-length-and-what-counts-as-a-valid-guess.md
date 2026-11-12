@@ -11,7 +11,7 @@ adr teaching map: the example is not the teaching — these are the up-links fro
 - **Date**: 2026-11-12
 - **Iteration**: 1
 - **Status**: Draft
-- **Deciders**: Kay, Tessera (Claude Opus 5.5)
+- **Deciders**: Kay, Nibble (Claude Opus 5.5)
 
 **TL;DR**: The CS twist clashes with the genre's core mechanic, so before any code we need to fix how long answers are and which typed words the game accepts as guesses.
 
@@ -57,7 +57,7 @@ Options:
 - **C — Variable length, open guesses**: Answers run 4–7 letters (HEAP, BINARY, POINTER). Each puzzle's row width matches its answer and is shown up front. This unlocks the most iconic CS words (POINTER, LAMBDA, THREAD, KERNEL). Cost: a dictionary per length, a board that reflows (7 tiles on a phone is tight), and roughly three times the word-list test surface.
 - **D — Five letters, no validation**: Any five letters are accepted. No dictionary at all, so it's the simplest. But players can type non-words full of vowels just to probe, which removes most of the deduction challenge.
 
-**Recommendation**: (by Tessera, Claude Opus 5.5, 2026-11-12)
+**Recommendation**: (by Nibble, Claude Opus 5.5, 2026-11-12)
 
 **A — Five letters, open guesses.** *Rationale*: All five of Kay's example answers (ARRAY, STACK, QUEUE, CACHE, TOKEN) are five letters, and a first brainstorm (Supporting Materials, below) turns up about 60 more without strain, so length 5 doesn't starve the theme. Open guesses keep the deduction that makes the genre fun (rules out B and D). The CS twist then comes from the answer set and from the post-game definition (follow-up below), not from blocking ordinary words. C has the best vocabulary, but its layout and multi-list cost doesn't belong in v1, and it can come later as a mode on top of A. *Confidence*: 0.8 — because the length evidence is a count I did myself and Kay's own examples are all five letters. What I haven't checked is the dictionary's real size in the bundle, and the license of the specific list we'd pick. *If wrong*: if curating can't reach about 150 *good* 5-letter terms (fewer than five months of daily puzzles under ADR-0002), flip to **C**. If Kay wants the game to work as a vocabulary drill, flip to **B**.
 
@@ -94,7 +94,7 @@ Pending the answer to QST-WORD-RULES.
 
 ### Iteration 1 (2026-11-12)
 - Trigger: Kay's founding prompt asking for the 2–3 decisions to settle before code
-- Contributors: Kay, Tessera (Claude Opus 5.5)
+- Contributors: Kay, Nibble (Claude Opus 5.5)
 - Changes: Initial draft; QST-WORD-RULES posed with a recommendation
 - Outcome: Draft
 

@@ -2,7 +2,7 @@
 
 - **Project**: Bytle
 - **Human**: Kay
-- **AI**: Tessera (Claude Opus 5.5, in Claude Code). It is the founding and coordinating seat; the roster is in `docs/inbox/agent-sessions.json`.
+- **AI**: Nibble (Claude Opus 5.5, in Claude Code). It is the founding and coordinating seat; the roster is in `docs/inbox/agent-sessions.json`.
 - **Last Updated**: 2026-11-12
 
 ---

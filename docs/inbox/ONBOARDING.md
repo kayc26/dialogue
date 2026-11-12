@@ -1,6 +1,6 @@
 # Crew Onboarding — read this first if you've been recruited
 
-Welcome to **Bytle**, a computer-science word-guessing game (Vue, hosted on GitHub Pages), built by Kay with Tessera (Claude) as the founding AI seat.
+Welcome to **Bytle**, a computer-science word-guessing game (Vue, hosted on GitHub Pages), built by Kay with Nibble (Claude) as the founding AI seat.
 
 This document captures **80% of what every seat needs to know** so per-recruit
 briefs can be short deltas (name, color, mission). Fill the bracketed
