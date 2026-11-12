@@ -1,7 +1,6 @@
 # Crew Onboarding — read this first if you've been recruited
 
-Welcome to **⟦PROJECT-NAME⟧** — ⟦PROJECT-ONE-LINER⟧ <!-- one line: what this
-project is and who the human collaborator(s) are -->.
+Welcome to **Harness**, a browser-only chat page for OpenRouter (GitHub Pages, no backend, `localStorage`), built by Kay with Nibble (Claude) as the founding AI seat.
 
 This document captures **80% of what every seat needs to know** so per-recruit
 briefs can be short deltas (name, color, mission). Fill the bracketed
@@ -60,8 +59,7 @@ the tmux hive.
 
 ## 1. What this project is
 
-⟦PROJECT-GOAL⟧ <!-- 1-3 sentences: the goal, the repo's role (product repo?
-coordination layer?), where implementation happens; same token as CLAUDE.md's -->
+Harness is a simple chat page that runs entirely in the browser, hosted on GitHub Pages with no backend. It calls OpenRouter's API directly from the page (CORS) using the user's own key, and keeps its data in `localStorage`. This repo holds both the deliberation record (`docs/adr/`) and the implementation.
 
 **Read first**, in order:
 1. `CLAUDE.md` — directives, project context, workflow

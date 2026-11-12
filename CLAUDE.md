@@ -1,6 +1,6 @@
 # CLAUDE.md - Project Guidance
 
-- **Project**: ⟦PROJECT-NAME⟧
+- **Project**: Harness
 - **Human**: Kay
 - **AI**: Nibble (Claude Opus 5.5, in Claude Code). It is the founding and coordinating seat; the roster is in `docs/inbox/agent-sessions.json`.
 - **Last Updated**: 2026-11-12
@@ -246,10 +246,10 @@ If the script was successfully used, append as comments how, and what the outcom
 ## Project Context
 
 ### What we're building:
-⟦PROJECT-GOAL⟧ <!-- 1-3 sentences; same token as ONBOARDING's — one text serves both -->
+Harness is a simple chat page that runs entirely in the browser, hosted on GitHub Pages with no backend. It calls OpenRouter's API directly from the page (CORS) using the user's own key, and keeps its data in `localStorage`. This repo holds both the deliberation record (`docs/adr/`) and the implementation.
 
 ### Current focus:
-⟦CURRENT-FOCUS⟧
+Before any code: settling three founding decisions. ADR-0001 covers API-key handling, ADR-0002 the stack, and ADR-0003 what v1 includes. The Fifth Directive's gate is deliberately still unfilled, because it depends on ADR-0002's stack answer.
 
 ### Key decisions made:
 *(List ADRs here as they land, e.g. `- Auth approach — see docs/adr/0001-*.md`. Empty at birth is healthy.)*
