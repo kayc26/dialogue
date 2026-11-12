@@ -1,6 +1,7 @@
 # Crew Onboarding — read this first if you've been recruited
 
-Welcome to **Bytle**, a computer-science word-guessing game (Vue, hosted on GitHub Pages), built by Kay with Nibble (Claude) as the founding AI seat.
+Welcome to **⟦PROJECT-NAME⟧** — ⟦PROJECT-ONE-LINER⟧ <!-- one line: what this
+project is and who the human collaborator(s) are -->.
 
 This document captures **80% of what every seat needs to know** so per-recruit
 briefs can be short deltas (name, color, mission). Fill the bracketed
@@ -59,7 +60,8 @@ the tmux hive.
 
 ## 1. What this project is
 
-Bytle is a browser word-guessing game. You guess a hidden word and get colored feedback on each letter, and every answer is a computer-science term (ARRAY, STACK, QUEUE, CACHE, TOKEN…). It is built with Vue single-file components using scoped CSS, and hosted free on GitHub Pages. This one repo holds both the deliberation record (`docs/adr/`) and the implementation.
+⟦PROJECT-GOAL⟧ <!-- 1-3 sentences: the goal, the repo's role (product repo?
+coordination layer?), where implementation happens; same token as CLAUDE.md's -->
 
 **Read first**, in order:
 1. `CLAUDE.md` — directives, project context, workflow

@@ -27,10 +27,10 @@
   "aliases": {
     "nibble": {
       "uuid": "e8f7a500-60bd-4e8d-8d17-3a08ec8eea72",
-      "role": "Founding + coordinating seat for Bytle — deliberation records, implementation, and keeping the gate honest",
+      "role": "Founding + coordinating seat — deliberation records, implementation, and keeping the gate honest",
       "display_name": "Nibble",
       "color": "purple",
-      "color_note": "Purple, not green or yellow: those two will mean 'right letter' in the game itself, and the seat shouldn't read as feedback. (Name: a nibble is half a byte — the AI half of a game called Bytle.)",
+      "color_note": "Purple, chosen by the occupant. (Name: a nibble is half a byte.)",
       "model": "claude-opus-5-5",
       "model_note": "Seat founded 2026-11-12 by Claude Opus 5.5 (first occupant), briefly as \"Tessera\" — renamed to Nibble the same day at Kay's request, same occupant, before the name was cited anywhere outside this repo. Update on occupancy changes; never re-found the seat.",
       "registered": "2026-11-12",
