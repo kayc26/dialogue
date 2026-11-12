@@ -1,19 +1,9 @@
 # CLAUDE.md - Project Guidance
 
-> **Instantiating this template?** Placeholders look like ⟦THIS⟧ — fill-and-delete
-> each one (grep-proof on purpose; `just instantiate-check` reports which remain
-> and passes only when none do). Square-bracket text elsewhere is either a
-> per-document mold slot (filled at each mint, not at birth) or the frozen
-> dialogue placeholder `[Fill this in]` — never convert those. *(This note is
-> visible text, not an HTML comment, because the harness strips block comments
-> from the CLAUDE.md it serves at session start — a cold instantiator proved the
-> instructions were sitting exactly where their audience could not see them.
-> Delete this block when instantiation is done.)*
-
-- **Project**: ⟦PROJECT-NAME⟧
-- **Human**: ⟦HUMANS⟧
-- **AI**: ⟦AI-SEATS⟧ <!-- with the crew layer, the roster lives in docs/inbox/agent-sessions.json; name the coordinator seat here -->
-- **Last Updated**: ⟦LAST-UPDATED⟧
+- **Project**: Bytle
+- **Human**: Kay
+- **AI**: Tessera (Claude Opus 5.5, in Claude Code). It is the founding and coordinating seat; the roster is in `docs/inbox/agent-sessions.json`.
+- **Last Updated**: 2026-11-12
 
 ---
 
@@ -98,15 +88,18 @@ Tests should:
 **RUN THIS PROJECT'S VERIFICATION GATE BEFORE EVERY COMMIT**
 
 Before serving any change:
-1. Run the project's verification gate: ⟦VERIFICATION-GATE⟧ <!-- test suite, build, linter, or a combination; e.g. `npm test`, `uv run pytest`, `hugo && bin/check` -->
+1. Run the project's verification gate: `npm run gate` (`vitest run && vite build`). **Not wired yet**: it arrives with the Vue scaffold (ADR-0003's first action item). Until then the repo holds only records, there is no code to gate, and that is honest. Wiring the gate is the first code commit, not a later one.
 2. Fix any failures before committing
 3. Never serve changes with a failing gate
 
-**Why**: ⟦GATE-WHY⟧ <!-- state what this project's gate actually catches — real classes of bug, real numbers if you have them. A directive that names a real gate gets followed; an unfollowable one teaches every seat that directives are decorative, and that lesson generalizes. -->
+**Why**: the gate catches the three ways this kind of game actually breaks:
+- **Duplicate-letter scoring.** For example, guessing `ARRAY` against `CACHE` must show exactly one `A` as present, not two. Most hand-rolled clones get this wrong, so the scoring function is pure and table-tested.
+- **Word-list integrity.** Every answer must have the agreed length, be uppercase A–Z, appear in the valid-guess list, and appear only once. A bad entry gives a puzzle nobody can solve.
+- **Pages build breakage.** A wrong Vite `base` path builds a site whose assets 404, which shows up as a blank page only after deploy. `vite build` must at least succeed locally.
 
 **Process**:
 ```bash
-⟦VERIFICATION-GATE⟧            # Must be green before commit
+npm run gate                   # Must be green before commit (once wired — see above)
 git add <explicit paths>       # never -A: stage by path, commit by pathspec — see CONVENTIONS.md, shared-worktree awareness
 git commit -m "..." -- <paths>
 ```
@@ -256,10 +249,10 @@ If the script was successfully used, append as comments how, and what the outcom
 ## Project Context
 
 ### What we're building:
-⟦PROJECT-GOAL⟧ <!-- 1-3 sentences; same token as ONBOARDING's — one text serves both -->
+Bytle is a browser word-guessing game. You guess a hidden word and get colored feedback on each letter, and every answer is a computer-science term (ARRAY, STACK, QUEUE, CACHE, TOKEN…). It is built with Vue single-file components using scoped CSS, and hosted free on GitHub Pages. This one repo holds both the deliberation record (`docs/adr/`) and the implementation.
 
 ### Current focus:
-⟦CURRENT-FOCUS⟧
+Before any code: settling the three founding decisions. ADR-0001 covers word rules (length and what counts as a valid guess), ADR-0002 the play model (daily vs. unlimited), and ADR-0003 the stack and deploy shape (including the repo name, which sets the Pages URL). No scaffolding until those are answered.
 
 ### Key decisions made:
 *(List ADRs here as they land, e.g. `- Auth approach — see docs/adr/0001-*.md`. Empty at birth is healthy.)*
