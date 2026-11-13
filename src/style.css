@@ -1,0 +1,110 @@
+/* Global tokens and resets only. Component styles are <style scoped> in each .vue file (ADR-0002). */
+:root {
+  --bg: #f7f7f5;
+  --panel: #ffffff;
+  --sidebar: #efeeea;
+  --text: #1d1d1b;
+  --muted: #6b6a66;
+  --border: #dddbd5;
+  --accent: #1f7a8c;
+  --accent-text: #ffffff;
+  --user-bubble: #e3f0f2;
+  --code-bg: #f0efeb;
+  --danger: #b3261e;
+  --danger-bg: #fbeceb;
+  --notice-bg: #fff6e0;
+  --radius: 10px;
+  --font: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  --mono: ui-monospace, 'SF Mono', Menlo, Consolas, monospace;
+  color-scheme: light dark;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #161716;
+    --panel: #1e1f1e;
+    --sidebar: #121312;
+    --text: #e8e7e3;
+    --muted: #9b9a95;
+    --border: #33342f;
+    --accent: #4fb3c6;
+    --accent-text: #0d1a1d;
+    --user-bubble: #1d3439;
+    --code-bg: #262724;
+    --danger: #f2b8b5;
+    --danger-bg: #3a1f1d;
+    --notice-bg: #3a3220;
+  }
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#app {
+  height: 100%;
+  margin: 0;
+}
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font: 15px/1.55 var(--font);
+}
+
+button,
+input,
+textarea,
+select {
+  font: inherit;
+  color: inherit;
+}
+
+button {
+  cursor: pointer;
+  border: 1px solid var(--border);
+  background: var(--panel);
+  border-radius: 8px;
+  padding: 6px 12px;
+}
+
+button:hover:not(:disabled) {
+  border-color: var(--accent);
+}
+
+button:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+button.primary {
+  background: var(--accent);
+  color: var(--accent-text);
+  border-color: var(--accent);
+}
+
+input[type='text'],
+input[type='password'],
+input:not([type]),
+textarea {
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 7px 10px;
+  width: 100%;
+}
+
+input:focus-visible,
+textarea:focus-visible,
+button:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
+
+a {
+  color: var(--accent);
+}

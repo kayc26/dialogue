@@ -7,3 +7,15 @@
 # Python temporary files
 __pycache__/
 *.py[cod]
+
+# Node / Vite
+node_modules/
+dist/
+*.tsbuildinfo
+coverage/
+
+# Secrets — never commit an API key. Harness takes the key in the browser at
+# runtime (ADR-0001); anything in a .env file would be inlined into the public bundle.
+.env
+.env.*
+*.local
