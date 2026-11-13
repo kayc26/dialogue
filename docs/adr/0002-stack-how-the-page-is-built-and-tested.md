@@ -9,8 +9,8 @@ adr teaching map: the example is not the teaching — these are the up-links fro
 # ADR-0002: Stack — how the page is built and tested
 
 - **Date**: 2026-11-12
-- **Iteration**: 1
-- **Status**: Draft
+- **Iteration**: 2
+- **Status**: Accepted
 - **Deciders**: Kay, Nibble (Claude Opus 5.5)
 
 **TL;DR**: Choose between plain files served as-is, a bundled build without a framework, and a component framework. The answer also sets CLAUDE.md's verification gate, which is left unfilled until then.
@@ -45,7 +45,7 @@ adr teaching map: the example is not the teaching — these are the up-links fro
 ## Questions
 
 ### QST-STACK: How is the page built and tested?
-- Status: unanswered
+- Status: answered
 - Why asking: Harness is a browser-only chat page on GitHub Pages. Kay asked for "simple" and named no framework. Pages can serve plain files directly, or serve the output of a build. The choice decides how dependencies (Markdown rendering, HTML sanitizing) get in without CDN scripts (ADR-0001), what runs the tests, and therefore what CLAUDE.md's verification gate is.
 - Need: pick a letter (or override — an answer in any shape is complete)
 
@@ -59,13 +59,27 @@ Options:
 **C — Vite + Vue 3 + TypeScript.** *Rationale*: A "harness" tends to grow controls (model, parameters, inspection; see ADR-0003), and reactive components handle that better than hand-written DOM updates, which is A's and B's weak spot. Kay picked Vue with scoped CSS for the earlier idea, so it's a known preference. A build step also bundles dependencies, which satisfies ADR-0001's no-CDN-scripts rule without manually copying library files. Gate under C: `vue-tsc && vitest run && vite build`. *Confidence*: 0.6 — because this depends heavily on what "simple" means to Kay and on ADR-0003's scope, and neither is known yet. *If wrong*: if "simple" means "no tooling, view-source-able," or if ADR-0003 lands on a minimal v1, flip to **A**.
 
 **ANS:** (by Kay)
-[Fill this in]   <!-- literal placeholder — parser-significant, do not paraphrase -->
+ok
 
 ---
 
 ## Decision
 
-Pending the answer to QST-STACK. When it's answered, fill CLAUDE.md's `⟦VERIFICATION-GATE⟧` and `⟦GATE-WHY⟧`, and wire the gate as the first code commit.
+### Chosen: C — Vite + Vue 3 + TypeScript
+
+**Rationale**: Kay's answer: "ok". I read that as accepting the recommendation, C. (If "ok" meant something else, say so and this reopens.) ADR-0003 then chose the largest scope (an agent loop with tool calling), which strengthens the case for components over hand-written DOM code.
+
+**Shape**:
+- Logic lives in plain TypeScript under `src/lib/` with no Vue imports: SSE parsing, stream accumulation (including tool-call deltas), the agent loop, tools, storage, and Markdown sanitizing. Vitest tests these directly.
+- Vue single-file components with `<style scoped>` under `src/components/` only render state.
+- Vite `base: './'` (relative asset paths). The app has no router, so relative paths work under any Pages subpath. That removes the "wrong base path → blank page" bug class entirely instead of testing for it.
+- Deploy: a GitHub Actions workflow runs the gate, then publishes `dist/` to Pages.
+
+**Gate** (CLAUDE.md, Fifth Directive): `npm run gate` = `vue-tsc --build && vitest run && vite build`.
+
+### Consequences
+- CLAUDE.md's gate slots are filled with this command.
+- Node: CI pins Node 22 (LTS). Locally Node 23.7 works for Vite, but the two should be kept close.
 
 ---
 
@@ -76,6 +90,12 @@ Pending the answer to QST-STACK. When it's answered, fill CLAUDE.md's `⟦VERIFI
 - Contributors: Kay, Nibble (Claude Opus 5.5)
 - Changes: Initial draft; QST-STACK posed with a recommendation
 - Outcome: Draft
+
+### Iteration 2 (2026-11-12)
+- Trigger: Kay's answer to QST-STACK ("ok")
+- Contributors: Kay, Nibble (Claude Opus 5.5)
+- Changes: Decision recorded as C (the recommendation); code shape, gate, and `base: './'` choice written
+- Outcome: Draft → Accepted
 
 ---
 

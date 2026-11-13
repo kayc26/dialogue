@@ -88,15 +88,21 @@ Tests should:
 **RUN THIS PROJECT'S VERIFICATION GATE BEFORE EVERY COMMIT**
 
 Before serving any change:
-1. Run the project's verification gate: ⟦VERIFICATION-GATE⟧ <!-- test suite, build, linter, or a combination; e.g. `npm test`, `uv run pytest`, `hugo && bin/check` -->
+1. Run the project's verification gate: `npm run gate` (`vue-tsc --build && vitest run && vite build`; see ADR-0002). Source `.claude/agent.env` first so asdf's Node is on the PATH.
 2. Fix any failures before committing
 3. Never serve changes with a failing gate
 
-**Why**: ⟦GATE-WHY⟧ <!-- state what this project's gate actually catches — real classes of bug, real numbers if you have them. A directive that names a real gate gets followed; an unfollowable one teaches every seat that directives are decorative, and that lesson generalizes. -->
+**Why**: the gate covers the ways a browser-only agent harness actually breaks:
+- **Stream parsing.** OpenRouter streams replies as server-sent events, and network chunks split lines anywhere, even mid-JSON. A parser that assumes whole lines drops or corrupts tokens only on slow connections.
+- **Tool-call assembly.** A streamed tool call arrives in pieces: its `id` and `name` come in the first delta, and its `arguments` JSON is spread across many. Mis-merging these yields invalid JSON or calls attached to the wrong id, and the agent loop breaks only on multi-call turns.
+- **Agent-loop termination.** The loop must stop when the model stops calling tools, and must stop at the round cap (ADR-0003) when it doesn't, or a misbehaving model spends credit unattended.
+- **Key safety.** Rendered replies must be sanitized; a reply containing `<img onerror=…>` must not run script on the origin that holds the key (ADR-0001).
+- **Stored-data robustness.** Corrupt or older-format `localStorage` must load as an empty or migrated state, never a crashed page that the user can only fix with devtools.
+- **Types and build.** `vue-tsc` catches shape mismatches between logic and UI; `vite build` proves the site actually bundles.
 
 **Process**:
 ```bash
-⟦VERIFICATION-GATE⟧            # Must be green before commit
+npm run gate                   # Must be green before commit
 git add <explicit paths>       # never -A: stage by path, commit by pathspec — see CONVENTIONS.md, shared-worktree awareness
 git commit -m "..." -- <paths>
 ```
@@ -249,10 +255,12 @@ If the script was successfully used, append as comments how, and what the outcom
 Harness is a simple chat page that runs entirely in the browser, hosted on GitHub Pages with no backend. It calls OpenRouter's API directly from the page (CORS) using the user's own key, and keeps its data in `localStorage`. This repo holds both the deliberation record (`docs/adr/`) and the implementation.
 
 ### Current focus:
-Before any code: settling three founding decisions. ADR-0001 covers API-key handling, ADR-0002 the stack, and ADR-0003 what v1 includes. The Fifth Directive's gate is deliberately still unfilled, because it depends on ADR-0002's stack answer.
+Building v1: a Vue chat client with an agent loop and browser-side tools, deployed to GitHub Pages.
 
 ### Key decisions made:
-*(List ADRs here as they land, e.g. `- Auth approach — see docs/adr/0001-*.md`. Empty at birth is healthy.)*
+- API key: pasted by the user and kept in `localStorage`, never in the repo or the build. See `docs/adr/0001-api-key-handling-*.md`
+- Stack: Vite + Vue 3 + TypeScript + Vitest; logic in `src/lib/`, relative `base`. See `docs/adr/0002-stack-*.md`
+- V1 scope: chat client + agent loop (calculator, time, and notes tools; 8-round cap; no `fetch_url`). See `docs/adr/0003-v1-scope-*.md`
 
 ### Open questions:
 ```bash
