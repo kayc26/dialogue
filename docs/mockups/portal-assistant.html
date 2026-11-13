@@ -1,0 +1,232 @@
+<!doctype html>
+<!--
+  MOCKUP ONLY — static, fictional data, placeholder branding.
+  Shows an AI assistant (the Harness agent loop) living inside a patient-portal
+  style Message Center. Deliberately NOT MyChart / Epic / Penn Medicine branded:
+  a page that looks like a real health system's portal must not be mistakable for it.
+  Discussion: docs/adr/0004-*.md
+-->
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Portal Assistant Mockup</title>
+<style>
+  :root {
+    --navy: #13275e;
+    --navy-2: #1d3a8a;
+    --ink: #1c1f26;
+    --muted: #5d6270;
+    --line: #d6d9e0;
+    --bg: #ffffff;
+    --soft: #f4f6fa;
+    --ai: #5b3fd6;
+    --ai-soft: #efebff;
+    --warn-bg: #fff6df;
+    --warn-ink: #6b4e00;
+    --ok: #1f7a4d;
+    --font: 'Source Sans 3', 'Source Sans Pro', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; height: 100%; }
+  body { font: 16px/1.45 var(--font); color: var(--ink); background: var(--bg); display: flex; flex-direction: column; }
+  button { font: inherit; cursor: pointer; }
+
+  /* ---------- top bar ---------- */
+  .top { display: flex; align-items: center; gap: 14px; padding: 10px 18px; border-bottom: 1px solid var(--line); box-shadow: 0 1px 4px rgb(0 0 0 / .06); }
+  .logo { font-size: 26px; font-weight: 600; color: var(--navy); letter-spacing: -.01em; }
+  .logo small { display: block; font-size: 10px; font-weight: 600; color: var(--muted); letter-spacing: .08em; text-transform: uppercase; margin-top: -4px; }
+  .sq { width: 44px; height: 44px; border-radius: 8px; background: #111; color: #fff; display: grid; place-items: center; border: 0; font-size: 20px; }
+  .spacer { flex: 1; }
+  .avatar { display: flex; align-items: center; gap: 6px; background: #111; border-radius: 8px; padding: 5px 9px 5px 5px; color: #fff; }
+  .avatar span { width: 34px; height: 34px; border-radius: 50%; background: var(--navy); display: grid; place-items: center; font-weight: 700; }
+
+  /* ---------- layout ---------- */
+  .page { flex: 1; display: grid; grid-template-columns: 300px 340px 1fr; min-height: 0; }
+  .nav { border-right: 1px solid var(--line); padding: 22px 22px; }
+  .nav h1 { font-size: 30px; font-weight: 400; margin: 0; }
+  .nav .learn { color: var(--navy); font-weight: 600; font-size: 15px; text-decoration: none; }
+  .send { display: block; width: 100%; margin: 22px 0 8px; padding: 10px; background: var(--navy); color: #fff; border: 0; border-radius: 4px; font-size: 18px; font-weight: 600; }
+  .ask { display: flex; align-items: center; justify-content: center; gap: 8px; width: 100%; padding: 9px; background: var(--ai-soft); color: var(--ai); border: 1px solid #d4caff; border-radius: 4px; font-weight: 700; }
+  .nav ul { list-style: none; padding: 0; margin: 18px 0 0; }
+  .nav li { display: flex; align-items: center; gap: 12px; padding: 12px 10px; font-size: 18px; border-left: 4px solid transparent; }
+  .nav li.on { border-left-color: var(--navy); color: var(--navy); background: var(--soft); }
+  .nav li .ico { width: 22px; text-align: center; }
+  .nav li .count { margin-left: auto; background: var(--navy); color: #fff; border-radius: 999px; font-size: 13px; padding: 1px 9px; }
+  .nav li .new { margin-left: auto; background: var(--ai); color: #fff; border-radius: 4px; font-size: 11px; font-weight: 700; padding: 1px 6px; letter-spacing: .04em; }
+
+  /* ---------- conversation list ---------- */
+  .list { border-right: 1px solid var(--line); display: flex; flex-direction: column; min-height: 0; }
+  .list-head { padding: 22px 18px 10px; }
+  .list-head h2 { margin: 0 0 12px; font-size: 26px; font-weight: 400; }
+  .search { display: flex; border: 1px solid var(--line); border-radius: 4px; overflow: hidden; }
+  .search input { flex: 1; border: 0; padding: 9px 10px; font: inherit; font-size: 14px; }
+  .search button { border: 0; background: var(--navy); color: #fff; width: 44px; }
+  .convs { overflow-y: auto; padding: 8px 12px 16px; }
+  .conv { border: 1px solid var(--line); border-radius: 6px; padding: 12px; margin-bottom: 10px; display: grid; grid-template-columns: 40px 1fr; gap: 10px; }
+  .conv.on { border-color: var(--ai); box-shadow: 0 0 0 2px #e2dbff; }
+  .conv > div { min-width: 0; }
+  .conv .ic { width: 40px; height: 40px; border-radius: 50%; display: grid; place-items: center; color: #fff; background: var(--navy); font-size: 18px; }
+  .conv .ic.ai { background: var(--ai); }
+  .conv .t { display: flex; justify-content: space-between; gap: 8px; font-weight: 600; }
+  .conv .t time { font-weight: 400; color: var(--muted); font-size: 13px; white-space: nowrap; }
+  .conv .who { color: var(--muted); font-size: 14px; }
+  .conv .pv { font-size: 14px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .tag { display: inline-block; font-size: 11px; font-weight: 700; color: var(--ai); background: var(--ai-soft); border-radius: 4px; padding: 0 5px; margin-left: 4px; vertical-align: 2px; }
+
+  /* ---------- assistant thread ---------- */
+  .thread { display: flex; flex-direction: column; min-height: 0; }
+  .th-head { display: flex; align-items: center; gap: 12px; padding: 16px 24px; border-bottom: 1px solid var(--line); }
+  .th-head .ic { width: 42px; height: 42px; border-radius: 50%; background: var(--ai); color: #fff; display: grid; place-items: center; font-size: 20px; }
+  .th-head h3 { margin: 0; font-size: 21px; font-weight: 600; }
+  .th-head p { margin: 0; font-size: 13px; color: var(--muted); }
+  .handoff { margin-left: auto; border: 1px solid var(--navy); background: #fff; color: var(--navy); border-radius: 4px; padding: 7px 12px; font-weight: 600; }
+  .disclaimer { background: var(--warn-bg); color: var(--warn-ink); font-size: 14px; padding: 9px 24px; border-bottom: 1px solid #f0dfae; }
+  .msgs { flex: 1; overflow-y: auto; padding: 18px 24px; background: var(--soft); }
+  .msg { max-width: 640px; margin: 0 0 16px; }
+  .msg.me { margin-left: auto; background: var(--navy); color: #fff; border-radius: 14px 14px 4px 14px; padding: 10px 14px; width: fit-content; }
+  .msg.bot { background: #fff; border: 1px solid var(--line); border-radius: 14px 14px 14px 4px; padding: 12px 16px; }
+  .msg.bot p { margin: 0 0 8px; }
+  .msg.bot p:last-child { margin: 0; }
+  .msg.bot ul { margin: 4px 0 8px; padding-left: 20px; }
+  .tool { font-size: 13px; color: var(--muted); border: 1px dashed #cfc6f5; background: #faf8ff; border-radius: 6px; padding: 6px 10px; margin: 0 0 10px; }
+  .tool b { color: var(--ai); font-family: ui-monospace, Menlo, monospace; font-weight: 600; }
+  .cite { display: inline-flex; align-items: center; gap: 5px; font-size: 13px; color: var(--navy); background: #eef2fb; border: 1px solid #cfd8ee; border-radius: 999px; padding: 2px 10px; margin: 4px 6px 0 0; text-decoration: none; }
+  .meta { font-size: 12px; color: var(--muted); margin-top: 8px; }
+  .chips { display: flex; flex-wrap: wrap; gap: 8px; margin: 4px 0 6px; }
+  .chip { border: 1px solid #d4caff; background: #fff; color: var(--ai); border-radius: 999px; padding: 5px 12px; font-size: 14px; }
+  .composer { display: flex; gap: 10px; padding: 12px 24px 6px; border-top: 1px solid var(--line); }
+  .composer textarea { flex: 1; resize: none; border: 1px solid var(--line); border-radius: 6px; padding: 10px; font: inherit; height: 48px; }
+  .composer button { background: var(--navy); color: #fff; border: 0; border-radius: 6px; padding: 0 20px; font-weight: 600; }
+  .fine { font-size: 12px; color: var(--muted); padding: 0 24px 12px; }
+
+  /* ---------- footer ---------- */
+  footer { display: flex; justify-content: center; flex-wrap: wrap; gap: 14px; padding: 12px; border-top: 1px solid var(--line); font-size: 15px; }
+  footer a { color: var(--navy-2); }
+  .mock { position: fixed; left: 12px; bottom: 12px; background: #111; color: #fff; font-size: 12px; padding: 4px 10px; border-radius: 4px; opacity: .8; }
+
+  @media (max-width: 1100px) {
+    .page { grid-template-columns: 1fr; }
+    .nav, .list { display: none; }
+  }
+</style>
+</head>
+<body>
+  <header class="top">
+    <div class="logo">Patient Portal<small>placeholder brand</small></div>
+    <button class="sq" aria-label="Home">⌂</button>
+    <button class="sq" aria-label="Menu">☰</button>
+    <div class="spacer"></div>
+    <div class="avatar"><span>K</span>▾</div>
+  </header>
+
+  <div class="page">
+    <!-- Left: the portal's own Message Center nav, plus one new entry point -->
+    <aside class="nav">
+      <h1>Message Center</h1>
+      <a class="learn" href="#">ⓘ Learn more</a>
+      <button class="send">Send a message</button>
+      <button class="ask">✦ Ask the assistant</button>
+      <ul>
+        <li class="on"><span class="ico">💬</span>Conversations</li>
+        <li><span class="ico">✦</span>Assistant <span class="new">AI</span></li>
+        <li><span class="ico">🔖</span>Bookmarked</li>
+        <li><span class="ico">🗂</span>Automated messages <span class="count">5</span></li>
+        <li><span class="ico">🗄</span>Archive</li>
+      </ul>
+    </aside>
+
+    <!-- Middle: conversations, with the assistant thread pinned on top -->
+    <section class="list">
+      <div class="list-head">
+        <h2>Conversations</h2>
+        <div class="search"><input placeholder="Search conversations" aria-label="Search conversations" /><button aria-label="Search">⌕</button></div>
+      </div>
+      <div class="convs">
+        <div class="conv on">
+          <div class="ic ai">✦</div>
+          <div>
+            <div class="t"><span>Assistant <span class="tag">AI</span></span><time>Today</time></div>
+            <div class="who">Portal Assistant</div>
+            <div class="pv">You still need to upload one document…</div>
+          </div>
+        </div>
+        <div class="conv">
+          <div class="ic">👥</div>
+          <div>
+            <div class="t"><span>Immunization Records</span><time>09/06</time></div>
+            <div class="who">Student Health Team</div>
+            <div class="pv">Hello, thank you for submitting your records…</div>
+          </div>
+        </div>
+        <div class="conv">
+          <div class="ic">👥</div>
+          <div>
+            <div class="t"><span>Appointment Reminder</span><time>08/21</time></div>
+            <div class="who">Clinic Scheduling</div>
+            <div class="pv">This is a reminder of your upcoming visit…</div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Right: the assistant thread — Harness's agent loop, portal-styled -->
+    <section class="thread">
+      <div class="th-head">
+        <div class="ic">✦</div>
+        <div>
+          <h3>Portal Assistant</h3>
+          <p>AI · reads your portal messages to answer · model: <code>provider/model</code></p>
+        </div>
+        <button class="handoff">Send to a person →</button>
+      </div>
+      <div class="disclaimer">
+        ⚠️ This assistant is AI and can be wrong. It does not give medical advice. For an emergency call 911; for clinical questions, <a href="#">message your care team</a>.
+      </div>
+
+      <div class="msgs">
+        <div class="msg me">Do I still need to do anything for my immunization records?</div>
+
+        <div class="msg bot">
+          <div class="tool">🔧 <b>search_messages</b>("immunization") → 1 conversation found</div>
+          <p>Yes, one thing. The Student Health Team confirmed they <strong>received your records</strong>, but their message asks for:</p>
+          <ul>
+            <li>a <strong>signed provider form</strong> for one remaining vaccine, uploaded through Documents</li>
+          </ul>
+          <p>Nothing else is listed as outstanding.</p>
+          <a class="cite" href="#">📄 Immunization Records · Student Health Team · 09/06</a>
+          <div class="meta">Answered from 1 portal message · 812 tokens · $0.0004</div>
+        </div>
+
+        <div class="msg me">Can you draft a reply asking if a scanned copy is OK?</div>
+
+        <div class="msg bot">
+          <p>Here's a draft. <strong>Nothing is sent until you review it.</strong></p>
+          <p style="border-left:3px solid var(--line);padding-left:10px;color:var(--muted)">Hello, thank you for confirming receipt of my records. Would a scanned copy of the signed provider form be acceptable, or do you need the original? Thank you!</p>
+          <div class="chips">
+            <button class="chip">✎ Edit draft</button>
+            <button class="chip">➜ Open in "Send a message"</button>
+          </div>
+        </div>
+
+        <div class="chips" aria-label="Suggestions">
+          <button class="chip">Summarize my unread messages</button>
+          <button class="chip">What are my automated messages about?</button>
+          <button class="chip">When is my next appointment?</button>
+        </div>
+      </div>
+
+      <div class="composer">
+        <textarea placeholder="Ask about your messages, appointments, or records…" aria-label="Ask the assistant"></textarea>
+        <button>Ask</button>
+      </div>
+      <div class="fine">The assistant can read your portal messages to answer. It cannot send messages, book appointments, or change your records on its own.</div>
+    </section>
+  </div>
+
+  <footer>
+    <a href="#">Frequently Asked Questions</a><a href="#">Terms &amp; Conditions</a><a href="#">Contact Us</a><a href="#">About the AI assistant</a>
+  </footer>
+  <div class="mock">MOCKUP · fictional data</div>
+</body>
+</html>
