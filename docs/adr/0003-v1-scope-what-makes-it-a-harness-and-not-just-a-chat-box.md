@@ -84,8 +84,8 @@ c
 
 ## Open Follow-ups
 
-- [ ] Storage budget: show how much of `localStorage` is used and offer export before it fills. If raw logs (B) or tool traces (C) push past the ceiling, revisit with IndexedDB, which is also browser-local but has much larger limits.
-- [ ] Version the stored data format from day one (a `schemaVersion` field), so a later change doesn't wipe or corrupt saved history.
+- [x] Storage budget: show how much of `localStorage` is used and offer export before it fills. *(Done: Settings shows origin-wide usage and has export/import. A full store surfaces as a banner, not a crash.)* If tool traces push past the ceiling in practice, revisit with IndexedDB, which is also browser-local but has much larger limits.
+- [x] Version the stored data format from day one (a `schemaVersion` field), so a later change doesn't wipe or corrupt saved history. *(Done: unreadable or newer-version data is backed up under `harness.state.unreadable-backup`, never overwritten.)*
 
 ---
 

