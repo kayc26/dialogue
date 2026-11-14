@@ -9,11 +9,11 @@ adr teaching map: the example is not the teaching — these are the up-links fro
 # ADR-0009: Diabetes education bot — synthetic patients, glucose data, and insulin regimens
 
 - **Date**: 2026-11-14
-- **Iteration**: 2
-- **Status**: Draft
+- **Iteration**: 3
+- **Status**: Accepted
 - **Deciders**: Kay, Nibble (Claude Opus 5.5)
 
-**TL;DR**: Six demo patients, one per flowchart path (decided). Their glucose readings come from public de-identified datasets (Kay's choice): ShanghaiT2DM is the leading candidate, with licenses still to verify. Each scenario is found in real data, or added and labeled where none exists (open). Timestamps are re-anchored to load time.
+**TL;DR**: Six demo patients, one per flowchart path (decided). Their glucose readings come from public de-identified datasets (Kay's choice): ShanghaiT2DM is the leading candidate, with licenses still to verify. Real windows only, with stories adjusted to fit them; regimens come from the same subject where records exist. Timestamps are re-anchored to load time.
 
 ---
 
@@ -151,7 +151,7 @@ On 2026-11-14, Kay answered:
 ---
 
 ### QST-SYNTH-SCENARIOS: How does each demo patient get its scenario out of real data?
-- Status: unanswered
+- Status: answered
 - Why asking: Kay chose public datasets for glucose readings. Each of the six demo patients exercises one triage rule (ADR-0006), for example: more than 2 lows in 48 hours with one under 54; above 350 for hours; pump failure with a steady rise; or steady readings. Real traces contain these only if a subject actually had them, and some, like a pump occlusion or rising ketones, may not be in any open dataset.
 - Need: pick a letter (or override — an answer in any shape is complete)
 
@@ -165,12 +165,12 @@ Options:
 **A — Search, and fill gaps with labeled overlays.** *Rationale*: A keeps as much real data as the scenarios allow. That's why Kay chose public data, and it still guarantees every triage rule has a patient that exercises it, which Kay asked for when choosing six patients (QST-SYNTH-PERSONAS: A). B risks losing exactly the rare, dangerous scenarios the bot most needs to handle. C goes back to generating data, which is what Kay just moved away from. The label keeps it honest. *Confidence*: 0.7 — because how many scenarios real data actually contains is unknown until the search runs. *If wrong*: if the search finds every scenario in real data, A becomes **B** in practice, with no overlays. If it finds almost none, revisit the generator (the original option B of QST-SYNTH-GLUCOSE) for those patients.
 
 **ANS:** (by Kay)
-[Fill this in]   <!-- literal placeholder — parser-significant, do not paraphrase -->
+b
 
 ---
 
 ### QST-SYNTH-REGIMEN-SOURCE: Where does each demo patient's insulin regimen come from?
-- Status: unanswered
+- Status: answered
 - Why asking: Each demo patient has an insulin regimen that the bot reads back (never shown to the model; ADR-0005). The patients' glucose readings now come from public datasets (ShanghaiT2DM and HUPA-UCM record insulin doses). A hand-written regimen paired with someone else's real trace may not match it. For example, the trace might show the pattern of a mealtime dose the regimen doesn't include.
 - Need: pick a letter (or override — an answer in any shape is complete)
 
@@ -183,7 +183,20 @@ Options:
 **B — From the same subject**, falling back to **A** when the subject's records are incomplete. *Rationale*: A regimen that matches its trace is what makes the read-back believable to a clinician, and it costs little once the data is loaded. Brand names can be mapped to US equivalents of the same insulin type (the generic name stays the same). *Confidence*: 0.65 — because I haven't seen how complete the datasets' dose records are. *If wrong*: if the dose records turn out to be sparse or hard to interpret, flip to **A** for all patients.
 
 **ANS:** (by Kay)
-[Fill this in]   <!-- literal placeholder — parser-significant, do not paraphrase -->
+b if exists
+
+---
+
+## Answers recorded in iteration 3
+
+- **QST-SYNTH-SCENARIOS: B.** Real windows only, with no added events. A patient whose scenario isn't found in real data has its story changed to match a window that exists, or is dropped.
+- **QST-SYNTH-REGIMEN-SOURCE: B where it exists.** The regimen comes from the same dataset subject's insulin records, or is hand-written when those records are missing.
+
+**A correction to my own recommendation, stated explicitly.** My rationale for SCENARIOS A said every triage rule needs a patient *whose data contains* the scenario. That overstated it. Under QST-TRIAGE-CGM: A (read-back only), triage reads **what the patient types and the profile flags, never the CGM trace**. A pump-failure, pregnancy, or >350 rule is tested by the conversation, not by the readings. So B costs much less than I claimed. The trace only has to be *consistent* with the story the demo patient tells: if the demo patient types "I'm at 380", the read-back must not show 110. Concretely:
+
+- Patients whose story depends on what the read-back shows (2: highs, 4: repeated lows) need a matching real window, and the search looks for those first.
+- Patients whose red flag is a fact or something the patient says (3: pump failure and DKA history, 5: pregnancy) can use any plausible window from a matching subject (type 1, insulin pump if available).
+- If no window fits a patient's story, the story changes. The rule still gets tested through the conversation.
 
 ---
 
@@ -214,6 +227,12 @@ Options:
 - Contributors: Kay, Nibble (Claude Opus 5.5)
 - Changes: Decision added. Real de-identified data replaces generated readings, and the label changes. Candidate datasets are listed, with licenses still to verify. The missing dataset for older adults with type 2 diabetes is noted. Two follow-ups opened: QST-SYNTH-SCENARIOS and QST-SYNTH-REGIMEN-SOURCE.
 - Outcome: Draft (two questions open)
+
+### Iteration 3 (2026-11-14)
+- Trigger: Kay answered QST-SYNTH-SCENARIOS: B and QST-SYNTH-REGIMEN-SOURCE: "b if exists"
+- Contributors: Kay, Nibble (Claude Opus 5.5)
+- Changes: Both answers recorded. My SCENARIOS rationale is corrected explicitly: triage reads what the patient says and the profile flags, never the trace, so real-windows-only is safe. The trace only needs to match the patient's story.
+- Outcome: Draft → Accepted
 
 ---
 

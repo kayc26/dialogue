@@ -9,7 +9,7 @@ adr teaching map: the example is not the teaching — these are the up-links fro
 # ADR-0008: Diabetes education bot — intake, conversation summary, and nurse handoff
 
 - **Date**: 2026-11-14
-- **Iteration**: 2
+- **Iteration**: 3
 - **Status**: Accepted
 - **Deciders**: Kay, Nibble (Claude Opus 5.5)
 
@@ -173,6 +173,25 @@ a
 
 ---
 
+### QST-HANDOFF-REPLY-PATH: How does a nurse's reply reach the patient?
+- Status: answered
+- Why asking: Flagged summaries go to a Care team inbox on the same device (QST-HANDOFF-STORAGE: A). The bot currently has no way to deliver a reply. The patient summary has to tell older, low-tech-literacy users what happens next and when, and urgent problems must still mean calling now, not waiting for a reply. *(Promoted from an Open Follow-ups bullet in iteration 3 so it shows up as a question.)*
+- Need: pick a letter (or override — an answer in any shape is complete)
+
+Options:
+- **A — Phone call**: The nurse calls the patient. The bot only says "A nurse will call you" and when. The demo ends at the inbox.
+- **B — Reply inside the bot**: The nurse types a reply in the inbox view. The patient sees it, in large type and read aloud, the next time they open the bot. On one device, the demo shows the whole loop.
+- **C — Both**: Red-flag summaries get a phone call, and routine ones get an in-bot reply. The patient summary says which applies.
+
+**Recommendation**: (by Nibble, Claude Opus 5.5, 2026-11-14)
+
+**C — Both.** *Rationale*: Phone is what older users trust and what same-day red flags need, and the clinic's flowchart already routes those to a same-day call with an attending. In-bot replies suit routine questions and let the demo show the full loop on one device. *Confidence*: 0.6 — because it depends on how the clinic actually responds to messages, and Kay knows that. *If wrong*: if the clinic answers everything by phone, flip to **A**. If the demo should stay entirely in the app, flip to **B**.
+
+**ANS:** (by Kay)
+C
+
+---
+
 ## Decision
 
 On 2026-11-14, Kay answered all five questions:
@@ -198,7 +217,7 @@ The design above stands as proposed.
 ## Open Follow-ups
 
 - [ ] **Kay's clinician requirements** (coming later) refine the field list. They should replace the table above, not override this mechanism.
-- [ ] **Reply path**: does a nurse's reply reach the patient in the bot, or by phone? Today the bot has no way to receive a reply. This affects what the patient summary says under "What happens next".
+- [x] **Reply path**: promoted in iteration 3 to QST-HANDOFF-REPLY-PATH.
 - [ ] **Turnaround wording**: the patient summary must say when to expect a reply, and that urgent problems mean calling now, not waiting.
 
 ---
@@ -216,6 +235,12 @@ The design above stands as proposed.
 - Contributors: Kay, Nibble (Claude Opus 5.5)
 - Changes: Decision section added. Four answers match the recommendations. QST-CRITERIA-PUBLIC went to A rather than C: the criteria are public, with no clinic name.
 - Outcome: Draft → Accepted (the reply-path follow-up is still open)
+
+### Iteration 3 (2026-11-14)
+- Trigger: The reply-path follow-up went unanswered twice. As a bullet it was invisible to the question tooling Kay answers from.
+- Contributors: Nibble (Claude Opus 5.5)
+- Changes: Promoted it to QST-HANDOFF-REPLY-PATH, with options and a recommendation.
+- Outcome: Accepted (one question open)
 
 ---
 
