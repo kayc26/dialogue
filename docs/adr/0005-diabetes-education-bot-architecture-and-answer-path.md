@@ -334,10 +334,11 @@ On 2026-11-14 Kay shared the actual corpus: the team's shared Google Drive folde
   - *Infographics extracted out of order.* The type 1 guide's Rule of 15 graphic comes out with its steps scrambled among "circle-N" labels. The type 2 guide's Rule of 15 is clean text and is kept, so the urgent content survives.
   - *Table-cell scraps under 7 to 8 words.* "80–130 mg/dL before meals" without its "target" label reads as a statement about the patient.
 
-  As a result, the **Exercise and Nutrition** one-pager (all infographic) contributes nothing, and the type 2 guide's targets table is lost. If the team wants that table, it can go into the FAQ doc as plain text.
+  As a result, the **Exercise and Nutrition** one-pager (almost all infographic) keeps just one passage: the resistance exercise and older-adults advice, 119 words. *(Corrected after the load: an earlier draft said it contributed nothing.)* The type 2 guide's targets table is lost. If the team wants that table, it can go into the FAQ doc as plain text.
 - **The team FAQ** was exported from the Google Doc into git-ignored `kb/local-sources/FAQs.md`, without the author's internal note ("I didn't think it'd be appropriate to include specific brands…"), which is addressed to the team, not patients.
 - **Tags** use deliberately broad patterns: `dose_related` (22 passages), `urgent` (28), and `medication`. Every `dose_related` passage is listed in `kb/out/review.md` for a person to check.
 - **Build of 2026-11-14**: 136 passages kept and 58 skipped.
+- **Loaded into production on 2026-11-14** (Kay asked for it, and Nibble ran `npm run kb:load -- --yes` against host `ep-raspy-surf-…-pooler`): 136 rows from 9 documents. Type 1 guide 72 (15 dose-related), type 2 guide 27 (6), care-team FAQs 13 (1), plate 7, portions 4, sugar substitutes 4, nutrition FAQs 4, liver 4, exercise 1. Without sign-in, `kb_chunks` returns **401**. Member-only read access is the same policy the `rls-dev` suite tests (policy fingerprints match, ADR-0011). Production has no members yet, so a signed-in read there waits for the first real accounts.
 
 **RAG, not long context (Kay asked, iteration 8).** At about 23k tokens the whole corpus would fit in one prompt, but RAG stays, for three reasons:
 1. QST-DIAB-DOSE-GUARD: D says dose-related passages are **never given to the model**. Long context would put all 22 in front of it every turn.
