@@ -9,11 +9,11 @@ adr teaching map: the example is not the teaching — these are the up-links fro
 # ADR-0009: Diabetes education bot — synthetic patients, glucose data, and insulin regimens
 
 - **Date**: 2026-11-14
-- **Iteration**: 3
+- **Iteration**: 4
 - **Status**: Accepted
 - **Deciders**: Kay, Nibble (Claude Opus 5.5)
 
-**TL;DR**: Six demo patients, one per flowchart path (decided). Their glucose readings come from public de-identified datasets (Kay's choice): ShanghaiT2DM is the leading candidate, with licenses still to verify. Real windows only, with stories adjusted to fit them; regimens come from the same subject where records exist. Timestamps are re-anchored to load time.
+**TL;DR**: Six demo patients, one per flowchart path (decided). Their glucose readings come from public de-identified datasets (Kay's choice): ShanghaiT1DM/T2DM, CC BY 4.0 (verified); built and loaded in iteration 4. Real windows only, with stories adjusted to fit them; regimens come from the same subject where records exist. Timestamps are re-anchored to load time.
 
 ---
 
@@ -200,6 +200,40 @@ b if exists
 
 ---
 
+## Built and loaded (iteration 4)
+
+**Licenses verified at the source.** ShanghaiT1DM/T2DM: **CC BY 4.0**, per the figshare API record for article 21600933 (checksum of the zip matches figshare's). HUPA-UCM: **CC BY 4.0**, per Mendeley Data's public API record. Both allow redistribution with credit, so the selected readings are committed as fixtures. Every fixture carries the citation, DOI, license, and a description of the changes. Only ShanghaiT1DM/T2DM was needed. HUPA-UCM wasn't downloaded.
+
+**What the data turned out to be**: CGM in mg/dL every 15 minutes, about 14 days per recording, plus fingersticks, blood ketones, injected-insulin records, and insulin-pump (CSII) records. Many minimums sit exactly at 39.6 mg/dL, which looks like a sensor floor, and pump insulin given as regular insulin suggests **hospital recordings**.
+
+| Persona | Recording | Subject | How the readings fit the story |
+|---|---|---|---|
+| `demo-helen`, quick advice | `2017_1` | type 2, 66 F, degludec | 85% time in range, no severe lows |
+| `demo-robert`, above 350 (+ steroid start) | `2095_0` | type 2, 66 M, aspart 70/30 | readings above 350 in the last 48 h |
+| `demo-george`, DKA history, pump | `1002_0` | type 1, 68 M, **recorded DKA history**, pump records | readings above 350 in the last 48 h |
+| `demo-dorothy`, repeated and severe lows | `2094_0` | type 2, 74 F, glargine + 70/30 | 35 low readings in the last 52 h, minimum 52 |
+| `demo-mei`, pregnancy | `2014_1` | type 2, 42 F, degludec + metformin | steady (76–203) |
+| `demo-walter`, high-touch from history | `2059_0` | type 2, 84 M, aspart 70/30 | steady; the clinic history carries the criteria |
+
+**Stories changed to fit the data** (QST-SYNTH-SCENARIOS: B):
+- **Ages follow the subjects**, not the iteration-1 sketch.
+- **Mei is type 2**, because the dataset's youngest type 1 woman is 51.
+- **Robert's steroid start is fictional**, because no steroid appears in any medication list.
+- **George's pump** comes from what look like hospital pump records, so the home-pump framing is part of the demo story.
+- **Dorothy changed recording.** The first pick (`2069_2`, 85) had 3 lows in 48 hours and 2 severe lows, but **not in the same 48 hours**. Her story had combined two summary numbers that never happened together. The fixture test caught it, and the build now requires a severe low *inside* the 48-hour cluster.
+
+**Tests** (`src/lib/patients/fixtures.test.ts`, 15, in the gate) check after any rebuild that:
+- each persona's readings still fit its story;
+- the CC BY attribution is present;
+- names are marked "(demo)";
+- every regimen comes from the subject's own records.
+
+**Loaded to production**: 6 patients and 6,394 readings (`npm run patients:load -- --yes`). Without sign-in, `patients` returns **401**.
+
+**Tools**: `patients/build.py` (Python with pandas, openpyxl, and xlrd; `patients/requirements.txt`) and `patients/load.ts` (a dry run unless `--yes`; replaces only `demo-*` rows).
+
+---
+
 ## Trade-offs
 
 - **Plausible, not physiological.** The generator draws traces that look right, not ones that model insulin action. That's fine for read-back and triage tests, and not suitable for anything that would reason over trends (out of scope; ADR-0006, QST-TRIAGE-CGM: A).
@@ -233,6 +267,12 @@ b if exists
 - Contributors: Kay, Nibble (Claude Opus 5.5)
 - Changes: Both answers recorded. My SCENARIOS rationale is corrected explicitly: triage reads what the patient says and the profile flags, never the trace, so real-windows-only is safe. The trace only needs to match the patient's story.
 - Outcome: Draft → Accepted
+
+### Iteration 4 (2026-11-14)
+- Trigger: Kay chose to build the demo patients next.
+- Contributors: Kay, Nibble (Claude Opus 5.5)
+- Changes: Licenses verified at the source (both CC BY 4.0). Six personas matched to ShanghaiT1DM/T2DM recordings, with stories adjusted to the data. Dorothy's recording changed after the fixture test showed her lows and severe low never fell in the same 48 hours. Fixtures committed with attribution. Loaded to production.
+- Outcome: Accepted
 
 ---
 
