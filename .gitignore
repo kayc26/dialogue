@@ -21,3 +21,4 @@ coverage/
 *.local
 # ADR Manager extension working state (drafts, backups) — editor-local, not records
 docs/adr/.working/
+.neon
