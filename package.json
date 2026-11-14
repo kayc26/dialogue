@@ -13,7 +13,8 @@
     "gate": "vue-tsc --build && vitest run && vite build",
     "test:db": "vitest run --config vitest.db.config.ts",
     "kb:build": "node kb/build.ts",
-    "kb:load": "node --env-file=.env.local kb/load.ts"
+    "kb:load": "node --env-file=.env.local kb/load.ts",
+    "patients:load": "node --env-file=.env.local patients/load.ts"
   },
   "dependencies": {
     "dompurify": "^3.4.17",

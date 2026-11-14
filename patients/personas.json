@@ -1,0 +1,73 @@
+{
+  "$comment": "Demo patients (ADR-0009). Each persona exercises one path through the clinic's flowchart; glucose readings and insulin regimen come from one real, de-identified recording in ShanghaiT1DM/T2DM (CC BY 4.0). Names, clinic history, and profile flags are fictional. Stories were adjusted to fit the data (QST-SYNTH-SCENARIOS: B). Build: patients/build.py; load: patients/load.ts.",
+  "dataset": {
+    "name": "ShanghaiT1DM and ShanghaiT2DM",
+    "citation": "Zhao Q, Zhu J, Shen X, et al. Chinese diabetes datasets for data-driven machine learning. Scientific Data 10, 35 (2023).",
+    "doi": "10.6084/m9.figshare.c.6310860",
+    "license": "CC BY 4.0",
+    "license_url": "https://creativecommons.org/licenses/by/4.0/",
+    "changes": "Timestamps re-anchored so the last reading falls at load time; window trimmed to end shortly after the scenario's key event (at most 14 days); regimen summarized from the subject's dose records; name, clinic history, and profile flags are fictional."
+  },
+  "personas": [
+    {
+      "id": "demo-helen",
+      "display_name": "Helen (demo)",
+      "path": "quick advice (no red flag, no high-touch criterion)",
+      "story": "Type 2 on long-acting insulin; steady readings.",
+      "recording": "2017_1_20201118",
+      "anchor": { "type": "recording_end" },
+      "flags": { "history_of_dka": false, "pregnant": false, "uses_pump": false },
+      "clinic_history": { "calls_60d": 1, "days_since_visit": 90, "days_since_hospitalization": null, "days_since_steroid_start": null, "days_since_pump_start": null }
+    },
+    {
+      "id": "demo-robert",
+      "display_name": "Robert (demo)",
+      "path": "RED FLAG glucose > 350, plus HIGH-TOUCH new steroid start",
+      "story": "Type 2 on premixed insulin; many readings above 350. The steroid start is fictional (no steroids appear in the dataset).",
+      "recording": "2095_0_20201116",
+      "anchor": { "type": "after_event", "event": "above_350", "hours_after": 2 },
+      "flags": { "history_of_dka": false, "pregnant": false, "uses_pump": false },
+      "clinic_history": { "calls_60d": 2, "days_since_visit": 60, "days_since_hospitalization": null, "days_since_steroid_start": 5, "days_since_pump_start": null }
+    },
+    {
+      "id": "demo-george",
+      "display_name": "George (demo)",
+      "path": "RED FLAG history of DKA with high glucose; pump failure via the conversation; HIGH-TOUCH new pump start",
+      "story": "Type 1 with a recorded history of diabetic ketoacidosis; insulin pump readings. In the dataset the pump insulin was given in hospital, so the home-pump framing is part of the demo story.",
+      "recording": "1002_0_20210504",
+      "anchor": { "type": "after_event", "event": "above_350", "hours_after": 2 },
+      "flags": { "history_of_dka": true, "pregnant": false, "uses_pump": true },
+      "clinic_history": { "calls_60d": 2, "days_since_visit": 30, "days_since_hospitalization": null, "days_since_steroid_start": null, "days_since_pump_start": 18 }
+    },
+    {
+      "id": "demo-dorothy",
+      "display_name": "Dorothy (demo)",
+      "path": "RED FLAG severe low / more than 2 lows in 48 hours",
+      "story": "Type 2 on long-acting and mealtime insulin; several lows within 48 hours, at least one severe (below 54). Recording changed from 2069_2 (85) because its lows and its severe low did not fall in the same 48 hours.",
+      "recording": "2094_0_20211109",
+      "anchor": { "type": "after_event", "event": "low_cluster", "hours_after": 4 },
+      "flags": { "history_of_dka": false, "pregnant": false, "uses_pump": false },
+      "clinic_history": { "calls_60d": 1, "days_since_visit": 45, "days_since_hospitalization": null, "days_since_steroid_start": null, "days_since_pump_start": null }
+    },
+    {
+      "id": "demo-mei",
+      "display_name": "Mei (demo)",
+      "path": "RED FLAG pregnancy",
+      "story": "Type 2 on long-acting insulin and metformin; pregnant (fictional flag). Changed from type 1 because the dataset has no young woman with type 1.",
+      "recording": "2014_1_20210317",
+      "anchor": { "type": "recording_end" },
+      "flags": { "history_of_dka": false, "pregnant": true, "uses_pump": false },
+      "clinic_history": { "calls_60d": 1, "days_since_visit": 21, "days_since_hospitalization": null, "days_since_steroid_start": null, "days_since_pump_start": null }
+    },
+    {
+      "id": "demo-walter",
+      "display_name": "Walter (demo)",
+      "path": "HIGH-TOUCH from history only (last visit > 6 months, > 4 calls in 2 months)",
+      "story": "Type 2, 84, on premixed insulin; steady readings. Only the clinic history makes him high-touch.",
+      "recording": "2059_0_20210525",
+      "anchor": { "type": "recording_end" },
+      "flags": { "history_of_dka": false, "pregnant": false, "uses_pump": false },
+      "clinic_history": { "calls_60d": 5, "days_since_visit": 240, "days_since_hospitalization": null, "days_since_steroid_start": null, "days_since_pump_start": null }
+    }
+  ]
+}

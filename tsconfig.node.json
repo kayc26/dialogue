@@ -5,7 +5,8 @@
     "db/**/*.ts",
     "kb/**/*.ts",
     "src/lib/kb/chunk.ts",
-    "src/lib/kb/tags.ts"
+    "src/lib/kb/tags.ts",
+    "patients/**/*.ts"
   ],
   "compilerOptions": {
     "composite": true,
