@@ -1,0 +1,18 @@
+{
+  "$comment": "Knowledge-base sources (ADR-0005 iteration 6). File names and titles only; the content lives in the team's Drive folder and never in git. `dir`: 'kb' = the Drive knowledgebase folder (--kb-dir), 'local' = kb/local-sources/ (git-ignored).",
+  "snapshotDate": "2026-11-14",
+  "documents": [
+    { "id": "ada-t1-guide", "file": "guide-for-people-with-type_1-diabetes.pdf", "dir": "kb", "title": "Your Rights and Care Standards: A Guide for People with Type 1 Diabetes", "sourceLabel": "ADA" },
+    { "id": "ada-t2-guide", "file": "guide_for_people_with_type_2_diabetes.pdf", "dir": "kb", "title": "Your Rights and Care Standards: A Guide for People with Type 2 Diabetes", "sourceLabel": "ADA" },
+    { "id": "ada-plate", "file": "PE25-Plan-Your-Plate-FINAL-5-22-25.pdf", "dir": "kb", "title": "Plan Your Diabetes Plate", "sourceLabel": "ADA" },
+    { "id": "ada-liver", "file": "041526-healthy-eating-for-liver-health-digital-final.pdf", "dir": "kb", "title": "Healthy Eating for Liver Health", "sourceLabel": "ADA" },
+    { "id": "ada-sweeteners", "file": "ada26-nutrition-sugar-substitutes-02-19-26.pdf", "dir": "kb", "title": "Understanding Sugar Substitutes", "sourceLabel": "ADA" },
+    { "id": "ada-portions", "file": "portions-vs-serving-sizes-onepager-8-6-25.pdf", "dir": "kb", "title": "Portion Size vs. Serving Size", "sourceLabel": "ADA" },
+    { "id": "ada-nutrition-faqs", "file": "nutrition-faqs-new-v5-final-1-21-26.pdf", "dir": "kb", "title": "Food & Nutrition FAQs", "sourceLabel": "ADA" },
+    { "id": "ada-exercise", "file": "exercise_and_nutrition.pdf", "dir": "kb", "title": "Exercise and Nutrition", "sourceLabel": "ADA" },
+    { "id": "team-faqs", "file": "FAQs.md", "dir": "local", "title": "Care team FAQs", "sourceLabel": "care_team", "$comment": "Export of the team's FAQs Google Doc (clinician-approved, QST-DIAB-FAQ-SOURCE: A); the author's internal note about brands is left out." }
+  ],
+  "excluded": [
+    { "file": "Workflow PRDC triage calls 3.4.26.docx", "reason": "Triage criteria source only (ADR-0006 iteration 5); internal clinic workflow, not answer content." }
+  ]
+}

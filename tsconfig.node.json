@@ -2,7 +2,10 @@
   "include": [
     "vite.config.ts",
     "vitest.db.config.ts",
-    "db/**/*.ts"
+    "db/**/*.ts",
+    "kb/**/*.ts",
+    "src/lib/kb/chunk.ts",
+    "src/lib/kb/tags.ts"
   ],
   "compilerOptions": {
     "composite": true,
@@ -18,6 +21,7 @@
       "node"
     ],
     "strict": true,
-    "skipLibCheck": true
+    "skipLibCheck": true,
+    "allowImportingTsExtensions": true
   }
 }

@@ -22,3 +22,8 @@ coverage/
 # ADR Manager extension working state (drafts, backups) — editor-local, not records
 docs/adr/.working/
 .neon
+
+# Knowledge base: ADA material is copyrighted and must never be committed (ADR-0005).
+# Only the code and the manifest are tracked; extracted text and passages stay local.
+kb/out/
+kb/local-sources/
