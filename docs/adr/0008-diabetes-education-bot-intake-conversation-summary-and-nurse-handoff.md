@@ -9,11 +9,11 @@ adr teaching map: the example is not the teaching — these are the up-links fro
 # ADR-0008: Diabetes education bot — intake, conversation summary, and nurse handoff
 
 - **Date**: 2026-11-14
-- **Iteration**: 1
-- **Status**: Draft
+- **Iteration**: 2
+- **Status**: Accepted
 - **Deciders**: Kay, Nibble (Claude Opus 5.5)
 
-**TL;DR**: Proposed: the bot asks a few targeted follow-up questions drawn from the clinic's triage flowchart. At the end, it builds a structured summary: each field cites the turn it came from, and the transcript is attached. The patient gets a plain-language version, and the care team gets the structured one. This adds a second reader of the data, the nurse, so where the data lives becomes a real decision (QST-HANDOFF-STORAGE).
+**TL;DR**: Decided: the bot asks a few targeted follow-up questions drawn from the clinic's triage flowchart. At the end, it builds a structured summary: each field cites the turn it came from, and the transcript is attached. The patient gets a plain-language version, and the care team gets the structured one. This adds a second reader of the data, the nurse, so where the data lives becomes a real decision (QST-HANDOFF-STORAGE).
 
 ---
 
@@ -79,7 +79,7 @@ The flowchart item "Non-clinic provider requesting urgent visit" doesn't apply t
 ## Questions
 
 ### QST-HANDOFF-STORAGE: Where does the data live, so a nurse can read the summary?
-- Status: unanswered
+- Status: answered
 - Why asking: Kay asked where the database will be. Today the answer is the patient's browser: `localStorage`, and IndexedDB for the knowledge base. ADR-0001 rules out any backend, and the corpus stays local (ADR-0005). The new nurse-handoff summary is the first data that someone *else* must read, so it has to get from the patient to the care team somehow. All data is synthetic.
 - Need: pick a letter (or override — an answer in any shape is complete)
 
@@ -93,12 +93,12 @@ Options:
 **A — Same device, two views.** *Rationale*: A class demo needs to *show* the handoff: a patient talks, then a nurse opens the inbox and sees the flowchart criteria with their evidence. One device does that with no new infrastructure and no new place for data to leak. B adds authentication, a database schema, and a second trust boundary to answer a question nobody grading the demo asks. If B ever handled real data, it's exactly the system ADR-0005's real-PHI section describes, which is a larger project. *Confidence*: 0.6 — because it depends on how the demo is presented: on one screen, or with patient and nurse side by side. *If wrong*: if the demo needs two devices at once, or the team wants teammates to review real synthetic sessions remotely, flip to **B**. A Neon connection is already available in this environment, so setting one up would be quick.
 
 **ANS:** (by Kay)
-[Fill this in]   <!-- literal placeholder — parser-significant, do not paraphrase -->
+a
 
 ---
 
 ### QST-HANDOFF-CONSENT: Does the summary go to the care team automatically, or only when the patient chooses?
-- Status: unanswered
+- Status: answered
 - Why asking: Kay wants the end-of-conversation summary to serve the clinical team's review "or the patient's reference". Sending everything automatically is good for care but means the patient is always being watched. Sending only on request means some red-flag conversations reach no one. Missed escalations cost far more than false alarms, and the users are older adults with limited tech literacy.
 - Need: pick a letter (or override — an answer in any shape is complete)
 
@@ -112,12 +112,12 @@ Options:
 **C — Sent automatically when the flowchart flags it, otherwise the patient chooses.** *Rationale*: The flowchart already defines which conversations a nurse must see, so those shouldn't depend on an older user finding a button after a frightening exchange. Routine conversations stay the patient's own. B's always-on sharing could stop users asking the questions they're embarrassed about. *Confidence*: 0.55 — because this is a consent and values question that the clinic's actual practice should answer, and I don't know it. *If wrong*: if the clinic treats every patient message as part of the record (as many portals do), flip to **B**. If the team wants the patient fully in control for the demo, flip to **A**.
 
 **ANS:** (by Kay)
-[Fill this in]   <!-- literal placeholder — parser-significant, do not paraphrase -->
+c
 
 ---
 
 ### QST-HANDOFF-SUMMARY-WRITER: How is the summary produced?
-- Status: unanswered
+- Status: answered
 - Why asking: The end-of-conversation summary goes to nurses who triage and reply based on it. A model-written summary can invent a symptom, drop a qualifier ("I *think* it was 380"), or misattribute a number, and a nurse would act on it. The bot's answers already have checks (ADR-0005), but this is a record about the patient, which is a different risk.
 - Need: pick a letter (or override — an answer in any shape is complete)
 
@@ -131,12 +131,12 @@ Options:
 **A — Structured fields, each citing its source, plus the transcript.** *Rationale*: A nurse needs to trust each fact or check it in one click, and A gives exactly that. Every value can be traced to its turn, and code rejects any extraction that isn't in the cited turn. B's narrative is the format most likely to slip in a plausible but invented detail. C's label helps, but a busy nurse reads the top paragraph and stops. Kay's coming list of clinician requirements slots straight into A's fields. *Confidence*: 0.7 — because nurses may find a fields-only view slower to read than prose, which only testing with them would show. *If wrong*: if clinicians reviewing sample summaries say they need the narrative to read quickly, flip to **C**.
 
 **ANS:** (by Kay)
-[Fill this in]   <!-- literal placeholder — parser-significant, do not paraphrase -->
+a
 
 ---
 
 ### QST-INTAKE-STYLE: How does the bot gather the information nurses need?
-- Status: unanswered
+- Status: answered
 - Why asking: Kay wants the bot to collect the information nurses need, using the clinic's triage flowchart (RED FLAGS, then HIGH-TOUCH criteria). The users are older adults with low vision and limited tech literacy, who may be unwell while they're talking to the bot. Every question asked has a cost.
 - Need: pick a letter (or override — an answer in any shape is complete)
 
@@ -150,12 +150,12 @@ Options:
 **A — Ask only what's relevant.** *Rationale*: A nurse triaging a high reading needs the ketones, illness, and pump answers, not whether the patient was hospitalized recently in a conversation about snacks. Relevant questions get answered, while checklists get skipped or abandoned, especially by tired or unwell older users. "Not asked" is honest in a way an abandoned checklist isn't. *Confidence*: 0.7 — because Kay's coming clinician requirements may name fields nurses want *every* time. *If wrong*: if the clinicians name must-have fields for every contact, add only those as a fixed short tail to **A**. Move to **B** only if the list is short.
 
 **ANS:** (by Kay)
-[Fill this in]   <!-- literal placeholder — parser-significant, do not paraphrase -->
+a
 
 ---
 
 ### QST-CRITERIA-PUBLIC: Can the clinic's triage criteria appear in this public repo and site?
-- Status: unanswered
+- Status: answered
 - Why asking: The questions the bot asks will be generated from the clinic's internal call-triage flowchart: its RED FLAGS and HIGH-TOUCH criteria. Anything in the app's code is public: this repo is public, and the GitHub Pages bundle is readable by anyone. Until now, ADR-0006 kept the clinic's internal routing out of the public record and named no clinic.
 - Need: pick a letter (or override — an answer in any shape is complete)
 
@@ -169,7 +169,21 @@ Options:
 **C — Check with the clinic first, using B until then.** *Rationale*: The RED FLAGS look like generic clinical practice, but the HIGH-TOUCH list (call counts, visit timing, routing to visits) is one clinic's operating policy, and the flowchart is an internal document. B costs little because it's the same loading path the knowledge base already uses. *Confidence*: 0.6 — because the clinic may well say it's fine, and then this caution only cost one config file. *If wrong*: if a clinician on the team confirms the criteria are standard and not sensitive, flip to **A**.
 
 **ANS:** (by Kay)
-[Fill this in]   <!-- literal placeholder — parser-significant, do not paraphrase -->
+a
+
+---
+
+## Decision
+
+On 2026-11-14, Kay answered all five questions:
+
+- **QST-HANDOFF-STORAGE: A.** Everything stays on one device, in IndexedDB. The app gets a **Care team inbox** view next to the patient view, and patients can print or save a PDF. No backend, so ADR-0001 stands.
+- **QST-HANDOFF-CONSENT: C.** A summary that meets a RED FLAG or HIGH-TOUCH criterion goes to the inbox automatically, and the patient is told this at the start. Anything else is the patient's choice: "Send to my care team" or "Just keep it for me".
+- **QST-HANDOFF-SUMMARY-WRITER: A.** Structured fields, each with a value and a link to the turn it came from. Code checks extracted values against the cited turn, the transcript is attached, and there's no free narrative. The patient version is generated from the fields by a template.
+- **QST-INTAKE-STYLE: A.** Only follow-ups relevant to what the patient raised: three to five at most, one per screen, with yes/no buttons and "skip". Unasked fields are marked "not asked".
+- **QST-CRITERIA-PUBLIC: A** (I recommended C). The clinic's RED FLAG and HIGH-TOUCH criteria may go in the public code, with no clinic name attached. The flowchart's staff routing, scripts, and scheduling steps aren't needed by the bot and don't go in. This updates ADR-0006's iteration-5 note that the HIGH-TOUCH box stays out of the public record.
+
+The design above stands as proposed.
 
 ---
 
@@ -196,6 +210,12 @@ Options:
 - Contributors: Kay, Nibble (Claude Opus 5.5)
 - Changes: Collection table drawn from the flowchart, the summary design, and five questions posed.
 - Outcome: Draft
+
+### Iteration 2 (2026-11-14)
+- Trigger: Kay answered A, C, A, A, A
+- Contributors: Kay, Nibble (Claude Opus 5.5)
+- Changes: Decision section added. Four answers match the recommendations. QST-CRITERIA-PUBLIC went to A rather than C: the criteria are public, with no clinic name.
+- Outcome: Draft → Accepted (the reply-path follow-up is still open)
 
 ---
 

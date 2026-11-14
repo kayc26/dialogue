@@ -9,11 +9,11 @@ adr teaching map: the example is not the teaching — these are the up-links fro
 # ADR-0009: Diabetes education bot — synthetic patients, glucose data, and insulin regimens
 
 - **Date**: 2026-11-14
-- **Iteration**: 1
+- **Iteration**: 2
 - **Status**: Draft
 - **Deciders**: Kay, Nibble (Claude Opus 5.5)
 
-**TL;DR**: Proposed: six hand-written synthetic patients, each built to exercise one path through the clinic's flowchart, with plausible insulin regimens and profile history. Their glucose data comes from a seeded generator script with scripted events, using timestamps relative to load time so "the last 48 hours" means something in a demo. All of it is committed as clearly marked synthetic fixtures and loaded from a demo patient picker.
+**TL;DR**: Six demo patients, one per flowchart path (decided). Their glucose readings come from public de-identified datasets (Kay's choice): ShanghaiT2DM is the leading candidate, with licenses still to verify. Each scenario is found in real data, or added and labeled where none exists (open). Timestamps are re-anchored to load time.
 
 ---
 
@@ -45,6 +45,8 @@ adr teaching map: the example is not the teaching — these are the up-links fro
 ---
 
 ## Proposed design
+
+*Iteration 2: Kay chose public datasets over the generator. Where they disagree, the **Decision** section is current. The generator below stays as the record of the proposal, and as the fallback if public data can't cover a scenario.*
 
 ### Patient record (one JSON fixture per patient)
 
@@ -79,7 +81,7 @@ In demo mode, a **Choose a demo patient** picker writes the fixture into browser
 ## Questions
 
 ### QST-SYNTH-GLUCOSE: How are synthetic glucose readings produced?
-- Status: unanswered
+- Status: answered
 - Why asking: The diabetes education bot needs fake glucose data for each synthetic patient. The data is used for read-back, for the demo, and as test cases for the triage rules: above 350 mg/dL is urgent, below 54 is a severe low, and more than 2 lows in 48 hours is a red flag (ADR-0006). The data must look plausible *and* contain exact scenarios on demand.
 - Need: pick a letter (or override — an answer in any shape is complete)
 
@@ -93,12 +95,12 @@ Options:
 **B — Seeded generator plus scripted events.** *Rationale*: The data exists to exercise specific rules, and B is the only option where "exactly 3 lows in 48 hours, one under 54" is a line of configuration rather than a search. It can be tested in the existing gate (`vitest`). Realism only has to be good enough to read back convincingly, which is a lower bar than C targets. C also can't produce the type 2 patients, who are most of this audience. *Confidence*: 0.75 — because plausible-looking traces from a simple model may still look wrong to a clinician. *If wrong*: if a clinician reviewing sample traces says they look unrealistic in ways that matter for the demo, use **C** for the type 1 patients and keep **B** for the rest.
 
 **ANS:** (by Kay)
-[Fill this in]   <!-- literal placeholder — parser-significant, do not paraphrase -->
+publicly availble datasrouces
 
 ---
 
 ### QST-SYNTH-PERSONAS: Which synthetic patients do we build?
-- Status: unanswered
+- Status: answered
 - Why asking: Each synthetic patient of the diabetes education bot should exercise a path through the clinic's flowchart: a RED FLAG (same-day), a HIGH-TOUCH criterion (offer a visit), or neither (quick advice). Together they should cover each triage rule once. The users are older adults, but some red flags (pregnancy) need a patient outside that group.
 - Need: pick a letter (or override — an answer in any shape is complete)
 
@@ -115,6 +117,70 @@ Options:
 **Recommendation**: (by Nibble, Claude Opus 5.5, 2026-11-14)
 
 **A — Six patients, one per path.** *Rationale*: Every one of these rules was decided in ADR-0006 and ADR-0008, and a rule no patient exercises is a rule nobody has checked. Six JSON fixtures are cheap. *Confidence*: 0.8 — because Kay's coming clinician requirements may add fields, though they shouldn't remove patients. *If wrong*: if the team wants a focused demo, use **B** for the live demo and keep all six in the eval set.
+
+**ANS:** (by Kay)
+a
+
+---
+
+## Decision
+
+On 2026-11-14, Kay answered:
+
+- **QST-SYNTH-GLUCOSE: "publicly available data sources"**, an override that replaces the generator (B) with real, de-identified public datasets.
+- **QST-SYNTH-PERSONAS: A.** Six patients, one per flowchart path.
+
+### What public data changes
+
+- **The readings are no longer synthetic.** They're real people's de-identified data. The badge changes from **SYNTHETIC** to **Demo patient**, with a note: "Glucose readings come from a public research dataset (cited). Name, age, and history are fictional."
+- **Licenses decide where the data lives.** If a dataset allows redistribution (for example CC BY 4.0), the selected windows can be committed with attribution. If not, the dataset stays in a gitignored folder, like the knowledge base, and the gate tests use small committed fixtures. Every license gets checked on the dataset's own page before anything is downloaded.
+- **Scenarios have to be found, not written** (QST-SYNTH-SCENARIOS). A real trace has "exactly 3 lows in 48 hours with one under 54" only if someone lived it.
+- **A real person's trace gets a fictional patient's details.** The persona's age, history, and flags are invented, but the trace came from someone else. That's acceptable when it's labeled, but it isn't consistent unless the regimen also comes from the same subject (QST-SYNTH-REGIMEN-SOURCE).
+- **Timestamps still shift to load time.** Each trace's real dates are discarded, and the window is re-anchored to end at load time, so "the last 48 hours" works in a demo.
+
+### Candidate datasets (licenses to verify on each dataset's page before use)
+
+| Dataset | What's in it | License as reported | Fit |
+|---|---|---|---|
+| **ShanghaiT1DM / ShanghaiT2DM** (Zhao et al., *Scientific Data* 2023; figshare collection doi:10.6084/m9.figshare.c.6310860) | CGM, fingersticks, **blood ketones**, diet, **insulin doses**. 12 type 1 and 100 type 2 patients | CC BY 4.0, per a secondary source (the MetaboNet preprint) | **Best fit**: the only candidate found with type 2 patients, insulin doses, and ketones. Patient ages and glucose units haven't been checked yet (it may use mmol/L, which converts at ×18) |
+| **HUPA-UCM** (Hidalgo et al., *Data in Brief* 2024; Mendeley doi:10.17632/3hbcscwz44.1) | CGM (FreeStyle Libre 2), insulin doses, carbs, steps, heart rate, sleep. 25 type 1 patients | CC BY 4.0 per the MetaboNet preprint. The article itself is CC BY-NC-ND, which may not apply to the data | Type 1 patients only (patients 3 and 5) |
+| **OpenAPS Data Commons** | A very large set of automated-insulin-delivery data, mostly type 1 | Access terms not confirmed | Probably requires an application. Use only if the others don't cover a scenario |
+
+**A gap**: no open dataset was found of **older adults with type 2 diabetes on insulin**, who are this bot's main audience. ShanghaiT2DM is the closest, and its age range has to be checked. If no subject fits, the persona's age stays fictional, and that is noted.
+
+---
+
+### QST-SYNTH-SCENARIOS: How does each demo patient get its scenario out of real data?
+- Status: unanswered
+- Why asking: Kay chose public datasets for glucose readings. Each of the six demo patients exercises one triage rule (ADR-0006), for example: more than 2 lows in 48 hours with one under 54; above 350 for hours; pump failure with a steady rise; or steady readings. Real traces contain these only if a subject actually had them, and some, like a pump occlusion or rising ketones, may not be in any open dataset.
+- Need: pick a letter (or override — an answer in any shape is complete)
+
+Options:
+- **A — Search, and fill gaps with labeled overlays**: A script searches the datasets for a window matching each scenario (for example, any 48 hours with 3 or more readings under 70, one under 54). If no window matches, take the closest real window and overlay the missing event, and the patient's data card says so ("event added for the demo").
+- **B — Real windows only**: Only scenarios found in real data are used. Patients whose scenario isn't found are dropped or changed to match what exists.
+- **C — Real background, every event added**: Use real traces only for normal day-to-day variation, and insert every scenario event deliberately.
+
+**Recommendation**: (by Nibble, Claude Opus 5.5, 2026-11-14)
+
+**A — Search, and fill gaps with labeled overlays.** *Rationale*: A keeps as much real data as the scenarios allow. That's why Kay chose public data, and it still guarantees every triage rule has a patient that exercises it, which Kay asked for when choosing six patients (QST-SYNTH-PERSONAS: A). B risks losing exactly the rare, dangerous scenarios the bot most needs to handle. C goes back to generating data, which is what Kay just moved away from. The label keeps it honest. *Confidence*: 0.7 — because how many scenarios real data actually contains is unknown until the search runs. *If wrong*: if the search finds every scenario in real data, A becomes **B** in practice, with no overlays. If it finds almost none, revisit the generator (the original option B of QST-SYNTH-GLUCOSE) for those patients.
+
+**ANS:** (by Kay)
+[Fill this in]   <!-- literal placeholder — parser-significant, do not paraphrase -->
+
+---
+
+### QST-SYNTH-REGIMEN-SOURCE: Where does each demo patient's insulin regimen come from?
+- Status: unanswered
+- Why asking: Each demo patient has an insulin regimen that the bot reads back (never shown to the model; ADR-0005). The patients' glucose readings now come from public datasets (ShanghaiT2DM and HUPA-UCM record insulin doses). A hand-written regimen paired with someone else's real trace may not match it. For example, the trace might show the pattern of a mealtime dose the regimen doesn't include.
+- Need: pick a letter (or override — an answer in any shape is complete)
+
+Options:
+- **A — Hand-written**: The regimens are written to fit each patient's story, as originally proposed. Easy to control, but they may not fit the real trace.
+- **B — From the same subject**: Take the regimen from the insulin records of the dataset subject whose trace is used: insulin types, typical doses, and timing, summarized into a read-back regimen. Consistent with the trace, but limited to what the dataset recorded, and Chinese datasets may use insulin brands that are less common in the US.
+
+**Recommendation**: (by Nibble, Claude Opus 5.5, 2026-11-14)
+
+**B — From the same subject**, falling back to **A** when the subject's records are incomplete. *Rationale*: A regimen that matches its trace is what makes the read-back believable to a clinician, and it costs little once the data is loaded. Brand names can be mapped to US equivalents of the same insulin type (the generic name stays the same). *Confidence*: 0.65 — because I haven't seen how complete the datasets' dose records are. *If wrong*: if the dose records turn out to be sparse or hard to interpret, flip to **A** for all patients.
 
 **ANS:** (by Kay)
 [Fill this in]   <!-- literal placeholder — parser-significant, do not paraphrase -->
@@ -142,6 +208,12 @@ Options:
 - Contributors: Kay, Nibble (Claude Opus 5.5)
 - Changes: Proposed the patient record, glucose generator, and loading. Two questions posed.
 - Outcome: Draft
+
+### Iteration 2 (2026-11-14)
+- Trigger: Kay answered QST-SYNTH-GLUCOSE with "publicly available data sources" and QST-SYNTH-PERSONAS: A.
+- Contributors: Kay, Nibble (Claude Opus 5.5)
+- Changes: Decision added. Real de-identified data replaces generated readings, and the label changes. Candidate datasets are listed, with licenses still to verify. The missing dataset for older adults with type 2 diabetes is noted. Two follow-ups opened: QST-SYNTH-SCENARIOS and QST-SYNTH-REGIMEN-SOURCE.
+- Outcome: Draft (two questions open)
 
 ---
 
