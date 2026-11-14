@@ -231,6 +231,16 @@ describe.skipIf(!configured)('RLS against a Neon branch', () => {
       expect(rows(await api('admin', 'GET', `summaries?session_id=eq.${sessionB}`))).toHaveLength(1)
       expect((await api('admin', 'POST', 'replies', { session_id: sessionB, body: 'admin reply' })).status).toBe(201)
     })
+    it('plays both sides alone: shares its own summary, then replies to it from the inbox', async () => {
+      // Kay's solo demo loop: one admin account acts as patient, then as care team.
+      const s = await api('admin', 'POST', 'sessions', { patient_id: 'rls-p1' })
+      const id = rows(s)[0].id as string
+      expect((await api('admin', 'POST', 'summaries', { session_id: id, fields: { reason: { value: 'demo', turn: 0 } }, shared: 'patient_sent' })).status).toBe(201)
+      expect((await tryInsert('admin', 'replies', { session_id: id, body: 'Care team reply to my own demo' })).status).toBe(201)
+      expect(rows(await api('admin', 'GET', `replies?session_id=eq.${id}`))).toHaveLength(1)
+      // ...while other people's shares stay readable only because they were shared:
+      expect(rows(await api('careteam', 'GET', `summaries?session_id=eq.${id}`))).toHaveLength(1)
+    })
     it('is still bound by consent: a kept summary stays private', async () => {
       expect(rows(await api('admin', 'GET', `summaries?session_id=eq.${sessionA}`))).toHaveLength(0)
       expect(rows(await api('admin', 'GET', `messages?session_id=eq.${sessionA}`))).toHaveLength(0)
