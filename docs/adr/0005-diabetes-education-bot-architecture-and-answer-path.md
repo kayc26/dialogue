@@ -9,11 +9,11 @@ adr teaching map: the example is not the teaching — these are the up-links fro
 # ADR-0005: Diabetes education bot — architecture and answer path
 
 - **Date**: 2026-11-14
-- **Iteration**: 1
+- **Iteration**: 2
 - **Status**: Draft
 - **Deciders**: Kay, Nibble (Claude Opus 5.5)
 
-**TL;DR**: Proposed: a deterministic pipeline in which the model only classifies and selects. It never writes what the user reads. Answers are clinician-approved cards shown verbatim. The insulin regimen is read back from a template and never reaches the model. Safety (ADR-0006) runs before every answer.
+**TL;DR**: Proposed: a fixed pipeline in which the model only classifies and selects. It never writes what the user reads. Answers are verbatim excerpts of ADA's education material, with dose-calculation passages removed before indexing and the corpus kept out of this public repo. The regimen is read back from a template and never reaches the model. Safety (ADR-0006) runs before every answer.
 
 ---
 
@@ -59,8 +59,8 @@ adr teaching map: the example is not the teaching — these are the up-links fro
 2. **Input adapter.** It takes text, or a voice transcript from the browser's speech recognition. It shows "I heard: …" so the user can catch a mis-transcription, but triage runs on the raw transcript at once and does not wait for the user to confirm.
 3. **Safety gate (ADR-0006).** A local rules layer runs first and synchronously. A model-based classifier runs in parallel, and the two are OR-combined. The gate also runs a **dose-intent detector**: any question asking how much insulin to take, or whether to change a dose, gets a fixed refusal card plus the care-team contact.
 4. **Router.** Deterministic code, not the model, picks the branch, in priority order: escalation, then dose refusal, then regimen read-back, then education answer, then the "no approved answer" fallback.
-5. **Approved content store.** A versioned JSON corpus of *cards*. Each card has an id, a title, sample phrasings of the question, the approved answer text (written at about a 6th-grade reading level), the reviewer, the approval date, and the corpus version. Cards about urgent topics are flagged so the router can attach them to escalations.
-6. **Answer selector.** The model receives the user's question and the card index (ids, titles, sample phrasings). It returns `{card_id}` or `{none}`, and code checks that the id exists. With roughly 50–150 cards the whole index fits in one prompt, so no embedding or vector store is needed. If the model call fails, a lexical match is the fallback, and below a score threshold the bot says "I don't have approved information on that."
+5. **Approved content store** (revised in iteration 2). ADA's patient-education library, split at headings into sections and paragraphs. Each one carries an id, the ADA page title and URL, the section heading, the snapshot date, and tags: urgent topic, medication, or excluded for dose content (QST-DIAB-DOSE-BOUNDARY). Pages that aren't education (donations, advocacy, events) are left out. Where the corpus lives is QST-DIAB-CORPUS-HOSTING, because ADA's material is copyrighted and this repo is public.
+6. **Search, then select** (revised in iteration 2). The library is far too big for one prompt, so an in-browser keyword index (BM25) shortlists about 10 sections. The model receives the question and the shortlist and returns `{section_id, paragraphs}` or `{none}`. Code checks that the section is on the shortlist and that the range is whole paragraphs of it, and rejects anything else (QST-WHICH-APPROACH-SHOULD-I). If the model call fails, the top three section titles appear as large "Did you mean…?" buttons. Below a search-score threshold, the bot says "I don't have information on that from ADA" and offers the nurse line.
 7. **Regimen and CGM store.** Synthetic profiles in `localStorage`, seeded from a fixture and optionally loaded from a CGM CSV. A deterministic template reads them back, with a date and a fixed disclaimer: "This is what's on file as of {date}. Your care team's latest instructions come first." **The model never sees this data.**
 8. **Eval suites.** The deterministic layers (rules, dose-intent patterns, router, templates) are tested in `vitest` and run in the gate. A separate scripted eval against the pinned live model measures classifier recall and selector accuracy. It is not in the gate, because each run costs API credit.
 
@@ -75,7 +75,7 @@ voice/text ─▶ input adapter ─▶ SAFETY GATE ─────────�
                               ROUTER (code) ── tier≥urgent ─▶ escalation card (+ approved urgent card)
                                  │ ─ dose flag ─▶ fixed refusal card + care-team contact
                                  │ ─ "my insulin" intent ─▶ regimen template (local data, no LLM)
-                                 │ ─ else ─▶ answer selector (LLM picks id) ─▶ approved card verbatim
+                                 │ ─ else ─▶ BM25 shortlist ─▶ LLM picks section + paragraphs ─▶ ADA excerpt verbatim + link
                                  │                                   └ none ─▶ "no approved answer" + nurse line
                                  ▼
                          render (sanitized, large type) ─▶ optional TTS of the same approved text
@@ -86,7 +86,7 @@ voice/text ─▶ input adapter ─▶ SAFETY GATE ─────────�
 ### Where the safety checks sit
 
 - **Before the answer.** Triage and the dose-intent check run on every message, and nothing renders until the router has their result. The rules layer is instant, so the most serious cases never wait on the network.
-- **In the structure, not in a filter.** Answer text comes only from cards and templates, so the model has no output channel through which to give dose advice. The remaining exposure is the content review, not the model's behavior.
+- **In the structure, plus one corpus filter.** Answer text comes only from ADA excerpts and templates, so the model has no output channel through which to *write* dose advice. ADA's own text can still *contain* dose guidance, though, so passages about calculating or changing doses are removed before indexing (QST-DIAB-DOSE-BOUNDARY). That filter, not the model, is now the part that needs review.
 - **Outside the pipeline.** The help button does not depend on any classifier result (ADR-0006).
 
 ---
@@ -94,7 +94,7 @@ voice/text ─▶ input adapter ─▶ SAFETY GATE ─────────�
 ## Questions
 
 ### QST-DIAB-ANSWER-PATH: How should the bot produce answers to education questions?
-- Status: unanswered
+- Status: superseded — by QST-WHICH-APPROACH-SHOULD-I (Kay's answer replaced the curated card set with ADA's whole library, so the choice is re-asked there)
 - Why asking: Kay asked for a comparison of strict verbatim retrieval with RAG constrained to retrieved content, and a recommendation. The users are older adults, the content must be clinician-approved, and the bot must never give insulin dose adjustment advice. This choice decides whether "approved text only" is guaranteed by the design or measured by tests.
 - Need: pick a letter (or override — an answer in any shape is complete)
 
@@ -108,7 +108,26 @@ Options:
 **B — Verbatim, model-selected.** *Rationale*: The requirement is that users see *clinician-approved* text. Under C, each answer is a new paraphrase, so no clinician has approved it. Paraphrase drift tends to hit exactly the safety-critical details: "15 grams" becoming "15–20 grams", or two cards merged into a claim neither card makes. A post-hoc check can catch some of this but not prove its absence. Under B, approval and the no-dose-advice rule hold by construction: the model's only output is an id, and an invalid id is rejected. B keeps the model where it helps, which is understanding paraphrased, misspelled, or mis-transcribed questions, a weak spot for A. B's costs are stilted answers, no combining of cards, and more "no approved answer" replies. All three are acceptable, even good, for this audience: the same answer every time, which can be read aloud at the same pace, is easier for low-literacy users. Coverage gaps become a list of cards to write, not a risk. *Confidence*: 0.8 — because this follows from the stated constraints rather than from measurement. I have not tested selector accuracy on elderly or voice phrasing. *If wrong*: if the selector eval shows the "none" rate is too high for the demo to work (for example, over 30% of realistic questions go unanswered even after adding cards), flip to **C** for low-risk topics only, with urgent and medication topics kept on **B**. If the class assignment is specifically to evaluate RAG, build **C** as the comparison arm and keep **B** as what ships.
 
 **ANS:** (by Kay)
-[Fill this in]   <!-- literal placeholder — parser-significant, do not paraphrase -->
+I'm feeding in entire ada's education material
+
+**Follows up on**: adr:0005#qst-which-approach-should-i
+
+### QST-WHICH-APPROACH-SHOULD-I: which approach should i choose
+- Status: answered
+- Why asking: opened as a follow-up at answer time — the question above was answered, but this specific part was left open rather than silently dropped. Context: the knowledge base is the American Diabetes Association's entire patient-education library, not a short list of cards written for this bot. That changes three things. It is too big to fit in one prompt, so a search step must shortlist passages first. Its pages are long and written for a general audience, not for older readers with low literacy. And some of it explains how insulin doses are calculated or changed. The hard constraints still hold: users see only approved text, and the bot never gives insulin dose adjustment advice.
+- Need: pick a letter (or override — an answer in any shape is complete)
+
+Options:
+- **A — Verbatim section**: In-browser keyword search shortlists about 10 sections of ADA pages. The model picks one section id, and the whole section is shown and read aloud as written, with its ADA title and link. These are exactly ADA's words, but an answer can run several paragraphs.
+- **B — Verbatim excerpt**: Same shortlist. The model picks the paragraph(s) within a section that answer the question. Code checks that the excerpt is made of whole, unaltered paragraphs from that section and rejects it otherwise. The user sees ADA's own words, shorter, with "Read the full section" below. The risk is that a paragraph taken out of its section loses a warning that was in the next paragraph.
+- **C — Constrained RAG**: Same shortlist. The model writes a short, plain-language answer from the retrieved sections, with citations and output checks. This is the shortest and easiest to read, but it is new text, not ADA's, and labelling it "from ADA" attributes to ADA words it never wrote.
+
+**Recommendation**: (by Nibble, Claude Opus 5.5, 2026-11-14)
+
+**B — Verbatim excerpt.** *Rationale*: B keeps the guarantee from my earlier pick: the user sees only approved text, and the model only outputs ids and paragraph ranges that code checks. It also fixes the problem the ADA library introduces, which is length. Whole sections (A) are too long to read in large type or to listen to. The pull toward C is stronger now, because ADA pages aren't written for this audience. But simplifying is exactly where meaning drifts, and with ADA named as the source, a paraphrase becomes misattribution. B's out-of-context risk is reduced two ways: excerpts are whole paragraphs only, and sections tagged as medication or urgent are always shown in full. *Walk-back, stated explicitly*: my earlier pick (model-selected card) assumed a small curated corpus. That assumption no longer holds, so the unit changes from card to paragraph. The preference for verbatim over generated text has not changed. *Confidence*: 0.75 — because I haven't tested this on real ADA passages, and paragraph-sized excerpts may turn out to be the wrong size. *If wrong*: if excerpts often read as incomplete or misleading in a review of about 30 sample questions, flip to **A**. If test users can't follow ADA's wording even in short excerpts, the fix is content (a plain-language card set a clinician signs off), not **C**.
+
+**ANS:** (by Kay)
+option c
 
 ---
 
@@ -149,6 +168,44 @@ Options:
 
 ---
 
+### QST-DIAB-CORPUS-HOSTING: Where does the ADA corpus live, given this repo is public?
+- Status: unanswered
+- Why asking: Kay's knowledge base is ADA's entire patient-education library. That material is copyrighted. This repo (`kayc26/harness`) is public and deploys to public GitHub Pages, so committing the corpus, or bundling it into the site, would republish ADA's library publicly. ADA's website terms of use may also restrict collecting the site's content automatically. I haven't checked them yet.
+- Need: pick a letter (or override — an answer in any shape is complete)
+
+Options:
+- **A — Local-only corpus**: The corpus files sit in a gitignored folder. The page imports them at runtime into the browser's IndexedDB (`localStorage`'s ~5 MB limit is too small) and builds the search index there. No ADA text is in the repo or the public site. The demo runs on Kay's own machine or device.
+- **B — Private deployment**: The corpus and app are served privately: run locally with `vite preview`, or from a password-protected host. GitHub Pages for a public repo on a free account can't be made private.
+- **C — Permission first**: Ask ADA for permission to use the material in a class project, then publish within whatever they allow.
+- **D — Link-out**: Store only titles, URLs, and the search index. The bot replies "ADA covers this here: [link]", and the user reads it on ADA's site. Nothing is republished, but the accessible UI ends at the link.
+
+**Recommendation**: (by Nibble, Claude Opus 5.5, 2026-11-14)
+
+**A — Local-only corpus**, with **C** started in parallel if Kay wants a public demo. *Rationale*: A keeps the full design (verbatim excerpts, large type, read-aloud) and puts no copyrighted text in a public place. It costs one import step, which Kay does once on the demo device. *Confidence*: 0.6 — because I haven't read ADA's terms of use, and the course may have its own guidance. Route this to course staff too. *If wrong*: if ADA's terms forbid automated collection outright, A doesn't solve that. Flip to **C**, or **D** while waiting.
+
+**ANS:** (by Kay)
+[Fill this in]   <!-- literal placeholder — parser-significant, do not paraphrase -->
+
+---
+
+### QST-DIAB-DOSE-BOUNDARY: Where does insulin education end and dose advice begin, for filtering the ADA corpus?
+- Status: unanswered
+- Why asking: The hard constraint is that the bot never gives insulin dose adjustment advice. With curated cards, that held by construction. ADA's library includes insulin material, such as what correction factors and insulin-to-carb ratios are, how doses are worked out, and sick-day guidance. Shown verbatim, some of those passages *are* dose advice, in ADA's words. So passages must be tagged before indexing, and someone has to decide where the line falls. For either option, tagging works the same way: a keyword sweep (units, dose, ratio, correction, sliding scale…) plus model tagging, then a person reads every flagged passage. Excluded passages are listed in a file so the boundary can be reviewed.
+- Need: pick a letter (or override — an answer in any shape is complete)
+
+Options:
+- **A — Strict**: Exclude every passage that explains how to calculate, choose, or change an insulin dose, including correction-factor and carb-ratio arithmetic and sick-day dosing. Questions on those topics get the fixed "your care team can help with doses" card.
+- **B — Narrow**: Exclude only passages that tell the reader to change their own dose. Keep passages that explain concepts (what a correction factor is), even if they include worked examples.
+
+**Recommendation**: (by Nibble, Claude Opus 5.5, 2026-11-14)
+
+**A — Strict.** *Rationale*: A worked example ("if your correction factor is 50 and you're at 250, take 2 units") is a dose calculation however it's framed. For older readers on a large-type screen, the line between explanation and instruction won't hold. The cost is that some legitimate questions get the care-team card, and that is the trade the constraints already accept. *Confidence*: 0.8 — because the hard constraint is explicit. What's uncertain is how much of ADA's insulin content A removes. *If wrong*: if a clinician reviewer judges the explanatory passages safe, and A removes most of the insulin topic, flip to **B**, with that reviewer signing off on the passages kept.
+
+**ANS:** (by Kay)
+[Fill this in]   <!-- literal placeholder — parser-significant, do not paraphrase -->
+
+---
+
 ## Trade-offs (proposed design)
 
 - **Verbatim vs fluent.** Answers sound canned and cannot combine cards. We accept this in exchange for guaranteed approved content, and we reduce the cost by writing short Q&A cards rather than long documents.
@@ -176,7 +233,8 @@ Options:
 
 ## Open Follow-ups
 
-- [ ] **Who approves the content?** For a class project, either a named clinician (faculty, a nursing contact) signs off, or the cards are taken verbatim from public-domain US government patient materials (NIDDK, CDC) with their sources cited. Note that ADA materials are copyrighted.
+- [x] **Who approves the content?** Resolved in iteration 2: ADA's material is professionally reviewed, so "clinician-approved" means ADA as published. Two caveats remain. It was approved for a general audience, not checked for older readers with low literacy. And it's copyrighted (QST-DIAB-CORPUS-HOSTING).
+- [ ] **Corpus snapshot date.** ADA revises its material, so record when the corpus was collected, and show "From ADA, retrieved {date}" with each excerpt.
 - [ ] **Regimen read-back is close to dose advice.** "What's my insulin?" is read-back. "What should I take tonight?" answered with a read-back *acts as* dose advice if the record is stale. The router must send "should I take…" questions to the dose-refusal branch even when a regimen is on file.
 - [ ] **User testing with older adults** may need an IRB exempt determination, even with synthetic data. Check with the course staff before recruiting anyone.
 
@@ -188,6 +246,12 @@ Options:
 - Trigger: Kay's architecture request (excerpt above)
 - Contributors: Kay, Nibble (Claude Opus 5.5)
 - Changes: Architecture proposed. Three questions posed with recommendations. Safety split into ADR-0006.
+- Outcome: Draft
+
+### Iteration 2 (2026-11-14)
+- Trigger: Kay's answer to QST-DIAB-ANSWER-PATH: the knowledge base is ADA's entire education material. Kay also opened the follow-up QST-WHICH-APPROACH-SHOULD-I.
+- Contributors: Kay, Nibble (Claude Opus 5.5)
+- Changes: The content store moves from curated cards to the ADA library, split into sections and paragraphs. A search shortlist now comes before selection. The recommendation moves from card to verbatim excerpt (walk-back stated in the follow-up). QST-DIAB-ANSWER-PATH is marked superseded. Two new questions: corpus hosting (copyright and a public repo) and the dose boundary (ADA's text itself contains dose guidance).
 - Outcome: Draft
 
 ---

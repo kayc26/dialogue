@@ -9,7 +9,7 @@ adr teaching map: the example is not the teaching — these are the up-links fro
 # ADR-0006: Diabetes education bot — urgent-situation triage and escalation
 
 - **Date**: 2026-11-14
-- **Iteration**: 1
+- **Iteration**: 2
 - **Status**: Draft
 - **Deciders**: Kay, Nibble (Claude Opus 5.5)
 
@@ -72,7 +72,7 @@ The two are **OR-combined: the higher tier wins.** The one exception is QST-TRIA
 
 ### Dose-advice routing
 
-Rules plus the classifier flag dose intent ("how many units", "should I take more", "skip my shot", "change my dose"). The router sends these to a fixed card: "I can't advise on insulin doses. Your care team can," with the nurse line. Because answers are verbatim (ADR-0005), no other path can produce dose advice.
+Rules plus the classifier flag dose intent ("how many units", "should I take more", "skip my shot", "change my dose"). The router sends these to a fixed card: "I can't advise on insulin doses. Your care team can," with the nurse line. Answers are verbatim (ADR-0005), so the model cannot *write* dose advice. ADA's own text can *contain* it, though, so passages about calculating or changing doses are removed before the index is built (ADR-0005, QST-DIAB-DOSE-BOUNDARY). *(Revised in iteration 2. The earlier wording said no other path could produce dose advice, which stopped being true once the corpus became ADA's full library.)*
 
 ### Evaluation
 
@@ -169,7 +169,7 @@ Options:
 
 ## Open Follow-ups
 
-- [ ] Who writes and approves the urgent cards (hypo treatment, "while you wait", DKA)? This is the same content-approval question as in ADR-0005.
+- [ ] Urgent cards (hypo treatment, "while you wait", DKA) can come verbatim from ADA's own hypoglycemia and DKA pages (iteration 2). Someone still has to choose which passages, and check them for any dose content (QST-DIAB-DOSE-BOUNDARY).
 - [ ] After an escalation, should the bot check in on the next turn ("Are you feeling better?")? A follow-up is good care, but it means keeping escalation state across turns.
 - [ ] Reports about someone else ("my wife won't wake up") need wording for a caregiver, not the patient.
 
@@ -181,6 +181,12 @@ Options:
 - Trigger: Kay's architecture request (see ADR-0005)
 - Contributors: Kay, Nibble (Claude Opus 5.5)
 - Changes: Triage, tiers, help path, and eval proposed. Four questions posed with recommendations.
+- Outcome: Draft
+
+### Iteration 2 (2026-11-14)
+- Trigger: Kay: the knowledge base is ADA's entire education material (ADR-0005, iteration 2)
+- Contributors: Kay, Nibble (Claude Opus 5.5)
+- Changes: The dose-advice section no longer claims verbatim answers alone guarantee no dose advice, and now points to the corpus filter. Urgent cards are sourced from ADA.
 - Outcome: Draft
 
 ---
