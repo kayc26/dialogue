@@ -36,13 +36,23 @@ function joinTimes(times: string[]): string {
   return t.length <= 1 ? (t[0] ?? '') : `${t.slice(0, -1).join(', ')} and ${t[t.length - 1]}`
 }
 
-/** One plain sentence per insulin or pump setting, in the past tense of a record. */
+/**
+ * One plain sentence per insulin or pump setting, in the past tense of a record.
+ * Tolerates stored regimens in other shapes (missing times, units, or a `generic`
+ * field instead of `name`): a malformed record must never blank the screen.
+ */
 export function regimenLines(r: Regimen): string[] {
-  const lines = r.insulins.map((i) => {
-    const when = i.usual_times.length ? `, usually recorded around ${joinTimes(i.usual_times)}` : ''
-    return `${i.name}: about ${i.usual_units} units per dose${when}.`
+  const insulins = Array.isArray(r?.insulins) ? r.insulins : []
+  const lines = insulins.flatMap((raw) => {
+    const i = raw as Partial<Insulin> & { generic?: string }
+    const name = i.name ?? i.generic
+    if (!name) return []
+    const times = Array.isArray(i.usual_times) ? i.usual_times.filter((t) => /^\d{2}:\d{2}$/.test(t)) : []
+    const when = times.length ? `, usually recorded around ${joinTimes(times)}` : ''
+    const dose = typeof i.usual_units === 'number' ? `about ${i.usual_units} units per dose` : 'dose not recorded'
+    return [`${name}: ${dose}${when}.`]
   })
-  if (r.pump) {
+  if (r?.pump) {
     if (r.pump.basal_units_per_hour !== null)
       lines.push(`Insulin pump background rate: about ${r.pump.basal_units_per_hour} units per hour.`)
     if (r.pump.usual_bolus_units !== null)

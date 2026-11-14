@@ -38,6 +38,21 @@ describe('regimen read-back', () => {
   })
 })
 
+describe('Regression tests', () => {
+  it('does not crash on a stored regimen in another shape (rls-dev placeholder patient)', () => {
+    // Bug found 2026-11-14 by a headless-Chrome click-through: the rls-dev fixture
+    // stores {"insulins":[{"generic":"placeholder","kind":"basal"}]} with no usual_times,
+    // and regimenLines threw "Cannot read properties of undefined (reading 'length')",
+    // blanking the "My insulin" list. Stored data in an unexpected shape must degrade.
+    const odd = { insulins: [{ generic: 'placeholder', kind: 'basal' }] } as unknown as Regimen
+    expect(regimenLines(odd)).toEqual(['placeholder: dose not recorded.'])
+  })
+
+  it('falls back to "nothing on file" for an empty or missing regimen', () => {
+    expect(regimenLines({} as Regimen)).toEqual(['No insulin is on file for this demo patient.'])
+  })
+})
+
 describe('glucose read-back', () => {
   it('reports the latest reading and the past day’s range from real fixture data', () => {
     const s = summarizeGlucose(dorothy.readings as never)!
