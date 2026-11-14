@@ -54,7 +54,9 @@ const sendCode = () =>
     }
     await props.auth.sendResetCode(email.value)
     go('reset')
-    notice.value = `We sent a code to ${email.value.trim()}. It comes from auth@mail.myneon.app. If you don't see it in a few minutes, check your spam or junk folder.`
+    // Neon answers "success" whether or not the address has an account (so nobody can
+    // probe which emails exist). Word it so a mistyped address isn't left waiting.
+    notice.value = `If ${email.value.trim()} has an account here, we've sent it a code from auth@mail.myneon.app. Nothing in a few minutes? Check your spam or junk folder, and check that the email is spelled right. Still nothing? Contact the project team.`
   })
 
 const savePassword = () =>
