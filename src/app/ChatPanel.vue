@@ -1,5 +1,8 @@
 <script setup lang="ts">
-// The patient chat (ADR-0005..0008). Each message runs one turn (src/lib/chat/turn.ts)
+// The patient chat (ADR-0005..0008), laid out as the mockup's chat window
+// (docs/mockups/portal-assistant.html): a scrolling message area on the soft background,
+// white assistant bubbles with source chips, the patient's bubbles in Penn Blue, and the
+// "Ask" composer pinned at the bottom. Each message runs one turn (src/lib/chat/turn.ts)
 // and is saved to Neon. The OpenRouter key is the tester's own and lives only in this
 // browser (ADR-0001). Without a key, or if a model call fails, the fixed-rule triage
 // still runs and still shows help: the help path never depends on the key.
@@ -76,10 +79,19 @@ watch(
   },
 )
 
-const list = ref<HTMLElement | null>(null)
+/** Starter questions, like the mockup's suggestion chips. Plain, common, safe topics. */
+const SUGGESTIONS = [
+  'What fruit can I eat?',
+  'What should I do if my sugar is low?',
+  'Are sugar substitutes safe?',
+  'What is a healthy snack?',
+]
+
+const msgs = ref<HTMLElement | null>(null)
 async function scrollDown(): Promise<void> {
   await nextTick()
-  list.value?.lastElementChild?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+  const el = msgs.value
+  if (el) el.scrollTo({ top: el.scrollHeight, behavior: 'smooth' })
 }
 
 /**
@@ -98,6 +110,11 @@ function rulesOnly(message: string, failed: boolean): TurnOutcome {
   }
 }
 
+function ask(q: string): void {
+  draft.value = q
+  void send()
+}
+
 async function send(): Promise<void> {
   const message = draft.value.trim()
   if (!message || busy.value) return
@@ -110,7 +127,7 @@ async function send(): Promise<void> {
   let note = ''
   if (!apiKey.value) {
     outcome = rulesOnly(message, false)
-    note = 'To get answers, add your OpenRouter key below. Help is always available with the red button.'
+    note = 'To get answers, add your OpenRouter key (below the Ask box). Help is always available with the red button.'
   } else {
     try {
       outcome = await runTurn({
@@ -121,7 +138,7 @@ async function send(): Promise<void> {
       outcome = rulesOnly(message, true)
       note =
         e instanceof OpenRouterError && e.status === 401
-          ? 'Your OpenRouter key was not accepted. Check it below.'
+          ? 'Your OpenRouter key was not accepted. Check it below the Ask box.'
           : e instanceof OpenRouterError && e.status === 402
             ? 'The OpenRouter key is out of credit.'
             : "Answers aren't working right now. Help is still available."
@@ -159,7 +176,7 @@ async function send(): Promise<void> {
   })
 }
 
-const SOURCE = { ADA: 'From the American Diabetes Association', care_team: 'From your care team' } as const
+const SOURCE = { ADA: 'American Diabetes Association', care_team: 'Your care team' } as const
 const ESCALATION = {
   emergency: { title: 'This may be an emergency', text: 'Call 911 now. If someone is with you, ask them to stay with you.' },
   urgent: { title: 'Please call the nurse line today', text: 'What you described needs a nurse to look at it today. If you feel worse, call 911.' },
@@ -167,86 +184,120 @@ const ESCALATION = {
   checkin: { title: 'If this is happening to you now', text: 'Call the nurse line, or 911 if you feel very unwell.' },
 } as const
 const escalation = (t: Tier) => ESCALATION[t as Exclude<Tier, 'none'>]
+const uniqueDocs = (sources: KbPassage[]) => [...new Map(sources.map((s) => [s.doc_title, s])).values()]
 </script>
 
 <template>
   <section class="chat" aria-labelledby="chat-title">
-    <h4 id="chat-title">Ask a question</h4>
+    <h4 id="chat-title" class="sr">Chat with the Diabetes Assistant</h4>
 
-    <ol ref="list" class="items" aria-live="polite">
-      <li v-for="(item, i) in items" :key="i" :class="item.who">
-        <p v-if="item.who === 'you'" class="you-text"><span class="sr">You said: </span>{{ item.text }}</p>
-        <p v-else-if="item.who === 'note'" class="note-text" role="status">{{ item.text }}</p>
-        <template v-else>
-          <template v-for="(c, j) in item.cards" :key="j">
-            <div v-if="c.kind === 'escalation'" :class="['card', 'esc', c.tier]" role="alert">
-              <p class="esc-title">{{ escalation(c.tier).title }}</p>
-              <p>{{ escalation(c.tier).text }}</p>
-              <div class="esc-buttons">
-                <a v-if="c.tier === 'emergency' || c.tier === 'distress'" class="call c911" href="#demo-911">Call 911</a>
-                <a class="call nurse" href="#demo-nurse">Call the nurse line</a>
-              </div>
-            </div>
-            <div v-else-if="c.kind === 'passage'" class="card passage">
-              <p v-if="c.why === 'dose'" class="dose-head">Talk to your care team before changing any dose.</p>
-              <p class="src">{{ SOURCE[c.passage.source_label] }} · {{ c.passage.doc_title }}</p>
-              <p class="verbatim">{{ c.passage.body }}</p>
-            </div>
-            <div v-else-if="c.kind === 'dose_refusal'" class="card plain">
-              <p>I can't give advice about insulin or medicine doses. Your care team can help with that. Call the nurse line if you need an answer today.</p>
-            </div>
-            <div v-else-if="c.kind === 'no_info'" class="card plain">
-              <p>I don't have information on that. Your care team can help.</p>
-            </div>
-            <div v-else-if="c.kind === 'answer'" class="card answer">
-              <p class="answer-text">{{ c.text }}</p>
-              <p class="src">Based on: {{ [...new Set(c.sources.map((s) => s.doc_title))].join('; ') }}</p>
-            </div>
-          </template>
-        </template>
-      </li>
-    </ol>
-    <p v-if="busy" role="status" class="thinking">Thinking…</p>
-
-    <form class="ask" @submit.prevent="send">
-      <label for="ask">Your question</label>
-      <div class="composer">
-        <textarea
-          id="ask"
-          v-model="draft"
-          rows="2"
-          placeholder="Ask about food, low or high sugar, or your diabetes…"
-          :disabled="busy"
-          @keydown.enter.exact.prevent="send"
-        />
-        <button class="primary" type="submit" :disabled="busy || !draft.trim()">Ask</button>
+    <div ref="msgs" class="msgs">
+      <div class="bubble bot">
+        <p>Hi! I can answer questions about diabetes from approved education material.</p>
+        <p>I can't give insulin or medicine doses. In an emergency, use <strong>Get help now</strong>.</p>
       </div>
-      <p class="fine">
-        The assistant answers from approved diabetes education material. It can't see your health records, send messages, or advise on doses.
-      </p>
-    </form>
+      <div v-if="items.length === 0" class="chips" aria-label="Suggested questions">
+        <button v-for="q in SUGGESTIONS" :key="q" type="button" class="chip" :disabled="busy" @click="ask(q)">{{ q }}</button>
+      </div>
 
-    <p v-if="saveProblem" class="note-text" role="status">{{ saveProblem }}</p>
+      <ol class="items" aria-live="polite">
+        <li v-for="(item, i) in items" :key="i" :class="item.who">
+          <p v-if="item.who === 'you'" class="bubble me"><span class="sr">You said: </span>{{ item.text }}</p>
+          <p v-else-if="item.who === 'note'" class="note-text" role="status">{{ item.text }}</p>
+          <template v-else>
+            <template v-for="(c, j) in item.cards" :key="j">
+              <div v-if="c.kind === 'escalation'" :class="['bubble', 'esc', c.tier]" role="alert">
+                <p class="esc-title">{{ escalation(c.tier).title }}</p>
+                <p>{{ escalation(c.tier).text }}</p>
+                <div class="esc-buttons">
+                  <a v-if="c.tier === 'emergency' || c.tier === 'distress'" class="call c911" href="#demo-911">Call 911</a>
+                  <a class="call nurse" href="#demo-nurse">Call the nurse line</a>
+                </div>
+              </div>
+              <div v-else-if="c.kind === 'passage'" class="bubble bot">
+                <p v-if="c.why === 'dose'" class="dose-head">Talk to your care team before changing any dose.</p>
+                <p class="verbatim">{{ c.passage.body }}</p>
+                <span class="cite">📄 {{ c.passage.doc_title }} · {{ SOURCE[c.passage.source_label] }}</span>
+                <p class="meta">Shown word for word from approved material</p>
+              </div>
+              <div v-else-if="c.kind === 'dose_refusal'" class="bubble bot">
+                <p>I can't give advice about insulin or medicine doses. Your care team can help with that. Call the nurse line if you need an answer today.</p>
+              </div>
+              <div v-else-if="c.kind === 'no_info'" class="bubble bot">
+                <p>I don't have information on that. Your care team can help.</p>
+              </div>
+              <div v-else-if="c.kind === 'answer'" class="bubble bot">
+                <p class="answer-text">{{ c.text }}</p>
+                <span v-for="s in uniqueDocs(c.sources)" :key="s.id" class="cite">📄 {{ s.doc_title }} · {{ SOURCE[s.source_label] }}</span>
+                <p class="meta">
+                  Answered from {{ c.sources.length }} approved passage{{ c.sources.length === 1 ? '' : 's' }}
+                </p>
+              </div>
+            </template>
+          </template>
+        </li>
+      </ol>
+      <p v-if="busy" role="status" class="thinking">Thinking…</p>
+    </div>
 
-    <details class="key">
-      <summary>{{ apiKey ? 'OpenRouter key: saved in this browser' : 'Add your OpenRouter key to get answers' }}</summary>
-      <p>Your key stays in this browser only. This conversation has used about ${{ cost.toFixed(4) }}.</p>
-      <form v-if="!apiKey" @submit.prevent="saveKey">
-        <label for="key">OpenRouter key</label>
-        <input id="key" v-model="keyDraft" type="password" autocomplete="off" spellcheck="false" />
-        <button type="submit" :disabled="!keyDraft.trim()">Save key</button>
+    <div class="composer">
+      <form class="ask" @submit.prevent="send">
+        <label for="ask" class="sr">Your question</label>
+        <div class="row">
+          <textarea
+            id="ask"
+            v-model="draft"
+            rows="2"
+            placeholder="Ask about food, low or high sugar, or your diabetes…"
+            :disabled="busy"
+            @keydown.enter.exact.prevent="send"
+          />
+          <button class="primary" type="submit" :disabled="busy || !draft.trim()">Ask</button>
+        </div>
       </form>
-      <button v-else type="button" @click="forgetKey">Remove key from this browser</button>
-    </details>
+      <p class="fine">
+        The assistant answers from approved diabetes education material. It can't see your health records, send
+        messages, or advise on doses.
+      </p>
+      <p v-if="saveProblem" class="note-text" role="status">{{ saveProblem }}</p>
+      <details class="key">
+        <summary>
+          {{ apiKey ? 'OpenRouter key saved in this browser' : 'Add your OpenRouter key to get answers' }}
+          · this chat has used about ${{ cost.toFixed(4) }}
+        </summary>
+        <form v-if="!apiKey" class="keyform" @submit.prevent="saveKey">
+          <label for="key">OpenRouter key (stays in this browser only)</label>
+          <input id="key" v-model="keyDraft" type="password" autocomplete="off" spellcheck="false" />
+          <button type="submit" :disabled="!keyDraft.trim()">Save key</button>
+        </form>
+        <button v-else type="button" @click="forgetKey">Remove key from this browser</button>
+      </details>
+    </div>
   </section>
 </template>
 
 <style scoped>
+/* fills the thread: messages scroll, the composer stays at the bottom */
 .chat {
-  margin: 1.5rem 0 6rem;
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
 }
-h4 {
-  font-size: 1.3rem;
+.sr {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+.msgs {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 1rem 1.25rem;
+  background: var(--soft);
 }
 .items {
   list-style: none;
@@ -254,49 +305,50 @@ h4 {
   margin: 0;
   display: flex;
   flex-direction: column;
-  gap: 0.75rem;
+  gap: 0.5rem;
 }
 .you {
   align-self: flex-end;
   max-width: 85%;
 }
-/* the mockup's bubbles: yours navy on the right, the assistant's white on the left */
-.you-text {
-  margin: 0;
+/* the mockup's bubbles */
+.bubble {
+  max-width: 42rem;
+  margin: 0 0 0.6rem;
   padding: 0.75rem 1rem;
+}
+.bubble p {
+  margin: 0 0 0.4rem;
+}
+.bubble p:last-child {
+  margin-bottom: 0;
+}
+.me {
+  margin: 0;
   border-radius: 14px 14px 4px 14px;
   background: var(--accent);
   color: var(--accent-text);
 }
-.sr {
-  position: absolute;
-  left: -9999px;
-}
-.card {
-  padding: 1rem 1.15rem;
+.bot {
   border-radius: 14px 14px 14px 4px;
   border: 1px solid var(--border);
   background: var(--panel);
-  margin-bottom: 0.5rem;
-  max-width: 44rem;
 }
-.card p {
-  margin: 0.25rem 0;
+.esc {
+  border-radius: 14px 14px 14px 4px;
+  border: 2px solid var(--danger);
+  background: var(--panel);
 }
 .esc.emergency {
-  border-color: var(--danger);
   background: var(--danger-bg);
-}
-.esc.urgent,
-.esc.distress {
-  border-color: var(--danger);
 }
 .esc.checkin {
   border-style: dashed;
+  border-color: var(--border);
 }
 .esc-title {
   font-weight: 700;
-  font-size: 1.15rem;
+  font-size: 1.1rem;
 }
 .esc-buttons {
   display: flex;
@@ -309,7 +361,7 @@ h4 {
   align-items: center;
   min-height: 3rem;
   padding: 0 1.25rem;
-  border-radius: var(--radius);
+  border-radius: 8px;
   font-weight: 700;
   text-decoration: none;
 }
@@ -320,16 +372,45 @@ h4 {
 .nurse {
   border: 2px solid var(--accent);
   color: var(--accent);
+  background: var(--panel);
 }
-.src {
+.cite {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  margin: 0.4rem 0.4rem 0 0;
+  padding: 0.15rem 0.7rem;
+  border-radius: 999px;
+  border: 1px solid #cfd8ee;
+  background: #eef2fb;
+  color: var(--accent);
+  font-size: 0.8rem;
+}
+.meta {
+  margin-top: 0.4rem !important;
   color: var(--muted);
-  font-size: 0.9rem;
+  font-size: 0.75rem;
 }
 .verbatim {
   white-space: pre-line;
 }
 .dose-head {
   font-weight: 700;
+}
+.chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin: 0.25rem 0 0.75rem;
+}
+.chip {
+  min-height: 2.75rem;
+  padding: 0.3rem 0.9rem;
+  border-radius: 999px;
+  border: 1px solid #c9d3ea;
+  background: var(--panel);
+  color: var(--accent);
+  cursor: pointer;
 }
 .note-text {
   color: var(--muted);
@@ -339,68 +420,82 @@ h4 {
 .thinking {
   color: var(--muted);
 }
-.ask {
-  display: flex;
-  flex-direction: column;
-  gap: 0.4rem;
-  margin-top: 1rem;
-  padding-top: 0.75rem;
-  border-top: 1px solid var(--border);
-}
+/* the mockup's composer, pinned at the bottom; extra space on the right keeps the
+   fixed "Get help now" button from covering the Ask button */
 .composer {
+  border-top: 1px solid var(--border);
+  background: var(--panel);
+  padding: 0.75rem 1.25rem 0.5rem;
+}
+.row {
   display: flex;
   gap: 0.6rem;
   align-items: stretch;
-}
-.composer textarea {
-  flex: 1;
-  resize: vertical;
-}
-.composer .primary {
-  min-width: 5.5rem;
-}
-.fine {
-  margin: 0;
-  color: var(--muted);
-  font-size: 0.8rem;
-}
-label {
-  font-weight: 600;
+  padding-right: 13rem;
 }
 textarea,
 input {
   font: inherit;
   padding: 0.6rem 0.75rem;
-  border: 2px solid var(--border);
-  border-radius: var(--radius);
-  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--panel);
   color: var(--text);
+}
+.row textarea {
+  flex: 1;
+  resize: none;
 }
 button {
   min-height: 3rem;
   padding: 0 1.25rem;
-  border-radius: var(--radius);
-  border: 2px solid var(--border);
+  border-radius: 6px;
+  border: 1px solid var(--border);
   background: var(--panel);
   color: var(--text);
   cursor: pointer;
 }
 .primary {
+  min-width: 5.5rem;
   border: 0;
   background: var(--accent);
   color: var(--accent-text);
   font-weight: 700;
 }
+.fine {
+  margin: 0.4rem 0 0;
+  color: var(--muted);
+  font-size: 0.75rem;
+}
 .key {
-  margin-top: 1.25rem;
+  margin-top: 0.3rem;
+  font-size: 0.8rem;
+  color: var(--muted);
 }
 .key summary {
   cursor: pointer;
-  min-height: 2.5rem;
+  min-height: 2.25rem;
+  display: flex;
+  align-items: center;
 }
-.key form {
+.keyform {
   display: flex;
   flex-direction: column;
   gap: 0.4rem;
+  max-width: 28rem;
+}
+@media (max-width: 700px) {
+  .msgs {
+    padding: 0.75rem;
+  }
+  .composer {
+    padding: 0.5rem 0.75rem 4.6rem; /* the fixed help button sits below, never over, the Ask row */
+  }
+  .row {
+    padding-right: 0;
+  }
+  .fine {
+    display: none; /* the yellow AI bar above already says it */
+  }
 }
 </style>

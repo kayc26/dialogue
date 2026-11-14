@@ -146,7 +146,7 @@ function staticPart(name: string): void {
             </div>
           </div>
           <div class="th-body">
-            <p>Coming next: the inbox of conversation summaries that patients shared, with replies.</p>
+            <p class="th-pad">Coming next: the inbox of conversation summaries that patients shared, with replies.</p>
           </div>
         </template>
       </main>
@@ -169,7 +169,8 @@ function staticPart(name: string): void {
   --soft: #f4f6fa;
   --warn-bg: #fff6df;
   --warn-ink: #6b4e00;
-  min-height: 100vh;
+  height: 100vh;
+  height: 100dvh; /* the chat window fills the screen; panes scroll inside (mockup) */
   display: flex;
   flex-direction: column;
 }
@@ -312,10 +313,12 @@ button {
   display: grid;
   grid-template-columns: 15rem 16rem 1fr;
   min-height: 0;
+  overflow: hidden;
 }
 .nav {
   border-right: 1px solid var(--border);
   padding: 1rem;
+  overflow-y: auto;
 }
 .nav h1 {
   font-size: 1.4rem;
@@ -372,6 +375,7 @@ button {
   display: flex;
   flex-direction: column;
   gap: 0.6rem;
+  overflow-y: auto;
 }
 .list h2 {
   font-size: 1.3rem;
@@ -443,6 +447,7 @@ button {
 /* assistant thread: the working part, in the app's large type */
 .thread {
   min-width: 0;
+  min-height: 0;
   display: flex;
   flex-direction: column;
 }
@@ -468,14 +473,16 @@ button {
   padding: 0.6rem 1.25rem;
   font-size: 0.95rem;
 }
-/* the mockup's soft grey-blue message area, content kept to a readable width */
+/* the thread body hands its full height to the chat window (PatientView/ChatPanel) */
 .th-body {
   flex: 1;
-  padding: 1rem 1.25rem;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
   background: var(--soft);
 }
-.th-body > :deep(*) {
-  max-width: 50rem;
+.th-pad {
+  padding: 1rem 1.25rem;
 }
 .notice {
   margin: 0;
@@ -495,9 +502,10 @@ footer {
   display: flex;
   justify-content: center;
   flex-wrap: wrap;
-  gap: 0.75rem;
-  padding: 0.5rem 1rem 5rem; /* room for the fixed help button */
+  gap: 0 0.75rem;
+  padding: 0.15rem 13rem 0.15rem 1rem; /* right side left clear for the fixed help button */
   border-top: 1px solid var(--border);
+  font-size: 0.8rem;
 }
 
 /* narrow screens: the assistant alone (mockup's single column); admins get two tabs */
@@ -532,6 +540,44 @@ footer {
   }
   .me-text small {
     display: none;
+  }
+}
+
+/* phones: every line of chrome costs chat space, so keep only what matters */
+@media (max-width: 700px) {
+  footer,
+  .logo small,
+  .me-text,
+  .th-head p {
+    display: none;
+  }
+  .top {
+    padding: 0.35rem 0.75rem;
+    gap: 0.5rem;
+  }
+  .logo {
+    font-size: 1.05rem;
+  }
+  .sq {
+    width: 2.3rem;
+    height: 2.3rem;
+  }
+  .mobile-tabs {
+    padding: 0.35rem 0.75rem;
+  }
+  .th-head {
+    padding: 0.4rem 0.75rem;
+  }
+  .th-head h2 {
+    font-size: 1.1rem;
+  }
+  .th-head .ic {
+    width: 2rem;
+    height: 2rem;
+  }
+  .disclaimer {
+    padding: 0.35rem 0.75rem;
+    font-size: 0.8rem;
   }
 }
 </style>
