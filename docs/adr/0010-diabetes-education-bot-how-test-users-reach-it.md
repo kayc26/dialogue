@@ -9,7 +9,7 @@ adr teaching map: the example is not the teaching — these are the up-links fro
 # ADR-0010: Diabetes education bot — how test users reach it
 
 - **Date**: 2026-11-14
-- **Iteration**: 6
+- **Iteration**: 7
 - **Status**: Accepted
 - **Deciders**: Kay, Nibble (Claude Opus 5.5)
 
@@ -135,6 +135,8 @@ Checks run against the live project:
 - **Google sign-in is enabled** (Neon's shared OAuth app). It's another way for strangers to create accounts, so turn it off unless the team wants it.
 - `trusted_origins: []`: add `https://kayc26.github.io` so sign-in from the deployed site is accepted. Keep `allow_localhost` on while developing.
 
+**Resolved later on 2026-11-14 (iteration 7)**: Kay turned off sign-up and removed Google in the console. The domain didn't save there, so Nibble added it through the Neon connection. A re-read showed `allow_sign_up: false`, `oauth_providers: []`, and `trusted_origins: ["https://kayc26.github.io"]`. **Live proof:** a sign-up attempt from the site's origin returned `400 EMAIL_PASSWORD_SIGN_UP_DISABLED`, so no account was created. Still to do before going live: turn off `allow_localhost` (Neon's production checklist). Accounts for the sponsor and teammates are created by Kay, or by Nibble on request, and added to `members`.
+
 ---
 
 ## Trade-offs
@@ -189,6 +191,12 @@ Checks run against the live project:
 - Trigger: Kay provisioned the Neon project. Nibble linked the repo and ran the checks.
 - Contributors: Kay, Nibble (Claude Opus 5.5)
 - Changes: Recorded the project, link, and check results. The AI Gateway was ruled out for direct browser use (no CORS), so testers stay on OpenRouter keys. Three auth settings flagged for change: sign-up, Google sign-in, and trusted origins.
+- Outcome: Accepted
+
+### Iteration 7 (2026-11-14)
+- Trigger: Kay updated the auth settings in the console.
+- Contributors: Kay, Nibble (Claude Opus 5.5)
+- Changes: Sign-up turned off and Google removed (Kay). Trusted domain added through the Neon connection (Nibble), after the console change didn't save. Verified with a re-read, plus a live sign-up attempt that was rejected with `EMAIL_PASSWORD_SIGN_UP_DISABLED`.
 - Outcome: Accepted
 
 ---
