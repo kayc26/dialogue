@@ -171,7 +171,7 @@ const escalation = (t: Tier) => ESCALATION[t as Exclude<Tier, 'none'>]
 
 <template>
   <section class="chat" aria-labelledby="chat-title">
-    <h3 id="chat-title">Ask a question</h3>
+    <h4 id="chat-title">Ask a question</h4>
 
     <ol ref="list" class="items" aria-live="polite">
       <li v-for="(item, i) in items" :key="i" :class="item.who">
@@ -233,7 +233,7 @@ const escalation = (t: Tier) => ESCALATION[t as Exclude<Tier, 'none'>]
 .chat {
   margin: 1.5rem 0 6rem;
 }
-h3 {
+h4 {
   font-size: 1.3rem;
 }
 .items {

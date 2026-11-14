@@ -104,7 +104,7 @@ onMounted(async () => {
   <p v-else-if="error && !chosen" class="error" role="alert">{{ error }}</p>
 
   <section v-else-if="!chosen" aria-labelledby="pick">
-    <h2 id="pick">Choose a demo patient</h2>
+    <h3 id="pick">Choose a demo patient</h3>
     <p>You'll use the assistant as this person. Their readings come from a public research dataset; their name and details are made up.</p>
     <ul class="cards">
       <li v-for="p in patients" :key="p.id">
@@ -119,7 +119,7 @@ onMounted(async () => {
 
   <section v-else aria-labelledby="who">
     <div class="row">
-      <h2 id="who">{{ chosen.display_name }}</h2>
+      <h3 id="who">{{ chosen.display_name }}</h3>
       <button type="button" class="secondary" @click="changePatient">Choose a different patient</button>
     </div>
     <p>{{ chosen.age }} years old · {{ TYPE[chosen.diabetes_type] }} diabetes</p>
@@ -127,7 +127,7 @@ onMounted(async () => {
     <p v-if="error" class="error" role="alert">{{ error }}</p>
 
     <div class="panel">
-      <h3>Latest glucose</h3>
+      <h4>Latest glucose</h4>
       <template v-if="summary">
         <p class="big">{{ summary.latest.value_mgdl }} <span class="unit">mg/dL</span></p>
         <p>{{ minutesAgo(summary.latest.minutes_before_load) }}<span v-if="summary.latest.source === 'fingerstick'"> (finger stick)</span></p>
@@ -137,7 +137,7 @@ onMounted(async () => {
     </div>
 
     <div class="panel">
-      <h3>My insulin (as recorded)</h3>
+      <h4>My insulin (as recorded)</h4>
       <ul>
         <li v-for="line in regimen" :key="line">{{ line }}</li>
       </ul>
@@ -149,11 +149,11 @@ onMounted(async () => {
 </template>
 
 <style scoped>
-h2 {
+h3 {
   font-size: 1.5rem;
   margin: 0.5rem 0;
 }
-h3 {
+h4 {
   font-size: 1.2rem;
   margin: 0 0 0.5rem;
 }
