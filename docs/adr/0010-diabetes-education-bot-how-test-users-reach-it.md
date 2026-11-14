@@ -151,7 +151,7 @@ These came from probing the live project on 2026-11-14 and are now built and dep
 - **The site at `/` is now the diabetes assistant.** Harness v1 is still reachable at `#/harness`.
 - **Tests**: 14 offline tests (plain-language messages, password checks, token refresh, views per role), plus 5 live tests that run the app's own client against `rls-dev` through a browser-like cookie jar.
 
-**Not yet verified in a real browser.** CHIPS behavior on Safari and Chrome can only be checked by signing in on the deployed site. Kay's first sign-in is that check.
+**Verified in a real browser, Chrome on macOS (2026-11-14).** Kay set a password by emailed code: password updated at 17:48:13 UTC, with a session created one second later. Kay then saw the signed-in home ("Kay · Admin (patient and care team)" with the view switch). That screen needs the cross-site session cookie, a `/token` JWT, and an RLS-filtered `members` read, so the whole path works. **Still to check: Safari**, the strictest browser about cross-site cookies.
 
 ---
 
