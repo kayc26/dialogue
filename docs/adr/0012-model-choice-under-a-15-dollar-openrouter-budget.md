@@ -4,11 +4,11 @@
 
 # ADR-0012: Model choice under a $15 OpenRouter budget
 
-* Status: Proposed
+* Status: Accepted
 * Deciders: Kay, Nibble (Claude Opus 5.5)
 * Date: 2026-11-14
 
-**TL;DR**: Kay has $15 of OpenRouter credit in total, so every model call uses a cheap model. Proposed: Claude Haiku 5.5 writes answers, and gpt-oss-20b runs triage and the conversation monitor. That's roughly $0.0007 per turn, or about 20,000 turns for $15. Spending guards cap each key, each call, and each loop, and no live eval runs without Kay's OK.
+**TL;DR**: Kay has $15 of OpenRouter credit in total, so every model call uses a cheap model. Decided (Kay, QST-MODEL-PICKS: A): Claude Haiku 5.5 writes answers, and gpt-oss-20b runs triage and the conversation monitor. That's roughly $0.0007 per turn, or about 20,000 turns for $15. Spending guards cap each key, each call, and each loop, and no live eval runs without Kay's OK.
 
 Technical Story: Kay (2026-11-14): "when you do any openrouter call, can you choose a cheap model for now, i only have $15 token in total".
 

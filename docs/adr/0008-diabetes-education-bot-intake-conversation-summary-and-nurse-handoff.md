@@ -220,6 +220,7 @@ On 2026-11-14, Kay answered all five questions:
 - **QST-INTAKE-STYLE: A.** Only follow-ups relevant to what the patient raised: three to five at most, one per screen, with yes/no buttons and "skip". Unasked fields are marked "not asked".
 - **QST-CRITERIA-PUBLIC: A** (I recommended C). The clinic's RED FLAG and HIGH-TOUCH criteria may go in the public code, with no clinic name attached. The flowchart's staff routing, scripts, and scheduling steps aren't needed by the bot and don't go in. This updates ADR-0006's iteration-5 note that the HIGH-TOUCH box stays out of the public record.
 
+- **QST-ADMIN-PRIVATE: A** (iteration 5). Admin gets both views but is still bound by consent: kept summaries and their transcripts stay private from everyone in the app. This is already enforced by migration 0002 and tested (ADR-0011: "admin … is still bound by consent").
 - **QST-HANDOFF-REPLY-PATH: C** (iteration 3). Red-flag summaries get a phone call from the nurse. Routine summaries get a reply typed in the inbox view, which the patient sees, in large type and read aloud, the next time they open the bot. The patient summary's "What happens next" says which applies, and always says that urgent problems mean calling now.
 
 The design above stands as proposed.
