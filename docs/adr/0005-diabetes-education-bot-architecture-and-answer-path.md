@@ -9,7 +9,7 @@ adr teaching map: the example is not the teaching — these are the up-links fro
 # ADR-0005: Diabetes education bot — architecture and answer path
 
 - **Date**: 2026-11-14
-- **Iteration**: 8
+- **Iteration**: 9
 - **Status**: Accepted
 - **Deciders**: Kay, Nibble (Claude Opus 5.5)
 
@@ -345,6 +345,23 @@ On 2026-11-14 Kay shared the actual corpus: the team's shared Google Drive folde
 2. Cost: about 4k vs. 23k input tokens per turn, which matters under the $15 budget (ADR-0012).
 3. Citations point to the few passages actually used.
 
+### The chat as built (iteration 9)
+
+Code: `src/lib/chat/` (triage, combine, retrieve, guard, prompts, turn, models, persist) and `src/app/ChatPanel.vue`. Each patient message runs one turn:
+
+1. **Fixed-rule triage** (`triage.ts`): 57 must-catch and must-not-alarm tests. An **emergency short-circuits with no model call** and shows 911 first, plus the approved urgent passage word for word.
+2. **Classifier** (gpt-oss-20b, JSON). It's combined with the rules: OR-combined; it may soften a rules red flag by one step; failure counts as check-in.
+3. **Dose question** → the fixed refusal card; the answer model is **not called**.
+4. **Retrieval**: in-browser BM25 with everyday-word expansion. **Dose-tagged passages are never in the model's context.** One is shown word for word, under "Talk to your care team before changing any dose", only when it's the best match **and** the question is about glucose, insulin, ketones, or medicine. (Checked against the real passages, dose passages otherwise rank high for unrelated questions such as snacks.)
+5. **Nothing above the relevance floor** (BM25 score 2.0) → "I don't have information on that", with **no model call**.
+6. **Agent loop** (Claude Haiku 5.5): the top four passages, plus a `search_kb` tool, **at most 3 tool rounds** (under ADR-0003's cap of 8, for the budget). Output is capped at 500 tokens.
+7. **Guard** (`guard.ts`): blocks dose advice, any number not found in a cited passage or the user's message, and missing or unknown citations. A blocked answer is replaced by the best passage word for word.
+8. **Monitor** (gpt-oss-20b): blocking in a dose-flagged session (veto → refusal card; failure → check-in), background otherwise. **A background verdict can only escalate** (a banner) and set the dose flag; it can't retract what was shown.
+
+**Without a key, or when a model call fails, the fixed rules still run and show help.** With no key, a plain question gets only an "add your key" note. A *failure* gets the check-in floor. Each turn is saved to Neon: the session, both messages (the reply stored as a plain-text record of the cards), and a triage event with the guard and monitor outcome. The running cost is shown under the key box.
+
+Verification so far, **with no OpenRouter calls**: 10 orchestration tests with scripted models; live database tests saving a real turn within the table constraints; and a headless-Chrome run with no key (the emergency card appeared and **no request was made to OpenRouter**). **Not yet tested: real model calls.** That needs Kay's OK (ADR-0012).
+
 ---
 
 ## Trade-offs (proposed design)
@@ -426,6 +443,12 @@ On 2026-11-14 Kay shared the actual corpus: the team's shared Google Drive folde
 - Contributors: Kay, Nibble (Claude Opus 5.5)
 - Changes: Added to the inventory as a triage source only, not answer content. Its RED FLAGS box now defines URGENT (ADR-0006, iteration 5). Kay also answered QST-DIAB-FAQ-SOURCE: A: the FAQ doc is already clinician-approved, is used as-is, and is labeled "From your care team".
 - Outcome: Accepted (no questions open)
+
+### Iteration 9 (2026-11-14)
+- Trigger: The chat was built (Kay: "yes").
+- Contributors: Kay, Nibble (Claude Opus 5.5)
+- Changes: "The chat as built" section added: the turn order, the rule for showing dose passages word for word, the no-key behavior, the tool-round and relevance limits, and the verification done without spending.
+- Outcome: Accepted
 
 ### Iteration 8 (2026-11-14)
 - Trigger: Knowledge-base loader built. Kay: "you can skip infographic", "are you using rag or long context", "what do you mean internal note about brands".
