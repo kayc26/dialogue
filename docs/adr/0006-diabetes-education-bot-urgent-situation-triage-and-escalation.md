@@ -9,7 +9,7 @@ adr teaching map: the example is not the teaching — these are the up-links fro
 # ADR-0006: Diabetes education bot — urgent-situation triage and escalation
 
 - **Date**: 2026-11-14
-- **Iteration**: 3
+- **Iteration**: 4
 - **Status**: Accepted
 - **Deciders**: Kay, Nibble (Claude Opus 5.5)
 
@@ -38,10 +38,10 @@ adr teaching map: the example is not the teaching — these are the up-links fro
 
 **Assumptions**:
 
-- US numbers: 911, plus 988 (Suicide & Crisis Lifeline) for distress. The nurse hotline is a configurable placeholder.
+- US numbers: 911 and the nurse line. The nurse line is a configurable placeholder. *(The iteration-1 draft also proposed 988. Kay dropped it in iteration 4.)*
 - Glucose is reported in mg/dL, but the parser also recognizes mmol/L.
 
-**Confirm**: Kay. Should 988 be added to the escalation targets? The prompt says "distress" but names only the nurse line and 911.
+**Confirm**: Kay. Should 988 be added to the escalation targets? The prompt says "distress" but names only the nurse line and 911. **Resolved in iteration 4: no, 988 is dropped.**
 
 ---
 
@@ -50,7 +50,7 @@ adr teaching map: the example is not the teaching — these are the up-links fro
 ### The always-reachable help path
 
 - **Get help now** is a fixed-position control written in plain HTML in `index.html`, with `tel:` links, outside the Vue app. If the app crashes, the network drops, or OpenRouter is down, it is still on the page and still dials.
-- One tap opens a panel with three large rows: **Call 911**, **Call the nurse line**, and **Talk to someone (988)**. Each shows the number in large type, because desktop browsers can't dial.
+- One tap opens a panel with two large rows: **Call 911** and **Call the nurse line**. *(A 988 row was dropped in iteration 4.)* Each shows the number in large type, because desktop browsers can't dial.
 - Saying "help" or "emergency" opens the panel through the local rules layer, with no model call.
 
 ### Triage on every message
@@ -66,7 +66,7 @@ The two are **OR-combined: the higher tier wins.** The one exception is QST-TRIA
 
 - **EMERGENCY** (signs of severe hypoglycemia, DKA signs, unresponsiveness, chest pain, intent to self-harm): a full-screen card. 911 comes first and the nurse line second, plus the approved "while you wait" card, shown verbatim. The education answer is withheld.
 - **URGENT** (hypo or hyper symptoms the user can act on, readings out of range): a banner with the nurse line, the approved action card (for example, the hypo-treatment card), and "If you feel worse or can't do this, call 911." The education answer follows below.
-- **DISTRESS**: 988 and the nurse line, with fixed, warm wording.
+- **DISTRESS**: the nurse line, and 911 if the user may be in danger, with fixed, warm wording. *(988 dropped in iteration 4.)*
 - **CHECK-IN**: the help buttons appear inline in the answer card: "If this is happening to you now: [Nurse line] [911]".
 - **NONE**: the normal answer, with the help button still on screen.
 
@@ -158,6 +158,25 @@ b
 
 ---
 
+### QST-TRIAGE-HIGH-THRESHOLD: At what glucose reading does a high number trigger escalation?
+- Status: unanswered
+- Why asking: The bot's rules layer escalates glucose readings above 300 mg/dL (iteration 1). The team's FAQ in the knowledge base (ADR-0005, iteration 6) uses **250 mg/dL** as its "high blood sugar" point. It also lists when to seek care immediately: blood sugar that stays very high, vomiting, stomach pain, trouble breathing, confusion, or positive ketones. If triage and content use different numbers, a user who reports 270 gets the FAQ's high-sugar advice but no nurse-line banner. Missed escalations cost far more than false alarms.
+- Need: pick a letter (or override — an answer in any shape is complete)
+
+Options:
+- **A — Use the team's numbers**: A reading over 250 triggers URGENT: a banner, the team's high-sugar card, and the nurse line. A reading over 250 together with any of the FAQ's warning signs triggers EMERGENCY.
+- **B — Two steps**: 250–300 triggers CHECK-IN (help buttons shown with the answer), and over 300 triggers URGENT. The FAQ's warning signs trigger EMERGENCY at any reading.
+- **C — Keep 300**: As designed. The FAQ content appears when asked, but escalation starts at 300.
+
+**Recommendation**: (by Nibble, Claude Opus 5.5, 2026-11-14)
+
+**A — Use the team's numbers.** *Rationale*: The rules that trigger escalation should come from the same source as the content the bot shows, so they can't disagree. Since missed escalations cost more than false alarms, the lower threshold wins. The FAQ's own list of warning signs gives an EMERGENCY rule already written in the team's words. *Confidence*: 0.7 — because the clinical threshold is the team's call, and a clinician might choose a different number. *If wrong*: if test users between 250 and 300 see so many banners that they start ignoring them, flip to **B**.
+
+**ANS:** (by Kay)
+[Fill this in]   <!-- literal placeholder — parser-significant, do not paraphrase -->
+
+---
+
 ## Decision
 
 On 2026-11-14 Kay answered all four questions, each as recommended:
@@ -167,7 +186,7 @@ On 2026-11-14 Kay answered all four questions, each as recommended:
 - **QST-TRIAGE-CGM: A.** CGM data is read-back only for v1. This is a known, recorded gap.
 - **QST-TRIAGE-DEMO-DIAL: B.** Demo mode is on by default. The call buttons show the real numbers but open a "this is a demo" dialog instead of dialing.
 
-The proposed design stands, with one placement fixed by ADR-0005's switch to an agent loop: triage runs on the user's message **before the loop starts**, not as a tool inside it. The 988 line stays in the help panel. The Explicitation's request to confirm it is still open, and it can be dropped if Kay prefers.
+The proposed design stands, with one placement fixed by ADR-0005's switch to an agent loop: triage runs on the user's message **before the loop starts**, not as a tool inside it. **988 has been dropped** (Kay, iteration 4). The help panel has two rows, 911 and the nurse line, and the DISTRESS tier uses them.
 
 ---
 
@@ -207,6 +226,12 @@ The proposed design stands, with one placement fixed by ADR-0005's switch to an 
 - Contributors: Kay, Nibble (Claude Opus 5.5)
 - Changes: Decision section added. Triage runs before the loop. The dose-advice section points to the output gate (ADR-0005, QST-DIAB-DOSE-GUARD).
 - Outcome: Draft → Accepted
+
+### Iteration 4 (2026-11-14)
+- Trigger: Kay dropped 988 and shared the team's knowledge base (ADR-0005, iteration 6)
+- Contributors: Kay, Nibble (Claude Opus 5.5)
+- Changes: 988 removed from the help panel and the DISTRESS tier. QST-TRIAGE-HIGH-THRESHOLD opened, because the team's FAQ uses 250 mg/dL and these rules used 300. The urgent cards now have a source: the Rule of 15 (both ADA guides), glucagon (the type 1 guide), and the FAQ's high-sugar answer and warning signs.
+- Outcome: Accepted (one question open)
 
 ---
 

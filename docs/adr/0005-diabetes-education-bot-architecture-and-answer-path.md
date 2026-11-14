@@ -9,7 +9,7 @@ adr teaching map: the example is not the teaching — these are the up-links fro
 # ADR-0005: Diabetes education bot — architecture and answer path
 
 - **Date**: 2026-11-14
-- **Iteration**: 5
+- **Iteration**: 6
 - **Status**: Accepted
 - **Deciders**: Kay, Nibble (Claude Opus 5.5)
 
@@ -44,7 +44,7 @@ adr teaching map: the example is not the teaching — these are the up-links fro
 
 **Assumptions**:
 
-- This builds on Harness: browser-only, OpenRouter, `localStorage` (ADR-0001..0003). It is a demo on synthetic data for CIS7000, not something real patients will use.
+- This builds on Harness: browser-only, OpenRouter, `localStorage` (ADR-0001..0003). It is a demo on synthetic data for a class project, not something real patients will use. *(Iteration 6: the knowledge base sits in a BE5280 team folder, so this is a team project.)*
 - "Clinician-approved" means a fixed corpus that a named person signed off on. Who that person is for a class project is still open (see Open Follow-ups).
 
 **Confirm**: Kay. Is this a new direction that replaces the portal assistant (ADR-0004), or something separate? See QST-DIAB-VS-PORTAL.
@@ -249,6 +249,25 @@ a
 
 ---
 
+### QST-DIAB-FAQ-SOURCE: Can the team-written FAQ doc be used as approved content?
+- Status: unanswered
+- Why asking: The knowledge base Kay shared (iteration 6) has eight ADA PDFs and one **team-written** Google Doc, "FAQs", with 13 questions and answers in about 650 words. ADA's review doesn't cover the doc. The project requires clinician-approved content. Some of the doc's answers matter for safety: what to do above 250 mg/dL, when to seek care (vomiting, stomach pain, trouble breathing, confusion, positive ketones), when to take mealtime insulin, and correction insulin "if you have not taken insulin in the last 4 hours". It's also the most useful source for this audience: short, plain-language answers to the questions people actually ask.
+- Need: pick a letter (or override — an answer in any shape is complete), and say who wrote it
+
+Options:
+- **A — Already approved**: A clinician on the team, or one reviewing for it (for example, an RDN or CDCES), wrote or reviewed it. Use it as-is, labeled "From your care team" rather than "ADA".
+- **B — Use after review**: Keep it in the corpus marked *pending*. A named clinician reviews it before the demo, and until then the bot labels these answers as unreviewed.
+- **C — Exclude**: Leave it out and use only the ADA material.
+
+**Recommendation**: (by Nibble, Claude Opus 5.5, 2026-11-14)
+
+**B — Use after review**, or **A** if a clinician already wrote or reviewed it. *Rationale*: The content fills the nutrition questions the ADA one-pagers cover only visually, in wording that suits this audience, so leaving it out (C) loses the best-fitting material. But its high-sugar answer gives insulin guidance (correction insulin and the 4-hour rule). Under the narrow dose boundary that passage gets tagged dose-related either way, so it's shown word for word and never rewritten (QST-DIAB-DOSE-GUARD: D). *Confidence*: 0.6 — because the answer depends on facts only Kay knows: who wrote it and who has seen it. *If wrong*: if the author is a clinician, flip to **A**. If no one can review it before the demo, flip to **C**.
+
+**ANS:** (by Kay)
+[Fill this in]   <!-- literal placeholder — parser-significant, do not paraphrase -->
+
+---
+
 ## Decision
 
 Kay answered on 2026-11-14 (iteration 3). Five answers differ from my recommendations. The design below follows the answers.
@@ -280,6 +299,33 @@ Kay answered on 2026-11-14 (iteration 3). Five answers differ from my recommenda
 
 ---
 
+## Knowledge base (iteration 6)
+
+On 2026-11-14 Kay shared the actual corpus: the team's shared Google Drive folder (`Team1-Diabetes Shared Folder/knowledgebase`), described as "materials we can use". It is **not** ADA's entire library, as iteration 2 assumed. It's a curated set of nine documents:
+
+| Document | Source | Words | Notes |
+|---|---|---|---|
+| Your Rights and Care Standards: A Guide for People with Type 1 Diabetes (32 pp) | ADA, ©2026 | ~9,200 | Rule of 15, glucagon, ketones and DKA. Some "adjust" wording to tag |
+| Your Rights and Care Standards: A Guide for People with Type 2 Diabetes (20 pp) | ADA | ~4,100 | Rule of 15. Sick-day advice says "you may need to adjust the dose", so tag as dose-related |
+| Plan Your Diabetes Plate | ADA | ~830 | |
+| Healthy Eating for Liver Health | ADA | ~640 | Text extraction is scrambled by the circular plate graphic, so it needs cleaning by hand |
+| Understanding Sugar Substitutes | ADA (by filename; not confirmed in the text) | ~550 | |
+| Portion Size vs. Serving Size | ADA (by branding; not confirmed in the text) | ~570 | |
+| Food & Nutrition FAQs | ADA (by branding; not confirmed in the text) | ~500 | |
+| Exercise and Nutrition (InSIGHT, patient version) | ADA | ~190 | |
+| FAQs (Google Doc) | **Team-written** | ~650 | 13 Q&As. See QST-DIAB-FAQ-SOURCE |
+
+**What this changes:**
+
+- **Size.** At about 17,000 words (~23k tokens), the whole corpus fits in one prompt. The decided design (BM25 shortlist, then the agent loop) still applies, because it costs far less per turn and makes citations precise. Putting the whole corpus in the prompt is now a fallback for testing, not a necessity.
+- **Hosting.** The corpus stays in the team's Drive folder and is loaded on the demo device. It is never copied into this public repo or bundled into the public site. I read "materials we can use" as cleared for use in the team's project. Whether that covers *public redistribution* isn't confirmed, so the iteration-3 rule still holds: no corpus text in git or on Pages.
+- **Urgent content is available.** The Rule of 15 (both guides), glucagon (the type 1 guide), and the FAQ's high-sugar answer and warning signs become the verbatim cards ADR-0006 shows on escalation. The FAQ uses 250 mg/dL where ADR-0006's rules used 300 (ADR-0006, QST-TRIAGE-HIGH-THRESHOLD).
+- **Dose tagging is now concrete.** Known dose-related passages: the type 2 guide's sick-day advice ("you may need to adjust the dose"), the FAQ's correction-insulin and 4-hour rule, and "adjust" passages in the type 1 guide. Each is shown word for word and never rewritten (QST-DIAB-DOSE-GUARD: D). The FAQ's mealtime-insulin *timing* answer is tagged medication-related but isn't a dose.
+- **Coverage is narrow.** The corpus is mostly nutrition plus the two rights-and-standards guides. Questions outside it get the "I don't have information on that" fallback with the nurse line. Log those misses as content requests to the team. Don't fill the gap with the model's general knowledge.
+- **Extraction needs a hand check.** The PDFs are designed layouts (InDesign/Illustrator), so the reading order `pdftotext` gives for the one-pagers is unreliable. With nine documents, checking every chunk by hand is feasible and worth doing.
+
+---
+
 ## Trade-offs (proposed design)
 
 - **Verbatim vs fluent.** Answers sound canned and cannot combine cards. We accept this in exchange for guaranteed approved content, and we reduce the cost by writing short Q&A cards rather than long documents.
@@ -308,8 +354,8 @@ Kay answered on 2026-11-14 (iteration 3). Five answers differ from my recommenda
 ## Open Follow-ups
 
 - [x] **Who approves the content?** Resolved in iteration 2: ADA's material is professionally reviewed, so "clinician-approved" means ADA as published. Two caveats remain. It was approved for a general audience, not checked for older readers with low literacy. And it's copyrighted (QST-DIAB-CORPUS-HOSTING).
-- [ ] **Ask ADA for permission** (QST-DIAB-CORPUS-HOSTING: C). Owner: Kay. Describe the use: a class project, synthetic users, generated answers labeled "Based on ADA material" with links. Until ADA replies, no ADA text goes into git or onto the site.
-- [ ] **Gitignore the corpus folder** before the first ADA file reaches the working tree. Owner: Nibble, at the start of implementation.
+- [x] **Ask ADA for permission** (QST-DIAB-CORPUS-HOSTING: C). Owner: Kay. In iteration 6, Kay supplied the team's knowledge base as "materials we can use". The open part is whether that covers public redistribution. Until that's confirmed, no corpus text goes into git or onto the site.
+- [ ] **Keep the corpus out of the repo.** It's loaded from the team's Drive folder on the demo device. If a local copy is ever needed in the working tree, gitignore its folder first. Owner: Nibble, at the start of implementation.
 - [ ] **Corpus snapshot date.** ADA revises its material, so record when the corpus was collected, and show "From ADA, retrieved {date}" with each excerpt.
 - [ ] **Regimen read-back is close to dose advice.** "What's my insulin?" is read-back. "What should I take tonight?" answered with a read-back *acts as* dose advice if the record is stale. The router must send "should I take…" questions to the dose-refusal branch even when a regimen is on file.
 - [ ] **User testing with older adults** may need an IRB exempt determination, even with synthetic data. Check with the course staff before recruiting anyone.
@@ -347,6 +393,12 @@ Kay answered on 2026-11-14 (iteration 3). Five answers differ from my recommenda
 - Contributors: Kay, Nibble (Claude Opus 5.5)
 - Changes: Both answers recorded in the Decision table. The portal reading is confirmed. The dose constraint now rests on the output gate, dose passages shown word for word, and the monitor from ADR-0007.
 - Outcome: Draft → Accepted (every question answered; QST-DIAB-ANSWER-PATH superseded)
+
+### Iteration 6 (2026-11-14)
+- Trigger: Kay shared the team's knowledge base folder as "materials we can use".
+- Contributors: Kay, Nibble (Claude Opus 5.5)
+- Changes: Knowledge base section added, with an inventory of eight ADA PDFs and one team-written FAQ doc (~17k words). Corrected iteration 2's assumption that the corpus was ADA's entire library. Hosting stays local, with no corpus text in git or on Pages. Urgent cards and dose tagging are now tied to specific passages. QST-DIAB-FAQ-SOURCE opened about the team-written doc. ADR-0006 got its threshold question from the same review.
+- Outcome: Accepted (one question open)
 
 ---
 
