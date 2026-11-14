@@ -8,7 +8,7 @@
 * Deciders: Kay, Nibble (Claude Opus 5.5)
 * Date: 2026-11-14
 
-**TL;DR**: Nine tables in `public`. Access depends on membership in `public.members`, not on being signed in. The patient's consent choice (ADR-0008) is enforced by the database itself. 20 access tests, each signing in as a real role, pass on a throwaway branch and were shown to catch a deliberately weakened rule. The same migration is applied to production.
+**TL;DR**: Nine tables in `public`. Access depends on membership in `public.members`, not on being signed in. The patient's consent choice (ADR-0008) is enforced by the database itself. 24 access tests, each signing in as a real role, pass on a throwaway branch and were shown to catch deliberately weakened rules. Roles are `patient_tester`, `careteam_tester`, and `admin` (migration 0002). Production carries policies identical to the test branch.
 
 Technical Story: Kay: "yes" to building the tables and access rules after locking down sign-in (ADR-0010, iteration 7).
 
@@ -55,6 +55,23 @@ The migration is `db/migrations/0001_schema_and_rls.sql`:
 
 **Production**: the same 63 statements were applied to `production` (`br-winter-forest-beewzuyw`). A re-read shows 9 tables, RLS on every one, 16 policies matching `rls-dev`, no `anonymous` access, and 401 without a token. No test users exist on production.
 
+### Role names (migration 0002, same day)
+
+Kay: "can we call patient_tester, careteam_tester, and admin (see both)". The table above says *tester* and *sponsor*; read them as follows:
+
+| Role | View | Replaces |
+|---|---|---|
+| `patient_tester` | patient view only: own sessions, transcripts, summaries, replies to them | `tester` |
+| `careteam_tester` | care-team view only: shared summaries and transcripts, replies, all members' names | `sponsor` |
+| `admin` | both views | (new) |
+
+* **Behavior change, beyond the rename**: a `careteam_tester` can no longer start patient sessions. "Admin sees both" implies the other two each see one view.
+* **Consent still binds admin.** Nobody reads a summary the patient kept, not even admin, until Kay answers ADR-0008's QST-ADMIN-PRIVATE.
+* `db/migrations/0002_role_names.sql` renames existing rows, adds `app.is_patient()`, `app.is_careteam()`, and `app.careteam_can_see()`, recreates the affected policies, and drops the old sponsor helpers. It was applied to `rls-dev`, then to production. Both branches now have **identical policies**: the same md5 fingerprint over every policy's command and expressions, 16 policies.
+* Tests: **24/24** with an admin user added. New cases: a care-team tester can't start a session; admin uses both views; admin can't read a kept summary.
+
+**Second mutation lesson.** Widening `sessions_create` to any member didn't make "the care team can't start a session" fail. The test sent `Prefer: return=representation`, and RETURNING needs read access too, so the insert was blocked by the *read* rule, not the write rule. A real client can send `return=minimal`. Every write-denial test now uses `return=minimal`. Re-run against widened `sessions_create` and `messages_create`, exactly the two expected tests failed. Rows the weakened rules had let in were deleted, the real rules were restored, and the suite was back to 24/24. The suite also now signs in sequentially and retries on Neon Auth's 429 rate limit.
+
 ### Positive Consequences
 
 * The consent rules from ADR-0008 hold even against direct API calls, not just inside our UI.
@@ -68,7 +85,7 @@ The migration is `db/migrations/0001_schema_and_rls.sql`:
 ## Open question
 
 ### QST-RLS-DEV-BRANCH: Keep the `rls-dev` branch for future access tests, or delete it?
-- Status: unanswered
+- Status: answered
 - Why asking: The access tests (`npm run test:db`) need a Neon branch with the schema, four throwaway test accounts, and placeholder fixtures. That's `rls-dev` in project `diabetes-chatbot`. It isn't production and holds no real data, but its test accounts can sign in, and the branch uses some compute when active.
 - Need: pick a letter (or override — an answer in any shape is complete)
 
@@ -81,7 +98,11 @@ Options:
 **A — Keep it.** *Rationale*: The very next steps (loading the knowledge base, the app's own writes) will touch these tables and should be checked against the same suite. Recreating the branch and accounts each time costs more than leaving an idle branch, which suspends. The test accounts exist only on that branch, and its sign-up is off. *Confidence*: 0.75 — because it depends on Neon plan limits I haven't checked for this account. *If wrong*: if idle branches count against a free-plan limit Kay cares about, flip to **B**.
 
 **ANS:** (by Kay)
-[Fill this in]   <!-- literal placeholder — parser-significant, do not paraphrase -->
+a
+
+---
+
+NOT: Recorded 2026-11-14. `rls-dev` (`br-curly-hall-be03h6ji`) stays as the access-test branch. Policy changes go migration → `rls-dev` → `npm run test:db` (including a deliberate weakening) → production, then a policy fingerprint comparison between the two.
 
 ---
 

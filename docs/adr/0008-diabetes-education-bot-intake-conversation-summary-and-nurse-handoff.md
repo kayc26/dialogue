@@ -173,6 +173,24 @@ a
 
 ---
 
+### QST-ADMIN-PRIVATE: Can the admin role read summaries a patient kept private?
+- Status: answered
+- Why asking: Kay named three roles (ADR-0011, migration 0002): `patient_tester` (patient view), `careteam_tester` (care-team view), and `admin` ("see both"). Under consent C (QST-HANDOFF-CONSENT), a summary the patient keeps (`shared = 'kept'`) and its transcript are hidden from the care team. "See both" could mean both *views*, or *all data*. Right now admin is bound by consent like everyone else. All data is synthetic, and admin will in practice be Kay.
+- Need: pick a letter (or override — an answer in any shape is complete)
+
+Options:
+- **A — Both views, consent still applies**: Admin can use the patient view and the care-team view, but kept summaries stay private, the same as for the care team. (Current behavior.)
+- **B — Admin sees everything**: Admin can also read every kept summary and transcript, for debugging and reviewing test sessions. The patient-facing notice should then say the project team can see all test conversations.
+
+**Recommendation**: (by Nibble, Claude Opus 5.5, 2026-11-14)
+
+**A — Both views, consent still applies.** *Rationale*: The consent rule is part of what's being demonstrated: a kept summary stays private even from staff. An admin exception would show the opposite. Debugging doesn't need it either, because Kay can read any test data through the Neon console as the database owner. *Confidence*: 0.7 — because if reviewing every tester's session is the point of the admin role, B is reasonable for synthetic test data. *If wrong*: if Kay wants one place in the app to review all test sessions, flip to **B** and add the notice.
+
+**ANS:** (by Kay)
+a
+
+---
+
 ### QST-HANDOFF-REPLY-PATH: How does a nurse's reply reach the patient?
 - Status: answered
 - Why asking: Flagged summaries go to a Care team inbox on the same device (QST-HANDOFF-STORAGE: A). The bot currently has no way to deliver a reply. The patient summary has to tell older, low-tech-literacy users what happens next and when, and urgent problems must still mean calling now, not waiting for a reply. *(Promoted from an Open Follow-ups bullet in iteration 3 so it shows up as a question.)*

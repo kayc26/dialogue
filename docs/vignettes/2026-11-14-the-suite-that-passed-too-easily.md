@@ -28,6 +28,14 @@ The stranger-with-an-account is exactly the risk ADR-0010 was built around. Neon
 
 *Tests must be meaningful, not contrived.* "Would this test catch a real bug that would affect users?" can't be answered by reading a test. It can be answered by **introducing the bug and watching**. The mutation took two SQL statements and one rerun. It turned a claim ("the access rules are tested") into an observation ("these three tests fail when summaries leak"), and it found a hole the claim had been hiding.
 
+## Postscript: the second mask
+
+The same day, Kay renamed the roles and split them: patient testers, care-team testers, and an admin who sees both. That added a rule: the care team may not start patient sessions. A new test said so, and it passed. Then the rule was widened on purpose to "any member may start a session". **The test still passed.**
+
+This time the mask was the HTTP request, not the test's scope. The suite asked the Data API to return the inserted row (`Prefer: return=representation`). Returning a row needs *read* permission, and the care team can't read a session that isn't shared. So the insert failed because of the read rule, while the write rule it was meant to test never decided anything. A client that sends `return=minimal` would have created the session.
+
+Every write-denial test now uses `return=minimal`. Under the widened rules, exactly the two intended tests failed. The fix is one header, but the lesson generalizes: **a denial test has to isolate the rule it's named after**, or a neighboring rule will quietly pass it for you.
+
 ## Lessons Learned
 
 - **A security suite's first green run is a question, not an answer.** Break the most important rule on purpose before trusting it.
