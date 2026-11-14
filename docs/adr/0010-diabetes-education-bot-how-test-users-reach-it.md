@@ -9,7 +9,7 @@ adr teaching map: the example is not the teaching — these are the up-links fro
 # ADR-0010: Diabetes education bot — how test users reach it
 
 - **Date**: 2026-11-14
-- **Iteration**: 4
+- **Iteration**: 5
 - **Status**: Accepted
 - **Deciders**: Kay, Nibble (Claude Opus 5.5)
 
@@ -96,7 +96,19 @@ e
 - **RLS is tested, not assumed.** The build includes checks that sign in as each role and confirm what it can and can't read. Anonymous must see nothing, because the site is public. These checks run against a Neon branch, so they never touch the testers' data.
 - **Unchanged**: each tester keeps their own capped OpenRouter key in the browser (ADR-0001). There's still no server of our own. The data is synthetic and test-only, with the "don't enter real health information" notice. The sponsor still starts with a guided walkthrough.
 - **Amends**: ADR-0008's QST-HANDOFF-STORAGE (A to a hosted database), and the knowledge-base hosting in ADR-0005 (from the team Drive on the demo device to Neon behind sign-in, loaded once from the Drive by a team script).
-- **Provisioning**: a Neon connection is available in this environment. Creating the project, Data API, and Auth is done only on Kay's explicit go-ahead.
+- **Provisioning**: a Neon connection is available in this environment. Creating the project, Data API, and Auth is done only on Kay's explicit go-ahead. *(Iteration 5: Kay is setting it up personally.)*
+
+### Auth: Neon's Managed Better Auth (iteration 5)
+
+Kay asked whether to use Better Auth. **Yes, but Neon's *managed* version (Neon Auth), not self-hosted Better Auth.** Self-hosted Better Auth is a server library: it needs auth endpoints running somewhere, which would mean a server of our own. Neon's Managed Better Auth runs those endpoints for us. It issues JWTs carrying `role: authenticated`, which the Data API turns into that Postgres role, and `auth.user_id()` reads the user ID out of the token for RLS policies (Neon docs: *Data API, Access control & security*, updated 2026-09-14). The frontend uses Neon's `neon-js` client.
+
+**Since anyone can reach the public site, three setup rules apply:**
+
+1. **Signing up must not grant access.** Anyone who finds the site can create an account, and every signed-in account gets the `authenticated` role. So access to the data comes from a `members` table (user ID → `tester` or `sponsor`), filled in by Kay, not from being signed in. Every RLS policy checks membership. A stranger with an account sees nothing. If Managed Better Auth can turn off public sign-up, do that too, but don't rely on it alone.
+2. **No anonymous access.** Leave `allowAnonymous` off, and grant nothing to the `anonymous` role (the default).
+3. **RLS on every table, from the start.** When the Data API is enabled from the console, it grants `authenticated` full read and write on every `public` table. With RLS off, every signed-in user reads every row. Turn on RLS for each table as it's created, and treat the console's Data API Advisor warnings as build failures.
+
+**Secrets**: the Data API URL and auth URL go in the frontend's build settings and are public by design. The database connection string (it contains the password) never goes in the frontend or the repo.
 
 ---
 
@@ -139,6 +151,12 @@ e
 - Contributors: Kay, Nibble (Claude Opus 5.5)
 - Changes: Decision added: Neon with the Data API, Neon Auth, and three RLS roles, with RLS checks as part of the build. ADR-0008's storage and ADR-0005's knowledge-base hosting are amended to match.
 - Outcome: Draft → Accepted
+
+### Iteration 5 (2026-11-14)
+- Trigger: Kay is setting up Neon and asked "should I use better auth"
+- Contributors: Kay, Nibble (Claude Opus 5.5)
+- Changes: Auth decided: Neon's Managed Better Auth, not self-hosted. Three setup rules: membership-based RLS (signing up doesn't grant access), no anonymous access, and RLS on every table from the start. Secrets handling noted.
+- Outcome: Accepted
 
 ---
 
