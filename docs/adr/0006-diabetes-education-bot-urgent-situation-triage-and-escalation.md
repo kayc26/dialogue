@@ -9,7 +9,7 @@ adr teaching map: the example is not the teaching — these are the up-links fro
 # ADR-0006: Diabetes education bot — urgent-situation triage and escalation
 
 - **Date**: 2026-11-14
-- **Iteration**: 5
+- **Iteration**: 6
 - **Status**: Accepted
 - **Deciders**: Kay, Nibble (Claude Opus 5.5)
 
@@ -180,7 +180,7 @@ Options:
 NOT: The answer sets URGENT at >350. It doesn't say what the 250–350 band gets. The **Urgent criteria** section below puts that band at CHECK-IN, showing the FAQ's high-sugar card, and Kay can override that.
 
 ### QST-TRIAGE-SEVERE-HYPO: What counts as "severe hypoglycemia", and what does an ordinary low get?
-- Status: unanswered
+- Status: answered
 - Why asking: Kay set URGENT to mean the clinic's red flags, and one of them is "severe hypoglycemia or more than 2 episodes in 48 hours". The workflow doesn't define "severe". ADA's levels are: level 1, under 70 mg/dL; level 2, under 54; level 3, a severe event in which the person needs someone else's help. The rules from iteration 1 put any reading under 70 at URGENT. Following the red-flag list strictly moves an ordinary low down to CHECK-IN. The user would still see the Rule of 15 card, but with the help buttons inline instead of a banner. Missed escalations cost far more than false alarms.
 - Need: pick a letter (or override — an answer in any shape is complete)
 
@@ -194,12 +194,12 @@ Options:
 **A — Severe means under 54, or needing help.** *Rationale*: A reading under 54 is the point at which ADA calls a low clinically significant, and for older users (slower to notice symptoms, more fall risk) a missed escalation costs more. A is the reading of an undefined term that is cautious without being alarmist. C goes back against Kay's explicit choice to use the clinic's list, and B could leave a user at 45 handling it alone with no banner. Either way, the Rule of 15 card is shown first. *Confidence*: 0.65 — because the clinic's own definition of "severe" is what should decide this, and the document doesn't give it. *If wrong*: if a clinician on the team says the clinic means level 3 only, flip to **B**.
 
 **ANS:** (by Kay)
-[Fill this in]   <!-- literal placeholder — parser-significant, do not paraphrase -->
+a, keep a log of this decision
 
 ---
 
 ### QST-TRIAGE-PROFILE-FLAGS: May the rules layer use facts in the stored profile to raise urgency?
-- Status: unanswered
+- Status: answered
 - Why asking: Three of the clinic's red flags are facts about the patient, not about the message: "history of DKA" (combined with high glucose), pregnancy, and insulin pump use (which makes "pump failure" possible). Users often won't mention these in a message. The synthetic profile already holds the insulin regimen, which is read back only and never shown to the model (ADR-0005). The question is whether deterministic code (not the model) may read a few profile flags, only to *raise* urgency.
 - Need: pick a letter (or override — an answer in any shape is complete)
 
@@ -212,7 +212,7 @@ Options:
 **B — Profile flags, raise-only, code-only.** *Rationale*: These red flags depend on who is asking, and older users are the least likely to volunteer their history in a short message. Three yes/no facts, read by code that can only raise urgency, don't break the spirit of "read-back only": the model still never reasons over user data. This also differs from QST-TRIAGE-CGM (answered A), where the problem was a static synthetic reading posing as current. A history of DKA doesn't go out of date. *Confidence*: 0.6 — because it extends what the stored profile is used for, beyond what Kay originally specified. *If wrong*: if Kay wants the profile to stay strictly display-only, flip to **A**, and the bot asks "Have you ever had DKA?" when a reading is high.
 
 **ANS:** (by Kay)
-[Fill this in]   <!-- literal placeholder — parser-significant, do not paraphrase -->
+b
 
 ---
 
@@ -234,11 +234,29 @@ Kay: "We can use the first box to define 'urgent' requests." The source is the c
 | Tier | Criteria |
 |---|---|
 | **EMERGENCY** (911 first) | Unchanged from iteration 1, and limited to danger *happening now*: can't be woken, a seizure, a low the person can't treat alone, DKA signs (vomiting or can't keep fluids down, trouble breathing, confusion, fruity breath), chest pain, intent to self-harm. A red flag combined with any of these also triggers EMERGENCY. |
-| **URGENT** (nurse line, same day) = **the clinic's red flags** | Glucose above 350 mg/dL. High glucose with ketones, or with a history of DKA (QST-TRIAGE-PROFILE-FLAGS). Severe hypoglycemia, or more than 2 lows in 48 hours (QST-TRIAGE-SEVERE-HYPO). Insulin pump failure (alarms, occlusion, "pump stopped", "site came out"). Pregnancy. |
-| **CHECK-IN** (help buttons inline, with the matching approved card) | 250–350 mg/dL, showing the team FAQ's high-sugar card (my reading; Kay can override). Lows that don't meet the red-flag definition, showing the Rule of 15 card first. |
+| **URGENT** (nurse line, same day) = **the clinic's red flags** | Glucose above 350 mg/dL. High glucose with ketones, or with a history of DKA (from the message, or the profile flag `history_of_dka`: QST-TRIAGE-PROFILE-FLAGS: B). Severe hypoglycemia, meaning below 54 mg/dL or needing someone's help (QST-TRIAGE-SEVERE-HYPO: A), or more than 2 lows in 48 hours. Insulin pump failure (alarms, occlusion, "pump stopped", "site came out"), which weighs more for `uses_pump` users. Pregnancy (from the message, or `pregnant`). |
+| **CHECK-IN** (help buttons inline, with the matching approved card) | 250–350 mg/dL, showing the team FAQ's high-sugar card. A single low of 54–69 mg/dL that the user is handling, showing the Rule of 15 card first. |
 
 - **"More than 2 lows in 48 hours" comes from what the user says**, for example "third time I've gone low since yesterday". Matching on that is mostly the model classifier's job, with a rules pattern for counts. Stored CGM data could compute it exactly, but QST-TRIAGE-CGM was answered A (read-back only), so for now it isn't used. That's a known gap, recorded here.
 - **The thresholds now come from three sources.** The FAQ says 250, the clinic says 350, and iteration 1 said 300. The table settles it: 350 is URGENT (Kay's answer), and 250–350 is CHECK-IN, so a user in that range still sees help and the FAQ card. The rules row in the triage table above is superseded by this table.
+
+### Answers recorded in iteration 6
+
+- **QST-TRIAGE-SEVERE-HYPO: A.** "Severe hypoglycemia" means below 54 mg/dL (ADA level 2) or needing someone else's help (level 3), and triggers URGENT. Needing help *right now* triggers EMERGENCY. A single low of 54–69 that the user is handling gets CHECK-IN, with the Rule of 15 card shown first. Kay asked for this decision to be logged. It's entry 1 in the log below.
+- **QST-TRIAGE-PROFILE-FLAGS: B.** The synthetic profile gains three yes/no fields: `history_of_dka`, `pregnant`, and `uses_pump`. Only the rules layer reads them, and only to raise the urgency level. The model never sees them, and the regimen stays read-back only (ADR-0005).
+
+### Clinical assumptions log
+
+These are the triage judgments that **don't** come straight from a source document (the clinic's workflow, ADA material, or the team FAQ). Each was decided here to fill a gap. Each one needs a clinician on the team to confirm it before the bot is shown to real users, and each should be listed in the class write-up as a design assumption.
+
+| # | Date | Decision | Why a source didn't settle it | Decided by | Confirmed by a clinician? |
+|---|---|---|---|---|---|
+| 1 | 2026-11-14 | "Severe hypoglycemia" = below 54 mg/dL, or needing someone else's help | The clinic's RED FLAGS box names it but doesn't define it. ADA's level 2 and 3 thresholds were used | Kay (QST-TRIAGE-SEVERE-HYPO: A), on Nibble's recommendation | Not yet |
+| 2 | 2026-11-14 | A single low of 54–69 that the user is handling gets CHECK-IN, not URGENT | Follows from treating the red flags as the definition of URGENT. Iteration 1 had escalated every reading below 70 | Kay (same answer) | Not yet |
+| 3 | 2026-11-14 | 250–350 mg/dL gets CHECK-IN | Kay set URGENT at >350. The FAQ treats 250 as high. Nothing said what the range in between gets | Nibble's reading. Kay didn't override it | Not yet |
+| 4 | 2026-11-14 | Profile facts (DKA history, pregnancy, pump use) may raise urgency | The red flags depend on facts about the patient that users may not mention | Kay (QST-TRIAGE-PROFILE-FLAGS: B) | Not applicable (a design choice, not a clinical threshold) |
+
+New entries go at the bottom of this table. Don't edit rows that are already there. If a decision changes, add a row that supersedes the earlier one.
 
 ---
 
@@ -290,6 +308,12 @@ Kay: "We can use the first box to define 'urgent' requests." The source is the c
 - Contributors: Kay, Nibble (Claude Opus 5.5)
 - Changes: URGENT is now defined as the clinic's RED FLAGS: >350, high glucose with ketones or a DKA history, severe or repeated lows, pump failure, and pregnancy. QST-TRIAGE-HIGH-THRESHOLD is recorded as answered by override, and 250–350 is mapped to CHECK-IN. Two questions opened: QST-TRIAGE-SEVERE-HYPO ("severe" isn't defined) and QST-TRIAGE-PROFILE-FLAGS (three red flags are facts about the patient). The clinic's internal routing and staff scripts are kept out of this public record.
 - Outcome: Accepted (two questions open)
+
+### Iteration 6 (2026-11-14)
+- Trigger: Kay answered QST-TRIAGE-SEVERE-HYPO: A ("keep a log of this decision") and QST-TRIAGE-PROFILE-FLAGS: B.
+- Contributors: Kay, Nibble (Claude Opus 5.5)
+- Changes: The urgent criteria table now uses both answers. The profile gains `history_of_dka`, `pregnant`, and `uses_pump`, read only by the rules code to raise urgency. A **Clinical assumptions log** was started, with four entries, each awaiting confirmation by a clinician.
+- Outcome: Accepted (no questions open)
 
 ---
 
