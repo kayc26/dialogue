@@ -1,15 +1,20 @@
 /* Diabetes education assistant: global tokens. Built for older, low-vision,
    low-tech-literacy users (ADR-0005): large type, high contrast, big targets,
    visible focus. Component styles are scoped in each .vue file. */
+/* Portal look (ADR-0004 QST-PORTAL-BRANDING: B, amended by Kay: "penn color is fine"):
+   cool white and grey-blue like a patient portal, in Penn Blue (#011F5B) and Penn Red
+   (#990000). Still NO Penn Medicine / PennChart names, logos, or fonts: the brand
+   stays "Patient Portal (placeholder brand · demo)". */
 :root {
-  --bg: #fbfaf7;
+  --bg: #ffffff;
   --panel: #ffffff;
-  --text: #141413;
-  --muted: #4d4c48;
-  --border: #b9b6ad;
-  --accent: #0b5f73;
+  --soft: #f3f5f9;
+  --text: #1c1f26;
+  --muted: #4f5563;
+  --border: #c9ced8;
+  --accent: #011f5b;
   --accent-text: #ffffff;
-  --danger: #a1170f;
+  --danger: #990000;
   --danger-bg: #fdecea;
   --ok: #1b6b2f;
   --ok-bg: #e8f5ea;
@@ -21,13 +26,14 @@
 
 @media (prefers-color-scheme: dark) {
   :root {
-    --bg: #121311;
-    --panel: #1b1c1a;
-    --text: #f2f1ec;
-    --muted: #c4c2bb;
-    --border: #5c5b55;
-    --accent: #6cc5d8;
-    --accent-text: #08262d;
+    --bg: #111318;
+    --panel: #191c22;
+    --soft: #20242c;
+    --text: #eef0f4;
+    --muted: #b9becb;
+    --border: #4a505c;
+    --accent: #9db7ef;
+    --accent-text: #0e1a33;
     --danger: #ffb4ab;
     --danger-bg: #3b1a17;
     --ok: #9ad8a8;

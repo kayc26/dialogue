@@ -33,9 +33,11 @@ function staticPart(name: string): void {
   <div class="portal">
     <header class="top">
       <div class="logo">Patient Portal<small>placeholder brand · demo</small></div>
+      <button class="sq" type="button" aria-label="Home" @click="staticPart('Home')">⌂</button>
+      <button class="sq" type="button" aria-label="Menu" @click="staticPart('Menu')">☰</button>
       <span class="spacer" />
       <div class="me">
-        <span class="avatar" aria-hidden="true">{{ initial }}</span>
+        <span class="avatar" aria-hidden="true"><span>{{ initial }}</span>▾</span>
         <span class="me-text">
           <strong>{{ membership.display_name }}</strong>
           <small>{{ ROLE_LABEL[membership.role] }}</small>
@@ -56,6 +58,7 @@ function staticPart(name: string): void {
     <div class="page">
       <aside class="nav" aria-label="Message Center">
         <h1>Message Center</h1>
+        <button class="learn" type="button" @click="staticPart('Learn more')">ⓘ Learn more</button>
         <button class="send" type="button" @click="staticPart('Send a message')">Send a message</button>
         <button v-if="views.includes('patient')" class="ask" type="button" @click="view = 'patient'">✦ Ask the assistant</button>
         <ul>
@@ -77,11 +80,21 @@ function staticPart(name: string): void {
 
       <section class="list" aria-label="Conversations">
         <h2>Conversations</h2>
+        <div class="search">
+          <input
+            placeholder="Search conversations"
+            aria-label="Search conversations (not part of the demo)"
+            readonly
+            @focus="staticPart('Search conversations')"
+          />
+          <button type="button" aria-label="Search" @click="staticPart('Search conversations')">⌕</button>
+        </div>
         <button v-if="views.includes('patient')" type="button" :class="['conv', { on: view === 'patient' }]" @click="view = 'patient'">
           <span class="ic ai" aria-hidden="true">✦</span>
           <span>
             <span class="t">Diabetes Assistant <span class="tag">AI</span></span>
-            <span class="who">Ask about diabetes · always on top</span>
+            <span class="who">Diabetes education · always on top</span>
+            <span class="pv">Ask about food, low or high sugar, and more…</span>
           </span>
         </button>
         <button type="button" class="conv static" @click="staticPart('Appointment Reminder')">
@@ -89,6 +102,7 @@ function staticPart(name: string): void {
           <span>
             <span class="t">Appointment Reminder <time>example</time></span>
             <span class="who">Clinic Scheduling</span>
+            <span class="pv">This is a reminder of your upcoming visit…</span>
           </span>
         </button>
         <button type="button" class="conv static" @click="staticPart('Lab results are ready')">
@@ -96,6 +110,7 @@ function staticPart(name: string): void {
           <span>
             <span class="t">Lab results are ready <time>example</time></span>
             <span class="who">Care Team</span>
+            <span class="pv">Your recent lab results are available…</span>
           </span>
         </button>
       </section>
@@ -139,6 +154,7 @@ function staticPart(name: string): void {
 
     <footer>
       <button type="button" class="link" @click="staticPart('Frequently Asked Questions')">Frequently Asked Questions</button>
+      <button type="button" class="link" @click="staticPart('Terms & Conditions')">Terms &amp; Conditions</button>
       <button type="button" class="link" @click="staticPart('Contact Us')">Contact Us</button>
       <button type="button" class="link" @click="staticPart('About the AI assistant')">About the AI assistant</button>
     </footer>
@@ -147,7 +163,7 @@ function staticPart(name: string): void {
 
 <style scoped>
 .portal {
-  --navy: #13275e;
+  --navy: #011f5b;
   --ai: #5b3fd6;
   --ai-soft: #efebff;
   --soft: #f4f6fa;
@@ -197,17 +213,77 @@ button {
 .spacer {
   flex: 1;
 }
+.sq {
+  width: 2.6rem;
+  height: 2.6rem;
+  border: 0;
+  border-radius: 8px;
+  background: #111;
+  color: #fff;
+  font-size: 1.1rem;
+  display: grid;
+  place-items: center;
+}
+.learn {
+  border: 0;
+  background: none;
+  padding: 0.25rem 0;
+  margin-bottom: 0.75rem;
+  color: var(--navy);
+  font-weight: 600;
+  min-height: 2.5rem;
+}
+.search {
+  display: flex;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  overflow: hidden;
+  margin-bottom: 0.25rem;
+}
+.search input {
+  flex: 1;
+  min-width: 0;
+  border: 0;
+  padding: 0.5rem 0.6rem;
+  font: inherit;
+  font-size: 0.85rem;
+  background: var(--panel);
+  color: var(--text);
+}
+.search button {
+  width: 2.6rem;
+  border: 0;
+  background: var(--navy);
+  color: #fff;
+}
+.pv {
+  color: var(--muted);
+  font-size: 0.8rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
 .me {
   display: flex;
   align-items: center;
   gap: 0.6rem;
 }
+/* the mockup's dark avatar pill: initial in a navy circle, then a caret */
 .avatar {
-  width: 2.2rem;
-  height: 2.2rem;
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0.25rem 0.5rem 0.25rem 0.25rem;
+  border-radius: 8px;
+  background: #111;
+  color: #fff;
+}
+.avatar span {
+  width: 2rem;
+  height: 2rem;
   border-radius: 50%;
   background: var(--navy);
-  color: var(--panel);
+  color: #fff;
   display: grid;
   place-items: center;
   font-weight: 700;
@@ -392,8 +468,13 @@ button {
   padding: 0.6rem 1.25rem;
   font-size: 0.95rem;
 }
+/* the mockup's soft grey-blue message area, content kept to a readable width */
 .th-body {
+  flex: 1;
   padding: 1rem 1.25rem;
+  background: var(--soft);
+}
+.th-body > :deep(*) {
   max-width: 50rem;
 }
 .notice {

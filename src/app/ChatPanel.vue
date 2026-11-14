@@ -210,8 +210,20 @@ const escalation = (t: Tier) => ESCALATION[t as Exclude<Tier, 'none'>]
 
     <form class="ask" @submit.prevent="send">
       <label for="ask">Your question</label>
-      <textarea id="ask" v-model="draft" rows="3" :disabled="busy" @keydown.enter.exact.prevent="send" />
-      <button class="primary" type="submit" :disabled="busy || !draft.trim()">Send</button>
+      <div class="composer">
+        <textarea
+          id="ask"
+          v-model="draft"
+          rows="2"
+          placeholder="Ask about food, low or high sugar, or your diabetes…"
+          :disabled="busy"
+          @keydown.enter.exact.prevent="send"
+        />
+        <button class="primary" type="submit" :disabled="busy || !draft.trim()">Ask</button>
+      </div>
+      <p class="fine">
+        The assistant answers from approved diabetes education material. It can't see your health records, send messages, or advise on doses.
+      </p>
     </form>
 
     <p v-if="saveProblem" class="note-text" role="status">{{ saveProblem }}</p>
@@ -248,10 +260,11 @@ h4 {
   align-self: flex-end;
   max-width: 85%;
 }
+/* the mockup's bubbles: yours navy on the right, the assistant's white on the left */
 .you-text {
   margin: 0;
   padding: 0.75rem 1rem;
-  border-radius: var(--radius);
+  border-radius: 14px 14px 4px 14px;
   background: var(--accent);
   color: var(--accent-text);
 }
@@ -261,10 +274,11 @@ h4 {
 }
 .card {
   padding: 1rem 1.15rem;
-  border-radius: var(--radius);
-  border: 2px solid var(--border);
+  border-radius: 14px 14px 14px 4px;
+  border: 1px solid var(--border);
   background: var(--panel);
   margin-bottom: 0.5rem;
+  max-width: 44rem;
 }
 .card p {
   margin: 0.25rem 0;
@@ -330,6 +344,25 @@ h4 {
   flex-direction: column;
   gap: 0.4rem;
   margin-top: 1rem;
+  padding-top: 0.75rem;
+  border-top: 1px solid var(--border);
+}
+.composer {
+  display: flex;
+  gap: 0.6rem;
+  align-items: stretch;
+}
+.composer textarea {
+  flex: 1;
+  resize: vertical;
+}
+.composer .primary {
+  min-width: 5.5rem;
+}
+.fine {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.8rem;
 }
 label {
   font-weight: 600;
