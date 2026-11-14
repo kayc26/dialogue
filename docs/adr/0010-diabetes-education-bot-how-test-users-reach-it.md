@@ -9,7 +9,7 @@ adr teaching map: the example is not the teaching — these are the up-links fro
 # ADR-0010: Diabetes education bot — how test users reach it
 
 - **Date**: 2026-11-14
-- **Iteration**: 5
+- **Iteration**: 6
 - **Status**: Accepted
 - **Deciders**: Kay, Nibble (Claude Opus 5.5)
 
@@ -110,6 +110,31 @@ Kay asked whether to use Better Auth. **Yes, but Neon's *managed* version (Neon 
 
 **Secrets**: the Data API URL and auth URL go in the frontend's build settings and are public by design. The database connection string (it contains the password) never goes in the frontend or the repo.
 
+### Provisioned and checked (iteration 6, 2026-11-14)
+
+Kay created project `diabetes-chatbot` (`old-darkness-71254945`, AWS US East 2, branch `production`) with Postgres, Managed Better Auth, the Data API, and the AI Gateway. The repo is linked with `neon init`. `neon.ts` declares the services, and `neon config plan` reported no changes. Neon's generic step "wire each service into the app" was **not** run, because it could put `DATABASE_URL` into the public bundle. Wiring follows this ADR's Data API plus sign-in design instead.
+
+Checks run against the live project:
+
+| Check | Result |
+|---|---|
+| Data API, no token | **401**: nothing readable without sign-in |
+| Data API exposed schemas | `public` only, so the auth tables in `neon_auth` aren't exposed. Anonymous role: `anonymous`. No `public` tables exist yet |
+| Auth, JWKS endpoint | **200** |
+| Auth, browser preflight (CORS) from `https://kayc26.github.io` | **204**, origin allowed |
+| AI Gateway, `GET /v1/models` with no token | **401**: the host is correct |
+| AI Gateway, browser preflight from `https://kayc26.github.io` | **405, no CORS headers** |
+| Built bundle (`dist/`) scanned for `nt_live_`, `postgres://`, `npg_` | **0 matches** |
+| `.env.local` (holds `DATABASE_URL` and the gateway token) | Git-ignored (`*.local`) |
+
+**Settled: the AI Gateway can't be called from the browser.** Its preflight fails, so pasting per-tester gateway credentials (the iteration-5 middle path) won't work in this app. Testers keep **OpenRouter** keys (ADR-0001). The gateway stays an option only behind a Neon Function (Open Follow-ups). It also has no credits yet, so its model catalog wasn't checked.
+
+**Auth settings that conflict with this ADR's rules** (as of the check):
+
+- `allow_sign_up: true`: anyone who finds the site can register. Membership-based RLS still protects the data, but sign-up should be off, with Kay creating accounts for the sponsor and teammates.
+- **Google sign-in is enabled** (Neon's shared OAuth app). It's another way for strangers to create accounts, so turn it off unless the team wants it.
+- `trusted_origins: []`: add `https://kayc26.github.io` so sign-in from the deployed site is accepted. Keep `allow_localhost` on while developing.
+
 ---
 
 ## Trade-offs
@@ -158,6 +183,12 @@ Kay asked whether to use Better Auth. **Yes, but Neon's *managed* version (Neon 
 - Trigger: Kay is setting up Neon and asked "should I use better auth"
 - Contributors: Kay, Nibble (Claude Opus 5.5)
 - Changes: Auth decided: Neon's Managed Better Auth, not self-hosted. Three setup rules: membership-based RLS (signing up doesn't grant access), no anonymous access, and RLS on every table from the start. Secrets handling noted.
+- Outcome: Accepted
+
+### Iteration 6 (2026-11-14)
+- Trigger: Kay provisioned the Neon project. Nibble linked the repo and ran the checks.
+- Contributors: Kay, Nibble (Claude Opus 5.5)
+- Changes: Recorded the project, link, and check results. The AI Gateway was ruled out for direct browser use (no CORS), so testers stay on OpenRouter keys. Three auth settings flagged for change: sign-up, Google sign-in, and trusted origins.
 - Outcome: Accepted
 
 ---
