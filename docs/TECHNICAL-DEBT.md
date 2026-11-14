@@ -22,3 +22,22 @@ Workarounds and compromises, each with where it lives and how to retire it (CLAU
 - **Impact**: Locally, use `npx npm@11 install` / `npx npm@11 ci` until npm is upgraded. CI on Node 24 ships npm 11 and is unaffected.
 - **Fix**: Same as TD-1. Node 24 brings npm 11.
 - **Priority**: Low (fixed by TD-1).
+
+## TD-3: A just-woken Neon compute can return an empty first read; reads retry on empty
+
+- **Discovered**: 2026-11-14, while checking the patient view's queries on `rls-dev`
+- **Location**: `src/lib/neon/data.ts` (`getNonEmpty`, used by `getMembership` and the patient list in `src/app/PatientView.vue`)
+- **Issue**: After Neon suspends an idle compute, the first Data API read when it wakes up can return `200 []` for a signed-in member, as if row-level security saw no user. The next read is correct. Seen 2 times in about 6 cold or idle attempts. Reproduced deliberately once: compute suspended, then sign-in, `/token`, and the first `patients` read returned `[]`, while reads 2 and 3 returned the row. It fails closed (no data leaks), but a member could be told "your account hasn't been added to this demo yet", or see no demo patients.
+- **Impact**: Production suspends when idle too, so the first sign-in after a quiet period is the likely trigger. **Writes are probably affected the same way**: a policy that sees no user rejects an insert with 401/403. That matters for chat messages, so the chat step must handle it.
+- **Workaround**: Reads that should never be empty retry twice (after 0.5 s, then 1 s) before an empty answer is believed. A genuine non-member waits about 1.5 s longer. Covered by 3 regression tests in `src/lib/neon/auth.test.ts`.
+- **Fix**: Report it to Neon with the reproduction (suspend endpoint, sign in, first Data API read), then remove the retry once the platform fixes it. For writes, retry once on 401/403 right after a wake-up, or warm the compute with a read before the first write.
+- **Priority**: Medium. A member being told they aren't a member is the kind of failure that makes a demo look broken.
+
+## TD-4: Harness v1 still ships, reachable at `#/harness`
+
+- **Discovered**: 2026-11-14, when the diabetes assistant took over `/`
+- **Location**: `src/App.vue`, `src/components/*`, `src/composables/useApp.ts`, `src/style.css`; the switch is in `src/main.ts`
+- **Issue**: The original OpenRouter chat client is kept so nothing is lost, but no current decision needs it. Its agent loop, OpenRouter client, and sanitizer in `src/lib/` *are* reused by the diabetes assistant (ADR-0005, orchestration B). The UI isn't.
+- **Impact**: Extra code in the bundle (loaded only on `#/harness`) and tests to maintain.
+- **Fix**: Once the diabetes chat works, remove the v1 UI files and the `#/harness` branch, and keep `src/lib/`.
+- **Priority**: Low.
