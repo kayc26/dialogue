@@ -3,7 +3,7 @@
 
 import { describe, expect, it } from 'vitest'
 import { friendlyAuthMessage, jwtExpiry, needsRefresh, newPasswordProblem } from './auth'
-import { getMembership, getNonEmpty, viewsFor } from './data'
+import { createDataClient, getMembership, getNonEmpty, viewsFor } from './data'
 
 const b64url = (o: object) => btoa(JSON.stringify(o)).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '')
 const jwtWithExp = (exp: number) => `${b64url({ alg: 'EdDSA' })}.${b64url({ sub: 'u1', exp })}.sig`
@@ -82,6 +82,25 @@ describe('Regression tests', () => {
     const { client, paths } = sequence([])
     expect(await getMembership(client, 'u-stranger', noWait)).toBeNull()
     expect(paths).toHaveLength(3) // first try + 2 retries
+  })
+
+  it('retries a write once when a just-woken compute briefly rejects it (TD-3)', async () => {
+    const statuses = [403, 201]
+    const sent: string[] = []
+    const fake = (async (url: string, init?: RequestInit) => {
+      sent.push(`${init?.method} ${url}`)
+      const status = statuses.shift()!
+      return new Response(status === 201 ? '[{"id":"s1"}]' : '{}', { status })
+    }) as typeof fetch
+    const data = createDataClient('https://api', async () => 'jwt', fake, noWait)
+    expect(await data.post('sessions', { patient_id: 'demo-helen' })).toEqual([{ id: 's1' }])
+    expect(sent).toEqual(['POST https://api/sessions', 'POST https://api/sessions'])
+  })
+
+  it('does not keep retrying a write that is really forbidden', async () => {
+    const fake = (async () => new Response('{}', { status: 403 })) as typeof fetch
+    const data = createDataClient('https://api', async () => 'jwt', fake, noWait)
+    await expect(data.post('replies', { body: 'x' })).rejects.toThrow('Data API 403')
   })
 
   it('does not retry when the first read already has rows', async () => {

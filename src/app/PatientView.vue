@@ -3,6 +3,8 @@
 // glucose. Read-back only (ADR-0005, ADR-0006 QST-TRIAGE-CGM: A); the chat is next.
 import { computed, onMounted, ref } from 'vue'
 import { getNonEmpty, type DataClient } from '../lib/neon/data'
+import type { KbPassage } from '../lib/chat/retrieve'
+import ChatPanel from './ChatPanel.vue'
 import {
   minutesAgo,
   regimenLines,
@@ -21,9 +23,10 @@ interface Patient {
   flags: { history_of_dka: boolean; pregnant: boolean; uses_pump: boolean }
 }
 
-const props = defineProps<{ data: DataClient }>()
+const props = defineProps<{ data: Required<DataClient> }>()
 
 const patients = ref<Patient[]>([])
+const passages = ref<KbPassage[]>([])
 const chosen = ref<Patient | null>(null)
 const readings = ref<Reading[]>([])
 const loading = ref(true)
@@ -75,10 +78,11 @@ function badges(p: Patient): string[] {
 onMounted(async () => {
   try {
     // getNonEmpty: a just-woken Neon compute can briefly return [] (see data.ts).
-    patients.value = await getNonEmpty<Patient>(
-      props.data,
-      'patients?select=id,display_name,age,diabetes_type,regimen,flags&order=display_name.asc',
-    )
+    ;[patients.value, passages.value] = await Promise.all([
+      getNonEmpty<Patient>(props.data, 'patients?select=id,display_name,age,diabetes_type,regimen,flags&order=display_name.asc'),
+      // The knowledge base (ADR-0005): loaded once, searched in the browser.
+      getNonEmpty<KbPassage>(props.data, 'kb_chunks?select=id,doc_title,source_label,section,body,tags'),
+    ])
     let saved: string | null = null
     try {
       saved = sessionStorage.getItem(STORE)
@@ -140,7 +144,7 @@ onMounted(async () => {
       <p class="note">{{ REGIMEN_DISCLAIMER }}</p>
     </div>
 
-    <p class="next">Coming next: ask questions about diabetes here.</p>
+    <ChatPanel :data="data" :patient-id="chosen.id" :profile="chosen.flags" :passages="passages" />
   </section>
 </template>
 

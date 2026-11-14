@@ -7,7 +7,7 @@ import type { User } from '../lib/neon/auth'
 import { viewsFor, type DataClient, type Membership } from '../lib/neon/data'
 import PatientView from './PatientView.vue'
 
-const props = defineProps<{ user: User; membership: Membership; data: DataClient }>()
+const props = defineProps<{ user: User; membership: Membership; data: Required<DataClient> }>()
 const emit = defineEmits<{ signOut: [] }>()
 
 const ROLE_LABEL = {

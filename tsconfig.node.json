@@ -8,7 +8,13 @@
     "src/lib/kb/tags.ts",
     "patients/**/*.ts",
     "src/lib/neon/auth.ts",
-    "src/lib/neon/data.ts"
+    "src/lib/neon/data.ts",
+    "src/lib/chat/**/*.ts",
+    "src/lib/agent.ts",
+    "src/lib/types.ts",
+    "src/lib/openrouter.ts",
+    "src/lib/accumulate.ts",
+    "src/lib/sse.ts"
   ],
   "compilerOptions": {
     "composite": true,

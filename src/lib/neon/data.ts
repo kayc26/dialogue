@@ -19,13 +19,18 @@ export class DataError extends Error {
 
 export interface DataClient {
   get<T>(path: string): Promise<T>
+  /** Insert; returns the inserted rows. */
+  post?<T>(table: string, body: unknown): Promise<T[]>
 }
+
+const realWait = (ms: number) => new Promise<void>((r) => setTimeout(r, ms))
 
 export function createDataClient(
   baseUrl: string,
   getJwt: () => Promise<string>,
   fetchImpl: typeof fetch = (...a) => fetch(...a),
-): DataClient {
+  wait: (ms: number) => Promise<void> = realWait,
+): Required<DataClient> {
   return {
     async get<T>(path: string): Promise<T> {
       const res = await fetchImpl(`${baseUrl}/${path}`, {
@@ -33,6 +38,28 @@ export function createDataClient(
       })
       if (!res.ok) throw new DataError(res.status, `Data API ${res.status}`)
       return (await res.json()) as T
+    },
+    async post<T>(table: string, body: unknown): Promise<T[]> {
+      // TD-3: right after a compute wakes, RLS can briefly see no user, so a write a
+      // member is allowed to make comes back 401/403. Retry once after a short wait.
+      for (let attempt = 0; ; attempt++) {
+        const res = await fetchImpl(`${baseUrl}/${table}`, {
+          method: 'POST',
+          headers: {
+            Authorization: `Bearer ${await getJwt()}`,
+            'Content-Type': 'application/json',
+            Accept: 'application/json',
+            Prefer: 'return=representation',
+          },
+          body: JSON.stringify(body),
+        })
+        if (res.ok) return (await res.json()) as T[]
+        if ((res.status === 401 || res.status === 403) && attempt === 0) {
+          await wait(700)
+          continue
+        }
+        throw new DataError(res.status, `Data API ${res.status}`)
+      }
     },
   }
 }
