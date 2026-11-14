@@ -67,6 +67,25 @@ a
 
 ---
 
+### QST-PORTAL-BRANDING: Should the live portal shell look like PennChart?
+- Status: unanswered
+- Why asking: Kay, on the deployed site (2026-11-14): "hmmm the background is not pennchart". The shell follows `docs/mockups/portal-assistant.html`, which copies the portal's *layout* (Message Center, Conversations, the assistant thread) but deliberately uses a placeholder brand (point 3 in the Explicitation above). The site is **public** (GitHub Pages) and has a **real sign-in form**. A page with Penn Medicine's or PennChart's look and a password box is the same thing a phishing page is: a Penn patient who lands on it could type their real Penn credentials. PennChart is Penn Medicine's brand, running on Epic's MyChart design.
+- Need: pick a letter (or override — an answer in any shape is complete)
+
+Options:
+- **A — Keep the placeholder look**: As built. The mockup's layout, neutral colors, and "Patient Portal (placeholder brand · demo)".
+- **B — Closer to the portal, still unbranded**: Match PennChart's structure and feel more closely (header layout, icon style, spacing, a neutral blue palette), but no Penn or PennChart names, logos, brand colors, or fonts. The sign-in page keeps saying "Diabetes Education Assistant (demo)".
+- **C — PennChart look-alike**: Penn Medicine and PennChart names, logos, and colors. Only with **written permission from Penn Medicine** (brand/communications and IT security, through the clinical sponsor), and only **hosted privately**, never on the public site, so the sign-in form can't be mistaken for Penn's.
+
+**Recommendation**: (by Nibble, Claude Opus 5.5, 2026-11-14)
+
+**B — Closer to the portal, still unbranded.** *Rationale*: The demo's point is that the assistant fits *inside* a patient portal, and B shows that as well as C does, without the two real risks of C: a public Penn-looking page with a password field, and using Penn's and Epic's marks without permission. A is fine too; B just closes more of the visual gap Kay noticed. I won't put Penn or PennChart branding on the public site with a sign-in form. *Confidence*: 0.75 — because how close is "close enough" for the class presentation is Kay's judgment. *If wrong*: if the clinical sponsor gets Penn's written OK for a Penn-branded demo, flip to **C** on private hosting (for example, local-only or behind a separate login), with the sign-in clearly labeled as the demo's own.
+
+**ANS:** (by Kay)
+[Fill this in]   <!-- literal placeholder — parser-significant, do not paraphrase -->
+
+---
+
 ## Decision
 
 **Chosen: A — Design mockup only** (Kay, 2026-11-14). `docs/mockups/portal-assistant.html` stays a static design artifact, and no message-center behavior gets built. Its layout becomes the shell for the diabetes education bot (ADR-0005, QST-DIAB-VS-PORTAL: B). That bot is the only working part (confirmed in ADR-0005, QST-DIAB-PORTAL-SHELL: A).
