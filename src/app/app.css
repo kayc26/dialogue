@@ -1,0 +1,66 @@
+/* Diabetes education assistant: global tokens. Built for older, low-vision,
+   low-tech-literacy users (ADR-0005): large type, high contrast, big targets,
+   visible focus. Component styles are scoped in each .vue file. */
+:root {
+  --bg: #fbfaf7;
+  --panel: #ffffff;
+  --text: #141413;
+  --muted: #4d4c48;
+  --border: #b9b6ad;
+  --accent: #0b5f73;
+  --accent-text: #ffffff;
+  --danger: #a1170f;
+  --danger-bg: #fdecea;
+  --ok: #1b6b2f;
+  --ok-bg: #e8f5ea;
+  --focus: #e8a400;
+  --radius: 12px;
+  --font: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  color-scheme: light dark;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #121311;
+    --panel: #1b1c1a;
+    --text: #f2f1ec;
+    --muted: #c4c2bb;
+    --border: #5c5b55;
+    --accent: #6cc5d8;
+    --accent-text: #08262d;
+    --danger: #ffb4ab;
+    --danger-bg: #3b1a17;
+    --ok: #9ad8a8;
+    --ok-bg: #16301d;
+    --focus: #ffcc4d;
+  }
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html {
+  /* Honor the user's own text-size setting; 125% of it as the base. */
+  font-size: 125%;
+}
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font);
+  line-height: 1.5;
+}
+
+button,
+input {
+  font: inherit;
+}
+
+:focus-visible {
+  outline: 4px solid var(--focus);
+  outline-offset: 3px;
+}

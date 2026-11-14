@@ -6,7 +6,9 @@
     "kb/**/*.ts",
     "src/lib/kb/chunk.ts",
     "src/lib/kb/tags.ts",
-    "patients/**/*.ts"
+    "patients/**/*.ts",
+    "src/lib/neon/auth.ts",
+    "src/lib/neon/data.ts"
   ],
   "compilerOptions": {
     "composite": true,
