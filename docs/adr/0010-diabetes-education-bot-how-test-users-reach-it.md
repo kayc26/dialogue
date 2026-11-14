@@ -9,11 +9,11 @@ adr teaching map: the example is not the teaching — these are the up-links fro
 # ADR-0010: Diabetes education bot — how test users reach it
 
 - **Date**: 2026-11-14
-- **Iteration**: 3
-- **Status**: Draft
+- **Iteration**: 4
+- **Status**: Accepted
 - **Deciders**: Kay, Nibble (Claude Opus 5.5)
 
-**TL;DR**: The bare GitHub Pages link gives a tester no knowledge base, no model key, and no way for the team to see their sessions. For a clinical sponsor plus teammates, proposed (iteration 3): Neon Postgres reached from the browser through its Data API, with sign-in and row-level security. That gives one shared care-team inbox and keeps the knowledge base private behind sign-in, with no server of our own. Each tester keeps their own capped OpenRouter key.
+**TL;DR**: The bare GitHub Pages link gives a tester no knowledge base, no model key, and no way for the team to see their sessions. Decided for a clinical sponsor plus teammates: Neon Postgres reached from the browser through its Data API, with sign-in and row-level security. That gives one shared care-team inbox and keeps the knowledge base private behind sign-in, with no server of our own. Each tester keeps their own capped OpenRouter key.
 
 ---
 
@@ -55,7 +55,7 @@ So a shared link gives a remote tester a bot with no knowledge and no key, whose
 ## Questions
 
 ### QST-TEST-ACCESS: How do test users get a working bot?
-- Status: unanswered
+- Status: answered
 - Why asking: Kay asked what happens when the GitHub Pages link is shared with a test user. As designed, a remote user gets no knowledge base (ADA material is kept off the public site), needs their own OpenRouter key (ADR-0001: no key in the public bundle), and their sessions stay in their own browser, invisible to the team (ADR-0008: one device, no backend). The target users are older adults with low vision and limited tech literacy.
 - Need: pick a letter (or override — an answer in any shape is complete)
 
@@ -80,7 +80,23 @@ Options:
 *Original rationale for A, which applied when testers included older adults*: For the people this bot is designed for, moderated testing is the better method anyway. Asking an older, low-tech user to paste an API key or email back a file tests the setup, not the bot. And watching where they hesitate is the finding you're after. A needs no infrastructure, keeps the ADA material off the public site, and fits the one-device design already decided. B depends on a redistribution permission nobody has confirmed. C is a project of its own, and once real testers are typing, it holds data that drifts toward PHI. *Confidence*: 0.7 — because if the course requires unmoderated remote testing at scale, A can't deliver it. *If wrong*: if testers must be remote and unmoderated, flip to **B** once ADA redistribution is confirmed, or to **C** if it isn't.
 
 **ANS:** (by Kay)
-[Fill this in]   <!-- literal placeholder — parser-significant, do not paraphrase -->
+e
+
+---
+
+## Decision
+
+**Chosen: E — Neon Postgres, with sign-in** (Kay, 2026-11-14).
+
+- **Where the data lives**: a Neon Postgres project holds sessions, summaries, the care-team inbox and nurse replies, the demo patients, and the knowledge-base chunks. The browser keeps only a local cache.
+- **Access**: the browser goes through Neon's Data API, with sign-in through Neon Auth. Postgres row-level security (RLS) sets three roles:
+  - *tester*: reads and writes their own sessions, and reads demo patients and the knowledge base.
+  - *sponsor / care team*: reads every session's summary and transcript, and writes replies.
+  - *anonymous*: nothing.
+- **RLS is tested, not assumed.** The build includes checks that sign in as each role and confirm what it can and can't read. Anonymous must see nothing, because the site is public. These checks run against a Neon branch, so they never touch the testers' data.
+- **Unchanged**: each tester keeps their own capped OpenRouter key in the browser (ADR-0001). There's still no server of our own. The data is synthetic and test-only, with the "don't enter real health information" notice. The sponsor still starts with a guided walkthrough.
+- **Amends**: ADR-0008's QST-HANDOFF-STORAGE (A to a hosted database), and the knowledge-base hosting in ADR-0005 (from the team Drive on the demo device to Neon behind sign-in, loaded once from the Drive by a team script).
+- **Provisioning**: a Neon connection is available in this environment. Creating the project, Data API, and Auth is done only on Kay's explicit go-ahead.
 
 ---
 
@@ -117,6 +133,12 @@ Options:
 - Contributors: Kay, Nibble (Claude Opus 5.5)
 - Changes: Option E added: Neon Postgres through the Data API, with Neon Auth and row-level security, and no server of our own. The recommendation moves from D to E, with the reason stated: a shared care-team inbox is what the sponsor review needs, and it also removes the file shuffling. If chosen, this reopens ADR-0008's QST-HANDOFF-STORAGE (A to B).
 - Outcome: Draft
+
+### Iteration 4 (2026-11-14)
+- Trigger: Kay answered QST-TEST-ACCESS: E
+- Contributors: Kay, Nibble (Claude Opus 5.5)
+- Changes: Decision added: Neon with the Data API, Neon Auth, and three RLS roles, with RLS checks as part of the build. ADR-0008's storage and ADR-0005's knowledge-base hosting are amended to match.
+- Outcome: Draft → Accepted
 
 ---
 

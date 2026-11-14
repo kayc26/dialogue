@@ -74,7 +74,7 @@ A TypeScript script in `scripts/synth/`, a project tool rather than an ephemeral
 
 ### Loading
 
-In demo mode, a **Choose a demo patient** picker writes the fixture into browser storage (ADR-0008, QST-HANDOFF-STORAGE). A **Reset** button restores it. No patient is loaded by default.
+In demo mode, a **Choose a demo patient** picker writes the fixture into browser storage (ADR-0008, QST-HANDOFF-STORAGE). *(Amended by ADR-0010, decision E: demo patients live in Neon, readable by signed-in testers, and the picker loads one into the session.)* A **Reset** button restores it. No patient is loaded by default.
 
 ---
 

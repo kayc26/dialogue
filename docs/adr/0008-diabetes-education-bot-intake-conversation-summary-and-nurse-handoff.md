@@ -9,7 +9,7 @@ adr teaching map: the example is not the teaching — these are the up-links fro
 # ADR-0008: Diabetes education bot — intake, conversation summary, and nurse handoff
 
 - **Date**: 2026-11-14
-- **Iteration**: 3
+- **Iteration**: 4
 - **Status**: Accepted
 - **Deciders**: Kay, Nibble (Claude Opus 5.5)
 
@@ -79,7 +79,7 @@ The flowchart item "Non-clinic provider requesting urgent visit" doesn't apply t
 ## Questions
 
 ### QST-HANDOFF-STORAGE: Where does the data live, so a nurse can read the summary?
-- Status: answered
+- Status: superseded — by ADR-0010 QST-TEST-ACCESS: E (Kay chose Neon so the sponsor gets one shared care-team inbox; Kay's original answer A is kept below)
 - Why asking: Kay asked where the database will be. Today the answer is the patient's browser: `localStorage`, and IndexedDB for the knowledge base. ADR-0001 rules out any backend, and the corpus stays local (ADR-0005). The new nurse-handoff summary is the first data that someone *else* must read, so it has to get from the patient to the care team somehow. All data is synthetic.
 - Need: pick a letter (or override — an answer in any shape is complete)
 
@@ -196,7 +196,7 @@ C
 
 On 2026-11-14, Kay answered all five questions:
 
-- **QST-HANDOFF-STORAGE: A.** Everything stays on one device, in IndexedDB. The app gets a **Care team inbox** view next to the patient view, and patients can print or save a PDF. No backend, so ADR-0001 stands.
+- **QST-HANDOFF-STORAGE: A.** Everything stays on one device, in IndexedDB. The app gets a **Care team inbox** view next to the patient view, and patients can print or save a PDF. No backend, so ADR-0001 stands. **Superseded in iteration 4 by ADR-0010 (E):** summaries, the inbox, and replies live in Neon Postgres behind sign-in. The care-team view is shared, so the sponsor sees every tester's flagged summaries. IndexedDB remains a local cache, and print/PDF stays.
 - **QST-HANDOFF-CONSENT: C.** A summary that meets a RED FLAG or HIGH-TOUCH criterion goes to the inbox automatically, and the patient is told this at the start. Anything else is the patient's choice: "Send to my care team" or "Just keep it for me".
 - **QST-HANDOFF-SUMMARY-WRITER: A.** Structured fields, each with a value and a link to the turn it came from. Code checks extracted values against the cited turn, the transcript is attached, and there's no free narrative. The patient version is generated from the fields by a template.
 - **QST-INTAKE-STYLE: A.** Only follow-ups relevant to what the patient raised: three to five at most, one per screen, with yes/no buttons and "skip". Unasked fields are marked "not asked".
@@ -243,6 +243,12 @@ The design above stands as proposed.
 - Contributors: Nibble (Claude Opus 5.5)
 - Changes: Promoted it to QST-HANDOFF-REPLY-PATH, with options and a recommendation.
 - Outcome: Accepted (Kay answered C; no questions open)
+
+### Iteration 4 (2026-11-14)
+- Trigger: ADR-0010 QST-TEST-ACCESS: E (Neon)
+- Contributors: Kay, Nibble (Claude Opus 5.5)
+- Changes: QST-HANDOFF-STORAGE marked superseded, with Kay's original answer A kept. The Decision now points to Neon for summaries, the inbox, and replies.
+- Outcome: Accepted
 
 ---
 
