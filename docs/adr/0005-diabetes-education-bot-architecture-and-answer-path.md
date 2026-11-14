@@ -9,11 +9,11 @@ adr teaching map: the example is not the teaching — these are the up-links fro
 # ADR-0005: Diabetes education bot — architecture and answer path
 
 - **Date**: 2026-11-14
-- **Iteration**: 2
+- **Iteration**: 3
 - **Status**: Draft
 - **Deciders**: Kay, Nibble (Claude Opus 5.5)
 
-**TL;DR**: Proposed: a fixed pipeline in which the model only classifies and selects. It never writes what the user reads. Answers are verbatim excerpts of ADA's education material, with dose-calculation passages removed before indexing and the corpus kept out of this public repo. The regimen is read back from a template and never reaches the model. Safety (ADR-0006) runs before every answer.
+**TL;DR**: Decided (iteration 3): constrained RAG over ADA's education library, run by Harness's agent loop, with the safety gate outside the loop. Dose filtering uses the narrow boundary, nothing from ADA is published until ADA gives permission, and the portal layout hosts the bot. The model now writes the answers, so the no-dose-advice constraint depends on a check of every answer (QST-DIAB-DOSE-GUARD, open).
 
 ---
 
@@ -52,6 +52,8 @@ adr teaching map: the example is not the teaching — these are the up-links fro
 ---
 
 ## Proposed architecture
+
+*Iteration 3: Kay's answers replace parts of this proposal (answer generation, orchestration, the portal shell). The **Decision** section below is current wherever the two disagree. This section stays as written, as the record of what was proposed.*
 
 ### Components
 
@@ -132,7 +134,7 @@ option c
 ---
 
 ### QST-DIAB-ORCHESTRATION: Does the bot reuse Harness's agent loop, or run a fixed pipeline?
-- Status: unanswered
+- Status: answered
 - Why asking: Harness v1 (ADR-0003) is an agent loop in which the model decides which tools to call, capped at 8 rounds. Here the hard constraints require triage on every message, no dose advice, and help always reachable. An agent loop puts the model in charge of control flow, so the model could skip a safety step.
 - Need: pick a letter (or override — an answer in any shape is complete)
 
@@ -145,12 +147,12 @@ Options:
 **A — Fixed pipeline.** *Rationale*: All three hard constraints are statements about every message, which matches code-enforced ordering, not model judgment. A also lets the deterministic layers be tested in `vitest` under the existing gate (ADR-0002). The agent loop's strength, open-ended tool use, is exactly what this bot must not do. *Confidence*: 0.85 — because the constraints make this argument directly. The only uncertainty is whether the class wants agent behavior to be visible. *If wrong*: if the project is graded on agentic behavior, flip to **B** and keep the safety gate *outside* the loop, so it runs before the loop starts and not as a tool.
 
 **ANS:** (by Kay)
-[Fill this in]   <!-- literal placeholder — parser-significant, do not paraphrase -->
+b
 
 ---
 
 ### QST-DIAB-VS-PORTAL: How does this bot relate to the portal-assistant direction in ADR-0004?
-- Status: unanswered
+- Status: answered
 - Why asking: ADR-0004 (still a draft, its question unanswered) asked whether "a chatbot on the patient portal" should be a mockup, a portal-style Harness over a demo inbox, or a real integration. This diabetes education bot is a different product: education plus triage, not message search. The answer decides whether ADR-0004 is superseded, merged, or left alone.
 - Need: pick a letter (or override — an answer in any shape is complete)
 
@@ -164,12 +166,12 @@ Options:
 **A — Replaces it.** *Rationale*: The new prompt is far more specific (users, constraints, data) than ADR-0004's, which reads like an early sketch of the same class project. B runs into the "minimal navigation depth" requirement, because a message center is several levels deep. *Confidence*: 0.5 — because I'm inferring the relationship. Only Kay knows what the assignment is. *If wrong*: if the assignment is specifically about patient-portal integration, flip to **B**, with the accessibility work applied to the portal too.
 
 **ANS:** (by Kay)
-[Fill this in]   <!-- literal placeholder — parser-significant, do not paraphrase -->
+b
 
 ---
 
 ### QST-DIAB-CORPUS-HOSTING: Where does the ADA corpus live, given this repo is public?
-- Status: unanswered
+- Status: answered
 - Why asking: Kay's knowledge base is ADA's entire patient-education library. That material is copyrighted. This repo (`kayc26/harness`) is public and deploys to public GitHub Pages, so committing the corpus, or bundling it into the site, would republish ADA's library publicly. ADA's website terms of use may also restrict collecting the site's content automatically. I haven't checked them yet.
 - Need: pick a letter (or override — an answer in any shape is complete)
 
@@ -184,12 +186,12 @@ Options:
 **A — Local-only corpus**, with **C** started in parallel if Kay wants a public demo. *Rationale*: A keeps the full design (verbatim excerpts, large type, read-aloud) and puts no copyrighted text in a public place. It costs one import step, which Kay does once on the demo device. *Confidence*: 0.6 — because I haven't read ADA's terms of use, and the course may have its own guidance. Route this to course staff too. *If wrong*: if ADA's terms forbid automated collection outright, A doesn't solve that. Flip to **C**, or **D** while waiting.
 
 **ANS:** (by Kay)
-[Fill this in]   <!-- literal placeholder — parser-significant, do not paraphrase -->
+c
 
 ---
 
 ### QST-DIAB-DOSE-BOUNDARY: Where does insulin education end and dose advice begin, for filtering the ADA corpus?
-- Status: unanswered
+- Status: answered
 - Why asking: The hard constraint is that the bot never gives insulin dose adjustment advice. With curated cards, that held by construction. ADA's library includes insulin material, such as what correction factors and insulin-to-carb ratios are, how doses are worked out, and sick-day guidance. Shown verbatim, some of those passages *are* dose advice, in ADA's words. So passages must be tagged before indexing, and someone has to decide where the line falls. For either option, tagging works the same way: a keyword sweep (units, dose, ratio, correction, sliding scale…) plus model tagging, then a person reads every flagged passage. Excluded passages are listed in a file so the boundary can be reviewed.
 - Need: pick a letter (or override — an answer in any shape is complete)
 
@@ -202,7 +204,74 @@ Options:
 **A — Strict.** *Rationale*: A worked example ("if your correction factor is 50 and you're at 250, take 2 units") is a dose calculation however it's framed. For older readers on a large-type screen, the line between explanation and instruction won't hold. The cost is that some legitimate questions get the care-team card, and that is the trade the constraints already accept. *Confidence*: 0.8 — because the hard constraint is explicit. What's uncertain is how much of ADA's insulin content A removes. *If wrong*: if a clinician reviewer judges the explanatory passages safe, and A removes most of the insulin topic, flip to **B**, with that reviewer signing off on the passages kept.
 
 **ANS:** (by Kay)
+b
+
+---
+
+### QST-DIAB-DOSE-GUARD: With generated answers, what enforces "never gives insulin dose adjustment advice"?
+- Status: unanswered
+- Why asking: The hard constraint is that the bot never gives insulin dose adjustment advice. Three answers in this ADR now combine. The model writes the answers (constrained RAG, QST-WHICH-APPROACH-SHOULD-I: C). It runs its own loop of tool calls (QST-DIAB-ORCHESTRATION: B). And the corpus keeps ADA passages that explain dose arithmetic with worked examples (narrow boundary, QST-DIAB-DOSE-BOUNDARY: B). Nothing in the structure now stops the model from applying a worked example to a user's numbers ("you're at 250, so take 2 more units"), so something has to check every answer.
+- Need: pick a letter (or override — an answer in any shape is complete)
+
+Options:
+- **A — Output gate**: Every final answer passes a deterministic check (insulin words near a number with units, "take N units", ratio or correction arithmetic) and a classifier call. Any hit, error, or timeout replaces the whole answer with the fixed "your care team can help with doses" card. The gate runs after the loop ends, outside it, and its deterministic part is tested in the gate (`vitest`).
+- **B — Prompt and classifier**: The system prompt forbids dose advice, and a classifier reviews each answer. No deterministic check.
+- **C — Output gate plus verbatim-only dose passages**: Everything in A, and in addition passages tagged as dose-related are never given to the model to rewrite. When one is the best match, it is shown word for word with a "Talk to your care team before changing any dose" header. Kay's narrow boundary still decides which passages stay in the corpus.
+
+**Recommendation**: (by Nibble, Claude Opus 5.5, 2026-11-14)
+
+**C — Output gate plus verbatim-only dose passages.** *Rationale*: A catches the obvious failures with a check we can test. C also removes the input that makes the dangerous output likely: a model that never has worked dose arithmetic in its context is unlikely to produce it. B depends on the model behaving, and a hard constraint can't rest on that. C keeps the explanatory passages that Kay's narrow boundary chose to keep, but shows them in ADA's words, not the model's. *Confidence*: 0.8 — because the risk is concrete and C costs little. What I haven't tested is how often the deterministic check fires on ordinary answers about carbs and glucose numbers. *If wrong*: if the check blocks many ordinary answers (carb counting in grams, for example), narrow its patterns to insulin units and keep **C**. If Kay wants the model to explain those passages in plain language, flip to **A**.
+
+**ANS:** (by Kay)
 [Fill this in]   <!-- literal placeholder — parser-significant, do not paraphrase -->
+
+---
+
+### QST-DIAB-PORTAL-SHELL: Is the portal a static shell around a working diabetes assistant?
+- Status: unanswered
+- Why asking: ADR-0004's QST-PORTAL-TARGET was answered A: the portal stays a static mockup with no behavior. This ADR's QST-DIAB-VS-PORTAL was answered B: the portal layout is the container, and the diabetes bot is the assistant inside it. Both answers hold if the portal around the bot is static and only the bot works. Separately, a portal's Message Center is several levels deep, while the bot's spec asks for minimal navigation depth and large type.
+- Need: pick a letter (or override — an answer in any shape is complete)
+
+Options:
+- **A — Static shell, working assistant**: The portal layout is static decoration. The diabetes assistant is the only part that works, and it opens in a large-type, single-screen view with the help button always visible.
+- **B — Two separate deliverables**: The portal mockup stays ADR-0004's design deliverable, and the diabetes bot ships as its own single-screen app.
+- **C — Working portal**: Build the portal's navigation too (conversation list, Message Center), with the bot inside it. This reverses ADR-0004's answer.
+
+**Recommendation**: (by Nibble, Claude Opus 5.5, 2026-11-14)
+
+**A — Static shell, working assistant.** *Rationale*: A reconciles both answers as given. It keeps the accessibility spec intact, because the assistant view takes the whole screen, so the portal's depth never stands between the user and the bot. *Confidence*: 0.6 — because I'm reconciling two answers, and only Kay knows which one was meant to lead. *If wrong*: if the assignment grades the portal integration itself, flip to **C**. If the two were always meant as separate deliverables, flip to **B**.
+
+**ANS:** (by Kay)
+[Fill this in]   <!-- literal placeholder — parser-significant, do not paraphrase -->
+
+---
+
+## Decision
+
+Kay answered on 2026-11-14 (iteration 3). Five answers differ from my recommendations. The design below follows the answers.
+
+| Question | Answer | My recommendation was |
+|---|---|---|
+| QST-WHICH-APPROACH-SHOULD-I | **C — Constrained RAG** | B |
+| QST-DIAB-ORCHESTRATION | **B — Agent loop with tools** | A |
+| QST-DIAB-VS-PORTAL | **B — Portal is the shell, the bot is the content** | A |
+| QST-DIAB-CORPUS-HOSTING | **C — Ask ADA's permission first** | A (+C) |
+| QST-DIAB-DOSE-BOUNDARY | **B — Narrow** | A |
+
+### What changes in the architecture
+
+- **Answers are generated.** The model writes short, plain-language answers from shortlisted ADA sections (in-browser BM25, as before) and cites the sections it used. Output checks: every number in the answer must appear in a cited section, every citation must point to a shortlisted section, and the dose gate applies (QST-DIAB-DOSE-GUARD).
+- **Agent loop, with safety outside it.** This follows the "If wrong" clause of my orchestration recommendation. The safety gate (ADR-0006) runs on the user's message *before* the loop starts, and the dose gate runs on the final answer *after* the loop ends. Neither is a tool the model could choose to skip. The tools inside the loop are `search_ada` (shortlist) and `read_section`. The 8-round cap (ADR-0003) stays.
+- **The regimen stays out of the loop.** Kay's original spec says the bot doesn't use the user's data to personalize answers. The read-back stays a fixed-template branch that runs before the loop, and there is no `read_regimen` tool. With dose-explaining passages now in the corpus, a model holding both a worked dose example and the user's own regimen is the most direct route to personalized dose advice.
+- **Labeling.** Answers are generated, so they're labeled "Based on ADA material", with links to the sections used, never "ADA says".
+- **Corpus.** Nothing from ADA is committed or deployed until ADA replies. Development uses local files in a gitignored folder. (My reading of C: local development isn't publishing.)
+- **Portal.** The portal layout stays static, and the diabetes assistant is the one working part inside it. QST-DIAB-PORTAL-SHELL checks this reading.
+
+### Trade-offs accepted
+
+- **"Clinician-approved content only" now applies to the sources, not to the text the user reads.** ADA's review covers the source passages. Every answer is new text.
+- **The no-dose-advice constraint has moved from structure to checks.** Before, the model couldn't write user-facing text. Now three answers compound: the model writes the text (C), it decides its own steps (orchestration B), and it reads passages explaining dose arithmetic (boundary B). This is QST-DIAB-DOSE-GUARD.
+- **The dose-bait set becomes a release criterion.** These are synthetic questions that try to get dose advice. Across the set, the bot must give zero dose advice. This is in addition to ADR-0006's must-catch set.
 
 ---
 
@@ -234,6 +303,8 @@ Options:
 ## Open Follow-ups
 
 - [x] **Who approves the content?** Resolved in iteration 2: ADA's material is professionally reviewed, so "clinician-approved" means ADA as published. Two caveats remain. It was approved for a general audience, not checked for older readers with low literacy. And it's copyrighted (QST-DIAB-CORPUS-HOSTING).
+- [ ] **Ask ADA for permission** (QST-DIAB-CORPUS-HOSTING: C). Owner: Kay. Describe the use: a class project, synthetic users, generated answers labeled "Based on ADA material" with links. Until ADA replies, no ADA text goes into git or onto the site.
+- [ ] **Gitignore the corpus folder** before the first ADA file reaches the working tree. Owner: Nibble, at the start of implementation.
 - [ ] **Corpus snapshot date.** ADA revises its material, so record when the corpus was collected, and show "From ADA, retrieved {date}" with each excerpt.
 - [ ] **Regimen read-back is close to dose advice.** "What's my insulin?" is read-back. "What should I take tonight?" answered with a read-back *acts as* dose advice if the record is stale. The router must send "should I take…" questions to the dose-refusal branch even when a regimen is on file.
 - [ ] **User testing with older adults** may need an IRB exempt determination, even with synthetic data. Check with the course staff before recruiting anyone.
@@ -253,6 +324,12 @@ Options:
 - Contributors: Kay, Nibble (Claude Opus 5.5)
 - Changes: The content store moves from curated cards to the ADA library, split into sections and paragraphs. A search shortlist now comes before selection. The recommendation moves from card to verbatim excerpt (walk-back stated in the follow-up). QST-DIAB-ANSWER-PATH is marked superseded. Two new questions: corpus hosting (copyright and a public repo) and the dose boundary (ADA's text itself contains dose guidance).
 - Outcome: Draft
+
+### Iteration 3 (2026-11-14)
+- Trigger: Kay answered the five open questions in this ADR: C, B, B, C, B.
+- Contributors: Kay, Nibble (Claude Opus 5.5)
+- Changes: Decision section added. The answer path is now constrained RAG inside the agent loop, with the safety and dose gates outside the loop. The regimen is kept out of the loop. ADA permission comes first. The narrow dose boundary applies. Two follow-ups opened: QST-DIAB-DOSE-GUARD (the three answers together move the no-dose constraint from structure to checks) and QST-DIAB-PORTAL-SHELL (reconciling this ADR's portal answer with ADR-0004's).
+- Outcome: Draft (two questions open)
 
 ---
 

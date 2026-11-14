@@ -9,11 +9,11 @@ adr teaching map: the example is not the teaching — these are the up-links fro
 # ADR-0006: Diabetes education bot — urgent-situation triage and escalation
 
 - **Date**: 2026-11-14
-- **Iteration**: 2
-- **Status**: Draft
+- **Iteration**: 3
+- **Status**: Accepted
 - **Deciders**: Kay, Nibble (Claude Opus 5.5)
 
-**TL;DR**: Proposed: a help button in plain HTML that works even if the app, network, or model fails. On every message, a local rules layer and a model classifier are OR-combined, the higher tier wins, and an error or timeout counts as "maybe urgent". The model can soften a rules hit but never clear it.
+**TL;DR**: Decided: a help button in plain HTML that works even if the app, network, or model fails. On every message, a local rules layer and a model classifier are OR-combined, the higher tier wins, and an error or timeout counts as "maybe urgent". The model can soften a rules hit but never clear it.
 
 ---
 
@@ -72,7 +72,7 @@ The two are **OR-combined: the higher tier wins.** The one exception is QST-TRIA
 
 ### Dose-advice routing
 
-Rules plus the classifier flag dose intent ("how many units", "should I take more", "skip my shot", "change my dose"). The router sends these to a fixed card: "I can't advise on insulin doses. Your care team can," with the nurse line. Answers are verbatim (ADR-0005), so the model cannot *write* dose advice. ADA's own text can *contain* it, though, so passages about calculating or changing doses are removed before the index is built (ADR-0005, QST-DIAB-DOSE-BOUNDARY). *(Revised in iteration 2. The earlier wording said no other path could produce dose advice, which stopped being true once the corpus became ADA's full library.)*
+Rules plus the classifier flag dose intent ("how many units", "should I take more", "skip my shot", "change my dose"). The router sends these to a fixed card: "I can't advise on insulin doses. Your care team can," with the nurse line. This routing happens before the agent loop starts. Since iteration 3, the model writes the answers (ADR-0005, constrained RAG), and the corpus keeps ADA passages that explain dose arithmetic (narrow boundary). So routing alone is no longer enough: a dose gate also checks every final answer after the loop ends (ADR-0005, QST-DIAB-DOSE-GUARD). *(Revised twice. Iteration 1 said verbatim answers guaranteed no dose advice. Iteration 2 added a corpus filter. Iteration 3 needs an output gate.)*
 
 ### Evaluation
 
@@ -85,7 +85,7 @@ Rules plus the classifier flag dose intent ("how many units", "should I take mor
 ## Questions
 
 ### QST-TRIAGE-LAYERS: How is urgency detected on each message?
-- Status: unanswered
+- Status: answered
 - Why asking: The bot must detect hypo- and hyperglycemia symptoms, DKA signs, and distress, and missed cases cost far more than false alarms. Each detector misses different things. Rules miss paraphrase. A model misses when it is down, slow, or wrong.
 - Need: pick a letter (or override — an answer in any shape is complete)
 
@@ -99,12 +99,12 @@ Options:
 **B — Rules OR model, fail-closed.** *Rationale*: Rules and the model fail independently: rules miss wording, the model misses on outages. With OR-combination, a miss requires both to miss, which is what "false negatives are far costlier" asks for. C can't meet that during an outage, and A can't meet it for wording we didn't anticipate. *Confidence*: 0.9 — because this follows directly from the stated cost asymmetry and Harness's dependence on the network. *If wrong*: if the combined false-positive rate in the must-not-alarm set is so high that test users ignore the banners, keep **B** but tighten the classifier's prompt. Don't drop a layer.
 
 **ANS:** (by Kay)
-[Fill this in]   <!-- literal placeholder — parser-significant, do not paraphrase -->
+b
 
 ---
 
 ### QST-TRIAGE-ASKING-VS-HAVING: What happens when a symptom word appears in a question *about* symptoms rather than a report of them?
-- Status: unanswered
+- Status: answered
 - Why asking: "What are the signs of low blood sugar?" and "I'm shaky and sweaty" contain the same words. The rules layer can't tell them apart. If every education question about symptoms triggers a 911 banner, older users will learn to ignore it, which is the failure we're trying to prevent. The constraint is that false negatives cost far more than false positives.
 - Need: pick a letter (or override — an answer in any shape is complete)
 
@@ -118,12 +118,12 @@ Options:
 **B — Soften by one step, never to none.** *Rationale*: Under B, the worst case of a classifier mistake is that an urgent user sees the nurse and 911 buttons inline instead of in a banner. That is still escalation, still one tap away, and the help button is on screen regardless. A buys almost no extra safety and costs credibility with exactly the users we need to trust the banner. C breaks the hard constraint. *Confidence*: 0.7 — because the right amount of softening is a judgment about how older users react to alarms, and I haven't seen data on that. *If wrong*: if test users miss inline CHECK-IN prompts while actually having symptoms, flip to **A**.
 
 **ANS:** (by Kay)
-[Fill this in]   <!-- literal placeholder — parser-significant, do not paraphrase -->
+b
 
 ---
 
 ### QST-TRIAGE-CGM: Should a stored CGM reading trigger escalation by itself?
-- Status: unanswered
+- Status: answered
 - Why asking: Kay specified that CGM data is read-back only, and the bot does not reason over it to personalize answers. But if the stored latest reading is 45 mg/dL and the user asks a casual question, staying silent looks wrong. A threshold check is reasoning over CGM data, even if only in the escalation direction. With synthetic, static data, the reading also has no real "now".
 - Need: pick a letter (or override — an answer in any shape is complete)
 
@@ -136,12 +136,12 @@ Options:
 **A — No, read-back only (for v1).** *Rationale*: With synthetic, static data, the "less than 30 minutes old" check is always false, or has to be faked, so B would show behavior the demo can't honestly back up. It also adds a regulatory concern (ADR-0005's real-PHI section, item 7). Record it as a known gap, not a silent omission. *Confidence*: 0.55 — because this is a real values question about what the bot owes a user whose data it holds, and that's Kay's call. *If wrong*: if the class demo includes a simulated live CGM feed, flip to **B**.
 
 **ANS:** (by Kay)
-[Fill this in]   <!-- literal placeholder — parser-significant, do not paraphrase -->
+a
 
 ---
 
 ### QST-TRIAGE-DEMO-DIAL: In the class demo, should "Call 911" actually dial 911?
-- Status: unanswered
+- Status: answered
 - Why asking: The help path uses `tel:` links. On a phone, a tester (or a grader trying the button) who taps "Call 911" during a demo places a real emergency call. Accidental 911 calls tie up dispatchers. The nurse line is a placeholder anyway.
 - Need: pick a letter (or override — an answer in any shape is complete)
 
@@ -154,7 +154,20 @@ Options:
 **B — Demo mode.** *Rationale*: The demo needs to *show* the escalation path, not use it, and accidental emergency calls have a real cost. The flag keeps the production path written and testable. *Confidence*: 0.85 — because the downside of A is concrete and B costs very little. *If wrong*: if the evaluation requires testing on a real device with the real call flow, flip to **A** for that session only.
 
 **ANS:** (by Kay)
-[Fill this in]   <!-- literal placeholder — parser-significant, do not paraphrase -->
+b
+
+---
+
+## Decision
+
+On 2026-11-14 Kay answered all four questions, each as recommended:
+
+- **QST-TRIAGE-LAYERS: B.** Rules OR model, fail-closed.
+- **QST-TRIAGE-ASKING-VS-HAVING: B.** The model may soften a rules hit by one step, never to none. EMERGENCY phrases are never softened.
+- **QST-TRIAGE-CGM: A.** CGM data is read-back only for v1. This is a known, recorded gap.
+- **QST-TRIAGE-DEMO-DIAL: B.** Demo mode is on by default. The call buttons show the real numbers but open a "this is a demo" dialog instead of dialing.
+
+The proposed design stands, with one placement fixed by ADR-0005's switch to an agent loop: triage runs on the user's message **before the loop starts**, not as a tool inside it. The 988 line stays in the help panel. The Explicitation's request to confirm it is still open, and it can be dropped if Kay prefers.
 
 ---
 
@@ -188,6 +201,12 @@ Options:
 - Contributors: Kay, Nibble (Claude Opus 5.5)
 - Changes: The dose-advice section no longer claims verbatim answers alone guarantee no dose advice, and now points to the corpus filter. Urgent cards are sourced from ADA.
 - Outcome: Draft
+
+### Iteration 3 (2026-11-14)
+- Trigger: Kay answered all four questions (B, B, A, B), plus ADR-0005's switch to constrained RAG inside an agent loop
+- Contributors: Kay, Nibble (Claude Opus 5.5)
+- Changes: Decision section added. Triage runs before the loop. The dose-advice section points to the output gate (ADR-0005, QST-DIAB-DOSE-GUARD).
+- Outcome: Draft → Accepted
 
 ---
 

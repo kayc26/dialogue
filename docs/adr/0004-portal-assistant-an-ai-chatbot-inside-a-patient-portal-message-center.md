@@ -9,8 +9,8 @@ adr teaching map: the example is not the teaching — these are the up-links fro
 # ADR-0004: Portal assistant — an AI chatbot inside a patient-portal message center
 
 - **Date**: 2026-11-12
-- **Iteration**: 1
-- **Status**: Draft
+- **Iteration**: 2
+- **Status**: Accepted
 - **Deciders**: Kay, Nibble (Claude Opus 5.5)
 
 **TL;DR**: Kay wants Harness's front end to be a chatbot in a patient-portal Message Center (the screenshot was MyChart). A mockup exists. Before building, decide what is being built and what data it may ever touch.
@@ -49,7 +49,7 @@ adr teaching map: the example is not the teaching — these are the up-links fro
 ## Questions
 
 ### QST-PORTAL-TARGET: What should "a chatbot on this portal" actually become?
-- Status: unanswered
+- Status: answered
 - Why asking: Kay asked for Harness's front end to be a chatbot inside a patient-portal Message Center (the screenshot was MyChart, which Penn Medicine runs on Epic's software). A static mockup with placeholder branding and fictional data is in `docs/mockups/portal-assistant.html`. The next step depends on whether this stays a design, becomes a working demo, or aims at the real portal, which differ hugely in effort and in what data they touch.
 - Need: pick a letter (or override — an answer in any shape is complete)
 
@@ -63,20 +63,22 @@ Options:
 **B — Portal-style Harness over a demo inbox.** *Rationale*: B turns the mockup into something that works, using everything already built: the agent loop, tool cards, and sanitized rendering (ADR-0003). It adds one tool (`search_messages`) over data we invent, so the citation and "draft, never send" patterns in the mockup become real behavior that can be tested. A stops before showing the idea works. C needs approvals and a backend that the current architecture (ADR-0001: no server, personal key) rules out. *Confidence*: 0.65 — because it depends on what this is for, which I'm inferring from the course context. *If wrong*: if this is for a design or UX assignment, flip to **A**. If Kay has a sanctioned path to real portal data (for example, a sandbox from the course or the vendor), flip to **C** with a new ADR for the backend and data agreements.
 
 **ANS:** (by Kay)
-[Fill this in]   <!-- literal placeholder — parser-significant, do not paraphrase -->
+a
 
 ---
 
 ## Decision
 
-Pending the answer to QST-PORTAL-TARGET.
+**Chosen: A — Design mockup only** (Kay, 2026-11-14). `docs/mockups/portal-assistant.html` stays a static design artifact, and no message-center behavior gets built. Its layout becomes the shell for the diabetes education bot (ADR-0005, QST-DIAB-VS-PORTAL: B). That bot is the only working part, if Kay confirms that reading in QST-DIAB-PORTAL-SHELL.
+
+**Consequences**: The `search_messages` tool and the demo inbox from option B are not built. The follow-up below, about a theme or a route, no longer applies.
 
 ---
 
 ## Open Follow-ups
 
 - [ ] Whatever the answer, Harness should warn against pasting real health information while it runs on a personal OpenRouter key. A one-line notice under the composer would do.
-- [ ] Under B: should the portal look replace Harness's current UI, or be a second "theme" or route? Decide when B is chosen.
+- [x] *(Moot: A was chosen.)* Under B: should the portal look replace Harness's current UI, or be a second "theme" or route? Decide when B is chosen.
 
 ---
 
@@ -87,6 +89,12 @@ Pending the answer to QST-PORTAL-TARGET.
 - Contributors: Kay, Nibble (Claude Opus 5.5)
 - Changes: Mockup built (placeholder branding, fictional data); QST-PORTAL-TARGET posed with a recommendation
 - Outcome: Draft
+
+### Iteration 2 (2026-11-14)
+- Trigger: Kay answered QST-PORTAL-TARGET: A
+- Contributors: Kay, Nibble (Claude Opus 5.5)
+- Changes: Decision filled in. The mockup stays static and serves as the shell for ADR-0005's diabetes bot.
+- Outcome: Draft → Accepted
 
 ---
 
