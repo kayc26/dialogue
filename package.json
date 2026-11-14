@@ -10,7 +10,8 @@
     "preview": "vite preview",
     "test": "vitest",
     "typecheck": "vue-tsc --build",
-    "gate": "vue-tsc --build && vitest run && vite build"
+    "gate": "vue-tsc --build && vitest run && vite build",
+    "test:db": "vitest run --config vitest.db.config.ts"
   },
   "dependencies": {
     "dompurify": "^3.4.17",

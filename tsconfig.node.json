@@ -1,14 +1,22 @@
 {
-  "include": ["vite.config.ts"],
+  "include": [
+    "vite.config.ts",
+    "vitest.db.config.ts",
+    "db/**/*.ts"
+  ],
   "compilerOptions": {
     "composite": true,
     "noEmit": true,
     "tsBuildInfoFile": "./node_modules/.tmp/tsconfig.node.tsbuildinfo",
     "target": "ES2022",
-    "lib": ["ES2023"],
+    "lib": [
+      "ES2023"
+    ],
     "module": "ESNext",
     "moduleResolution": "Bundler",
-    "types": ["node"],
+    "types": [
+      "node"
+    ],
     "strict": true,
     "skipLibCheck": true
   }
