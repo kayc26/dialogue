@@ -123,6 +123,7 @@ Kay asked whether to use Better Auth. **Yes, but Neon's *managed* version (Neon 
 
 - [ ] **A test protocol for moderated sessions**: tasks to try (ask a nutrition question, report a high reading, ask for a dose), what to observe, and consent wording. This should be checked against course or IRB guidance before recruiting.
 - [ ] **A notice on the public site** that the link alone is a non-working preview ("This demo needs setup; contact the team"), so a stranger who finds it isn't left with a broken bot.
+- [ ] **Later option: Neon AI Gateway instead of per-tester OpenRouter keys** (seen while creating the project on 2026-11-14; left off for now). The gateway takes OpenAI-style calls and covers many models, with prepaid credits and a default daily spend cap (Neon docs: *AI Gateway quickstart* and *prepaid credits*). But it authenticates with a **project credential**, a secret that can't go in the public browser bundle. Using it would mean a Neon Function that checks the tester's sign-in token and forwards the call, which would be our first server-side code. That would remove the key-setup step for the sponsor. Revisit if the per-tester keys turn out to be a burden.
 
 ---
 
