@@ -56,6 +56,13 @@ export interface CompleteOptions {
   /** Called with the full assistant text so far, each time it grows. */
   onContent?: (soFar: string) => void
   fetchImpl?: FetchFn
+  /** Output cap per call (ADR-0012 spending guard). */
+  maxTokens?: number
+  temperature?: number
+  /** Ask for a JSON object (classifier and monitor). */
+  json?: boolean
+  /** App name OpenRouter shows in its usage logs. */
+  title?: string
 }
 
 export interface CompletionResult {
@@ -77,13 +84,16 @@ export async function completeChat(opts: CompleteOptions): Promise<CompletionRes
       usage: { include: true },
     }
     if (opts.tools?.length) body.tools = opts.tools
+    if (opts.maxTokens !== undefined) body.max_tokens = opts.maxTokens
+    if (opts.temperature !== undefined) body.temperature = opts.temperature
+    if (opts.json) body.response_format = { type: 'json_object' }
 
     const res = await fetchImpl(`${API_BASE}/chat/completions`, {
       method: 'POST',
       headers: {
         Authorization: `Bearer ${opts.apiKey}`,
         'Content-Type': 'application/json',
-        'X-Title': 'Harness',
+        'X-Title': opts.title ?? 'Harness',
       },
       body: JSON.stringify(body),
       signal: opts.signal,

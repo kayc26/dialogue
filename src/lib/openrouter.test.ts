@@ -47,6 +47,16 @@ describe('completeChat', () => {
     await expect(completeChat({ apiKey: 'k', model: 'm', messages: [], fetchImpl: streamingFetch(sse) })).rejects.toThrow('Provider returned error')
   })
 
+  it('sends the per-call output cap and JSON mode (ADR-0012 spending guard)', async () => {
+    let sent: Record<string, unknown> = {}
+    const capture = (async (_url: string, init: RequestInit) => {
+      sent = JSON.parse(String(init.body))
+      return streamingFetch(ev({ choices: [{ delta: { content: '{}' } }] }) + 'data: [DONE]\n\n')(_url, init)
+    }) as typeof fetch
+    await completeChat({ apiKey: 'k', model: 'm', messages: [], fetchImpl: capture, maxTokens: 150, json: true, temperature: 0 })
+    expect(sent).toMatchObject({ max_tokens: 150, response_format: { type: 'json_object' }, temperature: 0 })
+  })
+
   it('explains a rejected key in words a user can act on', async () => {
     const fetch401 = (async () =>
       new Response(JSON.stringify({ error: { message: 'No auth credentials found', code: 401 } }), { status: 401 })) as typeof fetch
