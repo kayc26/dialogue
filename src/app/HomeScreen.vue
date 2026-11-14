@@ -4,9 +4,10 @@
 // are the next build steps.
 import { computed, ref } from 'vue'
 import type { User } from '../lib/neon/auth'
-import { viewsFor, type Membership } from '../lib/neon/data'
+import { viewsFor, type DataClient, type Membership } from '../lib/neon/data'
+import PatientView from './PatientView.vue'
 
-const props = defineProps<{ user: User; membership: Membership }>()
+const props = defineProps<{ user: User; membership: Membership; data: DataClient }>()
 const emit = defineEmits<{ signOut: [] }>()
 
 const ROLE_LABEL = {
@@ -51,7 +52,7 @@ const view = ref(views.value[0])
     <main class="body">
       <section v-if="view === 'patient'" aria-labelledby="pv">
         <h1 id="pv">Patient view</h1>
-        <p>Coming next: choose a demo patient and ask questions about diabetes.</p>
+        <PatientView :data="data" />
       </section>
       <section v-else aria-labelledby="cv">
         <h1 id="cv">Care team view</h1>

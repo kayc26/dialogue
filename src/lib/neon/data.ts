@@ -37,13 +37,43 @@ export function createDataClient(
   }
 }
 
+const realSleep = (ms: number) => new Promise<void>((r) => setTimeout(r, ms))
+
+/**
+ * Read rows that should exist, retrying briefly when the answer is empty.
+ *
+ * Observed 2026-11-14 on the rls-dev branch: right after a suspended Neon compute
+ * wakes, the first Data API read can return `200 []` for a signed-in member, as if
+ * RLS saw no user, and the next read is correct. It fails closed (no data leaks), but
+ * a member could be told "not added to this demo" or see no demo patients. An empty
+ * result is only believed after the retries.
+ */
+export async function getNonEmpty<T>(
+  data: DataClient,
+  path: string,
+  opts: { retries?: number; waitMs?: number; sleep?: (ms: number) => Promise<void> } = {},
+): Promise<T[]> {
+  const { retries = 2, waitMs = 500, sleep = realSleep } = opts
+  for (let attempt = 0; ; attempt++) {
+    const rows = await data.get<T[]>(path)
+    if (rows.length > 0 || attempt >= retries) return rows
+    await sleep(waitMs * (attempt + 1))
+  }
+}
+
 /**
  * The caller's own membership row, or null for an account that exists but was never
  * added to the demo (RLS shows each member only their own row; a stranger sees none).
  */
-export async function getMembership(data: DataClient, userId: string): Promise<Membership | null> {
-  const rows = await data.get<Membership[]>(
+export async function getMembership(
+  data: DataClient,
+  userId: string,
+  sleep?: (ms: number) => Promise<void>,
+): Promise<Membership | null> {
+  const rows = await getNonEmpty<Membership>(
+    data,
     `members?user_id=eq.${encodeURIComponent(userId)}&select=user_id,role,display_name`,
+    { sleep },
   )
   return rows[0] ?? null
 }

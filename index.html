@@ -5,8 +5,118 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="referrer" content="strict-origin-when-cross-origin" />
     <title>Diabetes Education Assistant (demo)</title>
+    <!--
+      The help path (ADR-0006) lives here in plain HTML and CSS, outside the Vue app,
+      so it is on the page even if the app's JavaScript fails or the network drops.
+      It opens with a link to #help (CSS :target), with no script involved.
+      Demo mode (QST-TRIAGE-DEMO-DIAL: B): the call buttons show the numbers but never
+      dial; they open a "this is a demo" notice. A production build would use tel: links.
+    -->
+    <style>
+      .help-fab {
+        position: fixed;
+        right: 1rem;
+        bottom: 1rem;
+        z-index: 1000;
+        display: inline-flex;
+        align-items: center;
+        min-height: 3.5rem;
+        padding: 0 1.5rem;
+        border-radius: 999px;
+        background: #a1170f;
+        color: #fff;
+        font: 700 1.25rem/1.2 system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+        text-decoration: none;
+        box-shadow: 0 2px 10px rgba(0, 0, 0, 0.35);
+      }
+      .help-fab:focus-visible,
+      .help-panel a:focus-visible {
+        outline: 4px solid #e8a400;
+        outline-offset: 3px;
+      }
+      .help-panel {
+        display: none;
+        position: fixed;
+        inset: 0;
+        z-index: 1001;
+        background: rgba(0, 0, 0, 0.6);
+        padding: 1rem;
+        overflow-y: auto;
+        font: 1.25rem/1.5 system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+      }
+      .help-panel:target {
+        display: block;
+      }
+      .help-box {
+        max-width: 32rem;
+        margin: 2rem auto;
+        padding: 1.5rem;
+        border-radius: 12px;
+        background: #fff;
+        color: #141413;
+      }
+      .help-box h2 {
+        margin: 0 0 1rem;
+        font-size: 1.6rem;
+      }
+      .help-row {
+        display: block;
+        margin: 0.75rem 0;
+        padding: 1rem 1.25rem;
+        border-radius: 12px;
+        border: 3px solid #0b5f73;
+        color: #0b5f73;
+        font-weight: 700;
+        text-decoration: none;
+      }
+      .help-row.emergency {
+        border-color: #a1170f;
+        background: #a1170f;
+        color: #fff;
+      }
+      .help-row span {
+        display: block;
+        font-weight: 400;
+      }
+      .help-close {
+        display: inline-block;
+        margin-top: 0.5rem;
+        padding: 0.5rem 0;
+        color: #0b5f73;
+      }
+      body.harness .help-fab {
+        display: none;
+      }
+    </style>
   </head>
   <body>
+    <a class="help-fab" href="#help">Get help now</a>
+
+    <div id="help" class="help-panel" role="dialog" aria-modal="true" aria-labelledby="help-title">
+      <div class="help-box">
+        <h2 id="help-title">Get help now</h2>
+        <a class="help-row emergency" href="#demo-911">Call 911<span>For an emergency: very low or very high sugar with confusion, vomiting, trouble breathing, or passing out.</span></a>
+        <a class="help-row" href="#demo-nurse">Call the nurse line<span>For an urgent question about your diabetes today.</span></a>
+        <a class="help-close" href="#close">Close</a>
+      </div>
+    </div>
+
+    <div id="demo-911" class="help-panel" role="dialog" aria-modal="true" aria-labelledby="demo-911-title">
+      <div class="help-box">
+        <h2 id="demo-911-title">This is a demo</h2>
+        <p>Nothing was dialed. In a real emergency, call <strong>911</strong> on your phone.</p>
+        <a class="help-close" href="#help">Back</a>
+      </div>
+    </div>
+
+    <div id="demo-nurse" class="help-panel" role="dialog" aria-modal="true" aria-labelledby="demo-nurse-title">
+      <div class="help-box">
+        <h2 id="demo-nurse-title">This is a demo</h2>
+        <p>Nothing was dialed. The nurse line is a placeholder in this demo. A real version would show the clinic's number here.</p>
+        <a class="help-close" href="#help">Back</a>
+      </div>
+    </div>
+
     <div id="app"></div>
     <script type="module" src="/src/main.ts"></script>
   </body>

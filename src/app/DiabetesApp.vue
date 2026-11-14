@@ -59,6 +59,7 @@ onMounted(async () => {
     v-else-if="state.kind === 'signedIn'"
     :user="state.user"
     :membership="state.membership"
+    :data="data"
     @sign-out="signOut"
   />
 

@@ -3,7 +3,7 @@
 
 import { describe, expect, it } from 'vitest'
 import { friendlyAuthMessage, jwtExpiry, needsRefresh, newPasswordProblem } from './auth'
-import { viewsFor } from './data'
+import { getMembership, getNonEmpty, viewsFor } from './data'
 
 const b64url = (o: object) => btoa(JSON.stringify(o)).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '')
 const jwtWithExp = (exp: number) => `${b64url({ alg: 'EdDSA' })}.${b64url({ sub: 'u1', exp })}.sig`
@@ -53,6 +53,41 @@ describe('Data API token refresh', () => {
     expect(needsRefresh(null, now)).toBe(true)
     expect(needsRefresh('not-a-jwt', now)).toBe(true)
     expect(jwtExpiry('not-a-jwt')).toBeNull()
+  })
+})
+
+describe('Regression tests', () => {
+  // Observed 2026-11-14 on rls-dev: right after a suspended Neon compute wakes, the
+  // first Data API read can return 200 [] for a real member, and the next read is
+  // correct. Without a retry, a member (Kay) would be shown "your account hasn't been
+  // added to this demo yet". These replay that response sequence.
+  const noWait = () => Promise.resolve()
+  const sequence = (...answers: unknown[][]) => {
+    let i = 0
+    const paths: string[] = []
+    return {
+      paths,
+      client: { get: async <T,>(p: string) => { paths.push(p); return answers[Math.min(i++, answers.length - 1)] as T } },
+    }
+  }
+  const kay = { user_id: 'u-kay', role: 'admin' as const, display_name: 'Kay' }
+
+  it('treats a first empty read after a wake-up as transient and finds the member', async () => {
+    const { client, paths } = sequence([], [kay])
+    expect(await getMembership(client, 'u-kay', noWait)).toEqual(kay)
+    expect(paths).toHaveLength(2)
+  })
+
+  it('still reports a genuine non-member after the retries are used up', async () => {
+    const { client, paths } = sequence([])
+    expect(await getMembership(client, 'u-stranger', noWait)).toBeNull()
+    expect(paths).toHaveLength(3) // first try + 2 retries
+  })
+
+  it('does not retry when the first read already has rows', async () => {
+    const { client, paths } = sequence([{ id: 'demo-helen' }])
+    expect(await getNonEmpty(client, 'patients?select=id', { sleep: noWait })).toHaveLength(1)
+    expect(paths).toHaveLength(1)
   })
 })
 
