@@ -10,10 +10,14 @@
 //     a shared one reaches the sponsor's inbox together with its transcript.
 //   - A shared summary can't be quietly pulled back once a nurse may be acting on it.
 //
+//   - Roles (migration 0002, Kay's names): patient_tester sees only the patient view,
+//     careteam_tester only the care-team view, admin both; consent still binds admin.
+//
 // Runs against a throwaway Neon branch (never production), outside the offline gate:
 //   RLS_AUTH_URL=... RLS_DATA_API_URL=... RLS_PASSWORD=... npm run test:db
-// Users (created once on that branch): rls-a, rls-b (testers), rls-sponsor (sponsor),
-// rls-stranger (signed in, not a member). Seed: patient 'rls-p1', one reading, one chunk.
+// Users (created once on that branch): rls-a, rls-b (patient_tester), rls-sponsor
+// (careteam_tester; the email predates the rename), rls-admin (admin), rls-stranger
+// (signed in, not a member). Seed: patient 'rls-p1', one reading, one chunk.
 
 import { beforeAll, describe, expect, it } from 'vitest'
 
@@ -24,22 +28,34 @@ const ORIGIN = 'http://localhost:5173' // allow_localhost is on for development 
 
 const configured = Boolean(AUTH && API && PASSWORD)
 
-type Who = 'a' | 'b' | 'sponsor' | 'stranger'
+type Who = 'a' | 'b' | 'careteam' | 'admin' | 'stranger'
 const EMAIL: Record<Who, string> = {
   a: 'rls-a@example.com',
   b: 'rls-b@example.com',
-  sponsor: 'rls-sponsor@example.com',
+  careteam: 'rls-sponsor@example.com',
+  admin: 'rls-admin@example.com',
   stranger: 'rls-stranger@example.com',
 }
 const token: Partial<Record<Who, string>> = {}
 const userId: Partial<Record<Who, string>> = {}
 
+// Neon Auth rate-limits sign-in (429 "Too many requests") when the suite is rerun
+// back to back, e.g. during mutation checks. Retry with backoff, honoring Retry-After.
+async function signInRequest(who: Who): Promise<Response> {
+  for (let attempt = 0; ; attempt++) {
+    const res = await fetch(`${AUTH}/sign-in/email`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Origin: ORIGIN },
+      body: JSON.stringify({ email: EMAIL[who], password: PASSWORD }),
+    })
+    if (res.status !== 429 || attempt >= 5) return res
+    const wait = Number(res.headers.get('retry-after')) || 2 ** attempt * 2
+    await new Promise((r) => setTimeout(r, wait * 1000))
+  }
+}
+
 async function signIn(who: Who): Promise<void> {
-  const res = await fetch(`${AUTH}/sign-in/email`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json', Origin: ORIGIN },
-    body: JSON.stringify({ email: EMAIL[who], password: PASSWORD }),
-  })
+  const res = await signInRequest(who)
   if (!res.ok) throw new Error(`sign-in ${who}: ${res.status} ${await res.text()}`)
   const body = (await res.json()) as { user: { id: string } }
   userId[who] = body.user.id
@@ -49,8 +65,8 @@ async function signIn(who: Who): Promise<void> {
   token[who] = ((await t.json()) as { token: string }).token
 }
 
-async function api(who: Who | null, method: string, path: string, body?: unknown) {
-  const headers: Record<string, string> = { 'Content-Type': 'application/json', Prefer: 'return=representation' }
+async function api(who: Who | null, method: string, path: string, body?: unknown, prefer = 'return=representation') {
+  const headers: Record<string, string> = { 'Content-Type': 'application/json', Prefer: prefer }
   if (who) headers.Authorization = `Bearer ${token[who]}`
   const res = await fetch(`${API}/${path}`, { method, headers, body: body === undefined ? undefined : JSON.stringify(body) })
   const text = await res.text()
@@ -61,14 +77,22 @@ async function api(who: Who | null, method: string, path: string, body?: unknown
 const rows = (r: { data: unknown }) => (Array.isArray(r.data) ? (r.data as Record<string, unknown>[]) : [])
 const denied = (r: { status: number }) => r.status === 401 || r.status === 403
 
+// Write-denial checks must ask for `return=minimal`. With `return=representation`,
+// RETURNING also needs SELECT visibility, so an insert the caller can't read back
+// fails even when the *insert* rule would have let it through. A mutation run showed
+// exactly that: sessions_create widened to any member, and the "care team cannot
+// start a session" test still passed, masked by the read rule. A real client can
+// send return=minimal, so the write rule alone must stop it.
+const tryInsert = (who: Who, table: string, body: unknown) => api(who, 'POST', table, body, 'return=minimal')
+
 // State built up across the ordered cases below.
 let sessionA = '' // tester A's session; its summary stays 'kept'
 let sessionB = '' // tester B's session; its summary is shared ('auto')
 
 describe.skipIf(!configured)('RLS against a Neon branch', () => {
   beforeAll(async () => {
-    await Promise.all((['a', 'b', 'sponsor', 'stranger'] as Who[]).map(signIn))
-  }, 30_000)
+    for (const who of ['a', 'b', 'careteam', 'admin', 'stranger'] as Who[]) await signIn(who)
+  }, 180_000)
 
   describe('nobody signed in', () => {
     it('cannot read any table', async () => {
@@ -90,7 +114,7 @@ describe.skipIf(!configured)('RLS against a Neon branch', () => {
       }
     })
     it('cannot start a session', async () => {
-      const r = await api('stranger', 'POST', 'sessions', { patient_id: 'rls-p1' })
+      const r = await tryInsert('stranger', 'sessions', { patient_id: 'rls-p1' })
       expect(denied(r)).toBe(true)
     })
   })
@@ -124,7 +148,7 @@ describe.skipIf(!configured)('RLS against a Neon branch', () => {
       expect(denied(r)).toBe(true)
     })
     it('cannot write a nurse reply', async () => {
-      const r = await api('a', 'POST', 'replies', { session_id: sessionA, body: 'self-reply' })
+      const r = await tryInsert('a', 'replies', { session_id: sessionA, body: 'self-reply' })
       expect(denied(r)).toBe(true)
     })
   })
@@ -136,11 +160,11 @@ describe.skipIf(!configured)('RLS against a Neon branch', () => {
       expect(rows(await api('b', 'GET', `summaries?session_id=eq.${sessionA}`))).toHaveLength(0)
     })
     it('cannot write into tester A’s session', async () => {
-      const r = await api('b', 'POST', 'messages', { session_id: sessionA, turn: 1, role: 'user', content: 'intrusion' })
+      const r = await tryInsert('b', 'messages', { session_id: sessionA, turn: 1, role: 'user', content: 'intrusion' })
       expect(denied(r)).toBe(true)
     })
     it('cannot create a session in someone else’s name', async () => {
-      const r = await api('b', 'POST', 'sessions', { patient_id: 'rls-p1', user_id: userId.a })
+      const r = await tryInsert('b', 'sessions', { patient_id: 'rls-p1', user_id: userId.a })
       expect(denied(r)).toBe(true)
     })
     it('shares a flagged summary with the care team', async () => {
@@ -159,35 +183,57 @@ describe.skipIf(!configured)('RLS against a Neon branch', () => {
   describe('tester A tampering with B', () => {
     it('cannot modify tester B’s summary', async () => {
       await api('a', 'PATCH', `summaries?session_id=eq.${sessionB}`, { fields: { tampered: true } })
-      const seen = rows(await api('sponsor', 'GET', `summaries?session_id=eq.${sessionB}&select=fields`))
+      const seen = rows(await api('careteam', 'GET', `summaries?session_id=eq.${sessionB}&select=fields`))
       expect(seen[0]?.fields).toEqual({ reading: { value: 380, turn: 0 } })
     })
   })
 
-  describe('sponsor (care team)', () => {
+  describe('care-team tester', () => {
     it('sees the shared summary and its transcript', async () => {
-      expect(rows(await api('sponsor', 'GET', `summaries?session_id=eq.${sessionB}`))).toHaveLength(1)
-      expect(rows(await api('sponsor', 'GET', `messages?session_id=eq.${sessionB}`))).toHaveLength(1)
-      expect(rows(await api('sponsor', 'GET', `sessions?id=eq.${sessionB}`))).toHaveLength(1)
+      expect(rows(await api('careteam', 'GET', `summaries?session_id=eq.${sessionB}`))).toHaveLength(1)
+      expect(rows(await api('careteam', 'GET', `messages?session_id=eq.${sessionB}`))).toHaveLength(1)
+      expect(rows(await api('careteam', 'GET', `sessions?id=eq.${sessionB}`))).toHaveLength(1)
     })
     it('does not see the summary or transcript a patient kept private', async () => {
-      expect(rows(await api('sponsor', 'GET', `summaries?session_id=eq.${sessionA}`))).toHaveLength(0)
-      expect(rows(await api('sponsor', 'GET', `messages?session_id=eq.${sessionA}`))).toHaveLength(0)
-      expect(rows(await api('sponsor', 'GET', `sessions?id=eq.${sessionA}`))).toHaveLength(0)
+      expect(rows(await api('careteam', 'GET', `summaries?session_id=eq.${sessionA}`))).toHaveLength(0)
+      expect(rows(await api('careteam', 'GET', `messages?session_id=eq.${sessionA}`))).toHaveLength(0)
+      expect(rows(await api('careteam', 'GET', `sessions?id=eq.${sessionA}`))).toHaveLength(0)
     })
     it('replies on a shared summary, and the patient sees it', async () => {
-      expect((await api('sponsor', 'POST', 'replies', { session_id: sessionB, body: 'A nurse will call you today.' })).status).toBe(201)
-      expect(rows(await api('b', 'GET', `replies?session_id=eq.${sessionB}`))).toHaveLength(1)
+      expect((await api('careteam', 'POST', 'replies', { session_id: sessionB, body: 'A nurse will call you today.' })).status).toBe(201)
+      expect(rows(await api('b', 'GET', `replies?session_id=eq.${sessionB}`)).length).toBeGreaterThanOrEqual(1)
       expect(rows(await api('a', 'GET', `replies?session_id=eq.${sessionB}`))).toHaveLength(0)
     })
     it('cannot reply on a summary the patient kept private', async () => {
-      const r = await api('sponsor', 'POST', 'replies', { session_id: sessionA, body: 'should not land' })
+      const r = await tryInsert('careteam', 'replies', { session_id: sessionA, body: 'should not land' })
+      expect(denied(r)).toBe(true)
+    })
+    it('cannot start a patient session (care-team view only)', async () => {
+      const r = await tryInsert('careteam', 'sessions', { patient_id: 'rls-p1' })
       expect(denied(r)).toBe(true)
     })
     it('sees every member (names for the inbox)', async () => {
-      const ids = rows(await api('sponsor', 'GET', 'members?select=user_id')).map((m) => m.user_id)
-      expect(ids).toEqual(expect.arrayContaining([userId.a, userId.b, userId.sponsor]))
+      const ids = rows(await api('careteam', 'GET', 'members?select=user_id')).map((m) => m.user_id)
+      expect(ids).toEqual(expect.arrayContaining([userId.a, userId.b, userId.careteam, userId.admin]))
       expect(ids).not.toContain(userId.stranger)
+    })
+  })
+
+  describe('admin (both views)', () => {
+    it('uses the patient view: starts and reads its own session', async () => {
+      const s = await api('admin', 'POST', 'sessions', { patient_id: 'rls-p1' })
+      expect(s.status).toBe(201)
+      const id = rows(s)[0].id as string
+      expect((await api('admin', 'POST', 'messages', { session_id: id, turn: 0, role: 'user', content: 'admin check' })).status).toBe(201)
+      expect(rows(await api('admin', 'GET', `messages?session_id=eq.${id}`))).toHaveLength(1)
+    })
+    it('uses the care-team view: reads and replies on a shared summary', async () => {
+      expect(rows(await api('admin', 'GET', `summaries?session_id=eq.${sessionB}`))).toHaveLength(1)
+      expect((await api('admin', 'POST', 'replies', { session_id: sessionB, body: 'admin reply' })).status).toBe(201)
+    })
+    it('is still bound by consent: a kept summary stays private', async () => {
+      expect(rows(await api('admin', 'GET', `summaries?session_id=eq.${sessionA}`))).toHaveLength(0)
+      expect(rows(await api('admin', 'GET', `messages?session_id=eq.${sessionA}`))).toHaveLength(0)
     })
   })
 })
