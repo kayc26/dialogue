@@ -9,7 +9,7 @@ adr teaching map: the example is not the teaching — these are the up-links fro
 # ADR-0010: Diabetes education bot — how test users reach it
 
 - **Date**: 2026-11-14
-- **Iteration**: 7
+- **Iteration**: 8
 - **Status**: Accepted
 - **Deciders**: Kay, Nibble (Claude Opus 5.5)
 
@@ -136,6 +136,22 @@ Checks run against the live project:
 - `trusted_origins: []`: add `https://kayc26.github.io` so sign-in from the deployed site is accepted. Keep `allow_localhost` on while developing.
 
 **Resolved later on 2026-11-14 (iteration 7)**: Kay turned off sign-up and removed Google in the console. The domain didn't save there, so Nibble added it through the Neon connection. A re-read showed `allow_sign_up: false`, `oauth_providers: []`, and `trusted_origins: ["https://kayc26.github.io"]`. **Live proof:** a sign-up attempt from the site's origin returned `400 EMAIL_PASSWORD_SIGN_UP_DISABLED`, so no account was created. Still to do before going live: turn off `allow_localhost` (Neon's production checklist). Accounts for the sponsor and teammates are created by Kay, or by Nibble on request, and added to `members`.
+
+---
+
+### Sign-in in the app (iteration 8)
+
+These came from probing the live project on 2026-11-14 and are now built and deployed (commit `446a430`):
+
+- **Plain `fetch`, not Neon's SDKs.** The browser packages are all 0.x, three of them betas. Neon's ready-made reset screens are React, and its SDK doesn't support password reset yet.
+- **Cookie session only.** The session is an HttpOnly cookie marked `Partitioned` (CHIPS). That keeps it working cross-site from `github.io` with `credentials: 'include'` in browsers that block ordinary third-party cookies. A Bearer session token is **rejected** by this setup. That's a good thing: the app keeps no session token in `localStorage`, so there's nothing for injected script to steal.
+- **Short-lived JWT for the Data API**, fetched from `/token` and refreshed when less than a minute is left.
+- **Setting a password by emailed code** (`/forget-password/email-otp`, then `/email-otp/reset-password`). The same flow serves a forgotten password and an admin-created account's first password. A code is easier for older users than a 15-minute link. Mail comes from Neon's shared sender (`auth@mail.myneon.app`), so check spam.
+- **Being signed in isn't access.** After sign-in the app reads the user's own `members` row. Without one, the user sees "your account hasn't been added to this demo yet".
+- **The site at `/` is now the diabetes assistant.** Harness v1 is still reachable at `#/harness`.
+- **Tests**: 14 offline tests (plain-language messages, password checks, token refresh, views per role), plus 5 live tests that run the app's own client against `rls-dev` through a browser-like cookie jar.
+
+**Not yet verified in a real browser.** CHIPS behavior on Safari and Chrome can only be checked by signing in on the deployed site. Kay's first sign-in is that check.
 
 ---
 
