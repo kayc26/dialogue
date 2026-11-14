@@ -9,11 +9,11 @@ adr teaching map: the example is not the teaching — these are the up-links fro
 # ADR-0005: Diabetes education bot — architecture and answer path
 
 - **Date**: 2026-11-14
-- **Iteration**: 4
-- **Status**: Draft
+- **Iteration**: 5
+- **Status**: Accepted
 - **Deciders**: Kay, Nibble (Claude Opus 5.5)
 
-**TL;DR**: Decided (iteration 3): constrained RAG over ADA's education library, run by Harness's agent loop, with the safety gate outside the loop. Dose filtering uses the narrow boundary, nothing from ADA is published until ADA gives permission, and the portal layout hosts the bot. The model now writes the answers, so the no-dose-advice constraint depends on a check of every answer (QST-DIAB-DOSE-GUARD, open).
+**TL;DR**: Decided: constrained RAG over ADA's education library, run by Harness's agent loop. The safety gate runs before the loop, and a dose gate after it: fixed-rule checks, dose passages shown word for word, and a conversation monitor (ADR-0007). The regimen never reaches the model, nothing from ADA is published until ADA gives permission, and the bot is the one working part inside a static portal shell.
 
 ---
 
@@ -231,7 +231,7 @@ d
 ---
 
 ### QST-DIAB-PORTAL-SHELL: Is the portal a static shell around a working diabetes assistant?
-- Status: unanswered
+- Status: answered
 - Why asking: ADR-0004's QST-PORTAL-TARGET was answered A: the portal stays a static mockup with no behavior. This ADR's QST-DIAB-VS-PORTAL was answered B: the portal layout is the container, and the diabetes bot is the assistant inside it. Both answers hold if the portal around the bot is static and only the bot works. Separately, a portal's Message Center is several levels deep, while the bot's spec asks for minimal navigation depth and large type.
 - Need: pick a letter (or override — an answer in any shape is complete)
 
@@ -245,7 +245,7 @@ Options:
 **A — Static shell, working assistant.** *Rationale*: A reconciles both answers as given. It keeps the accessibility spec intact, because the assistant view takes the whole screen, so the portal's depth never stands between the user and the bot. *Confidence*: 0.6 — because I'm reconciling two answers, and only Kay knows which one was meant to lead. *If wrong*: if the assignment grades the portal integration itself, flip to **C**. If the two were always meant as separate deliverables, flip to **B**.
 
 **ANS:** (by Kay)
-[Fill this in]   <!-- literal placeholder — parser-significant, do not paraphrase -->
+a
 
 ---
 
@@ -260,6 +260,8 @@ Kay answered on 2026-11-14 (iteration 3). Five answers differ from my recommenda
 | QST-DIAB-VS-PORTAL | **B — Portal is the shell, the bot is the content** | A |
 | QST-DIAB-CORPUS-HOSTING | **C — Ask ADA's permission first** | A (+C) |
 | QST-DIAB-DOSE-BOUNDARY | **B — Narrow** | A |
+| QST-DIAB-DOSE-GUARD *(iteration 5)* | **D — Output gate, verbatim-only dose passages, conversation monitor** | D |
+| QST-DIAB-PORTAL-SHELL *(iteration 5)* | **A — Static shell, working assistant** | A |
 
 ### What changes in the architecture
 
@@ -268,12 +270,12 @@ Kay answered on 2026-11-14 (iteration 3). Five answers differ from my recommenda
 - **The regimen stays out of the loop.** Kay's original spec says the bot doesn't use the user's data to personalize answers. The read-back stays a fixed-template branch that runs before the loop, and there is no `read_regimen` tool. With dose-explaining passages now in the corpus, a model holding both a worked dose example and the user's own regimen is the most direct route to personalized dose advice.
 - **Labeling.** Answers are generated, so they're labeled "Based on ADA material", with links to the sections used, never "ADA says".
 - **Corpus.** Nothing from ADA is committed or deployed until ADA replies. Development uses local files in a gitignored folder. (My reading of C: local development isn't publishing.)
-- **Portal.** The portal layout stays static, and the diabetes assistant is the one working part inside it. QST-DIAB-PORTAL-SHELL checks this reading.
+- **Portal.** The portal layout stays static, and the diabetes assistant is the one working part inside it. Confirmed (QST-DIAB-PORTAL-SHELL: A). The assistant opens in a large-type, single-screen view.
 
 ### Trade-offs accepted
 
 - **"Clinician-approved content only" now applies to the sources, not to the text the user reads.** ADA's review covers the source passages. Every answer is new text.
-- **The no-dose-advice constraint has moved from structure to checks.** Before, the model couldn't write user-facing text. Now three answers compound: the model writes the text (C), it decides its own steps (orchestration B), and it reads passages explaining dose arithmetic (boundary B). This is QST-DIAB-DOSE-GUARD.
+- **The no-dose-advice constraint has moved from structure to checks.** Before, the model couldn't write user-facing text. Now three answers compound: the model writes the text (C), it decides its own steps (orchestration B), and it reads passages explaining dose arithmetic (boundary B). This was answered in QST-DIAB-DOSE-GUARD with **D**, which has three parts. First, a fixed-rule check runs on every final answer, outside the loop. Second, dose-tagged passages are shown word for word and never given to the model to rewrite. Third, a conversation monitor runs (ADR-0007). It checks answers before display in any session where a dose topic has come up, and in the background otherwise.
 - **The dose-bait set becomes a release criterion.** These are synthetic questions that try to get dose advice. Across the set, the bot must give zero dose advice. This is in addition to ADR-0006's must-catch set.
 
 ---
@@ -339,6 +341,12 @@ Kay answered on 2026-11-14 (iteration 3). Five answers differ from my recommenda
 - Contributors: Kay, Nibble (Claude Opus 5.5)
 - Changes: QST-DIAB-DOSE-GUARD gains option D (C plus a conversation monitor). The recommendation moves from C to D, with the change stated in the block. The monitor's design is in ADR-0007.
 - Outcome: Draft
+
+### Iteration 5 (2026-11-14)
+- Trigger: Kay answered QST-DIAB-DOSE-GUARD: D and QST-DIAB-PORTAL-SHELL: A
+- Contributors: Kay, Nibble (Claude Opus 5.5)
+- Changes: Both answers recorded in the Decision table. The portal reading is confirmed. The dose constraint now rests on the output gate, dose passages shown word for word, and the monitor from ADR-0007.
+- Outcome: Draft → Accepted (every question answered; QST-DIAB-ANSWER-PATH superseded)
 
 ---
 

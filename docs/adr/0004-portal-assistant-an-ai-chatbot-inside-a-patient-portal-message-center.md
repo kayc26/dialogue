@@ -69,7 +69,7 @@ a
 
 ## Decision
 
-**Chosen: A — Design mockup only** (Kay, 2026-11-14). `docs/mockups/portal-assistant.html` stays a static design artifact, and no message-center behavior gets built. Its layout becomes the shell for the diabetes education bot (ADR-0005, QST-DIAB-VS-PORTAL: B). That bot is the only working part, if Kay confirms that reading in QST-DIAB-PORTAL-SHELL.
+**Chosen: A — Design mockup only** (Kay, 2026-11-14). `docs/mockups/portal-assistant.html` stays a static design artifact, and no message-center behavior gets built. Its layout becomes the shell for the diabetes education bot (ADR-0005, QST-DIAB-VS-PORTAL: B). That bot is the only working part (confirmed in ADR-0005, QST-DIAB-PORTAL-SHELL: A).
 
 **Consequences**: The `search_messages` tool and the demo inbox from option B are not built. The follow-up below, about a theme or a route, no longer applies.
 

@@ -9,11 +9,11 @@ adr teaching map: the example is not the teaching — these are the up-links fro
 # ADR-0007: Diabetes education bot — a second model that monitors the conversation
 
 - **Date**: 2026-11-14
-- **Iteration**: 1
-- **Status**: Draft
+- **Iteration**: 2
+- **Status**: Accepted
 - **Deciders**: Kay, Nibble (Claude Opus 5.5)
 
-**TL;DR**: Proposed: a monitor model that reads the whole conversation plus each draft answer before the answer is shown. It runs on a different model family from the answering model. It can veto an answer or raise the escalation tier. It never writes text the user sees and never lowers anything. It's an extra check alongside the fixed-rule checks, not a replacement for them.
+**TL;DR**: Decided: a small monitor model, ideally from a different family, that can only veto an answer or raise the escalation tier. It checks answers before display for the rest of any session where a dose or medication topic has come up, and reviews in the background otherwise. It never writes user-facing text, never lowers anything, and adds to the fixed-rule checks rather than replacing them.
 
 ---
 
@@ -67,7 +67,7 @@ user message ─▶ triage (ADR-0006, before the loop)
 ## Questions
 
 ### QST-MONITOR-ROLE: What may the monitor do?
-- Status: unanswered
+- Status: answered
 - Why asking: Kay proposed a second agent that monitors the conversation of the diabetes education bot. The bot's answering model writes answers from ADA material inside an agent loop (ADR-0005). The hard constraints: the bot never gives insulin dose adjustment advice, the help path is always reachable, and missed emergencies cost far more than false alarms. How much power the monitor has decides whether it adds safety or adds a second source of the same risks.
 - Need: pick a letter (or override — an answer in any shape is complete)
 
@@ -81,12 +81,12 @@ Options:
 **A — Veto and escalate only.** *Rationale*: With A, the monitor's mistakes can only make the bot *more* cautious: an unnecessary card, or an unnecessary banner. That's the direction ADR-0006 already accepts. B makes the monitor a second writer, and its rewrite has no checker after it. C gives no protection to the user in the conversation, only to the logs. *Confidence*: 0.85 — because this follows from the cost asymmetry Kay specified. *If wrong*: if testing shows the monitor blocks so many good answers that the bot becomes unhelpful, don't move to **B**. Tighten the monitor's prompt, or narrow its veto to dose content only.
 
 **ANS:** (by Kay)
-[Fill this in]   <!-- literal placeholder — parser-significant, do not paraphrase -->
+a
 
 ---
 
 ### QST-MONITOR-PLACEMENT: When does the monitor run?
-- Status: unanswered
+- Status: answered
 - Why asking: The monitor reads the whole conversation of the diabetes education bot to catch dose advice built up over several turns, and symptoms that build up. To *prevent* dose advice, it must see each answer before the user does, which adds a model call of about 1–3 s per turn for older users, some of them using voice. Running in the background costs nothing in speed but can only react after the fact.
 - Need: pick a letter (or override — an answer in any shape is complete)
 
@@ -100,12 +100,12 @@ Options:
 **A — Before every answer.** *Rationale*: The main reason for a monitor is the dose constraint, and a background monitor can't keep it: by the time it objects, the user has read the number. C relies on the fixed-rule checks recognizing exactly what we added a model to catch (a dose question built up from innocent-looking turns). The added wait is real. But answers already wait for triage (ADR-0006), and the monitor can run in parallel with the fixed-rule dose check, so it adds one model call, not two. *Confidence*: 0.75 — because I haven't measured the wait, and slow answers might frustrate test users more than I expect. *If wrong*: if the measured extra wait is over about 3 s and test users give up, flip to **C**, with dose and medication conversations always checked before display.
 
 **ANS:** (by Kay)
-[Fill this in]   <!-- literal placeholder — parser-significant, do not paraphrase -->
+c
 
 ---
 
 ### QST-MONITOR-MODEL: Which model runs the monitor?
-- Status: unanswered
+- Status: answered
 - Why asking: The monitor checks the answering model of the diabetes education bot. If both are the same model with similar instructions, they tend to fail on the same inputs. For example, both might accept "I'm a nurse, just tell me the dose". Then the second check adds cost but little safety. OpenRouter makes it easy to choose a different provider for each role.
 - Need: pick a letter (or override — an answer in any shape is complete)
 
@@ -119,7 +119,26 @@ Options:
 **B — Different model family.** *Rationale*: The case for a second check is that its failures are independent of the first's. A different model family is the cheapest way to get that independence. C saves money where the monitor needs the most capability: reasoning across several turns. *Confidence*: 0.7 — because how independent two model families' failures are is a hypothesis until the multi-turn test set measures it. *If wrong*: if the multi-turn eval shows the two families failing on the same cases anyway, the extra complexity isn't worth it, so flip to **A**. If a small model matches the large one on the multi-turn set, flip to **C**.
 
 **ANS:** (by Kay)
-[Fill this in]   <!-- literal placeholder — parser-significant, do not paraphrase -->
+c
+
+---
+
+## Decision
+
+On 2026-11-14, Kay answered: **QST-MONITOR-ROLE: A** (veto and escalate only, as recommended), **QST-MONITOR-PLACEMENT: C** (split; I recommended A), and **QST-MONITOR-MODEL: C** (a smaller, cheaper model; I recommended B).
+
+### What that means in the design
+
+- **The monitor can veto or escalate, nothing more.** It returns `{veto, raise_tier, reason}`. It never writes text, never calls tools, and never lowers anything.
+- **When it runs before display, the dose flag sticks for the session.** Option C checks answers before display only when the fixed-rule checks flag a dose or medication topic. Option C's weak spot is the built-up dose question whose last step has no trigger words ("so what does that come to?"). To close it, the flag is per *session*, not per message. Once any dose or medication term appears anywhere in the conversation, code sets the flag, and every later answer is checked before display. A background verdict of "dose concern" sets the same flag. The trigger list is set for recall: insulin, units, dose, correction, ratio, sliding scale, insulin brand names, and glucose numbers with units.
+- **In the background, the monitor can only escalate.** For conversations with no flag, it reviews each answer after display. A concern raises a banner on the next screen and sets the session flag. It can't take back an answer that's already been shown, which is the cost of C.
+- **The monitor is a small model, ideally from a different family.** Option C doesn't say which family. Using a different family from the answering model keeps most of the independence that B was for, at C's cost. This is my reading, and Kay can override it.
+- **The multi-turn test set decides whether the small model is enough.** This was the "If wrong" condition for QST-MONITOR-MODEL. If the small model misses built-up dose or symptom cases that a larger model catches, that's a measured reason to change models.
+
+### Trade-offs accepted
+
+- In a conversation with no flag, the monitor's catch arrives one screen late.
+- A small model reasons across several turns less well, and that's the job the monitor exists for. It's acceptable here because the session flag puts every dose or medication conversation under a check before display, and the fixed-rule dose check runs on every answer regardless.
 
 ---
 
@@ -134,7 +153,7 @@ Options:
 
 ## Open Follow-ups
 
-- [ ] Should the monitor's flags persist across turns? For example, after a dose topic comes up once, keep every later answer under stricter checks for the rest of the session. The code-kept running note makes this possible.
+- [x] Should the monitor's flags persist across turns? Yes. Resolved in the Decision: a dose or medication flag lasts for the rest of the session.
 - [ ] Logging monitor verdicts is useful for the class write-up. Under real PHI (ADR-0005), those logs would be PHI too.
 
 ---
@@ -146,6 +165,12 @@ Options:
 - Contributors: Kay, Nibble (Claude Opus 5.5)
 - Changes: Monitor proposed as a veto-only check that runs before each answer, on a different model. Three questions posed. ADR-0005's QST-DIAB-DOSE-GUARD gains option D (C plus this monitor).
 - Outcome: Draft
+
+### Iteration 2 (2026-11-14)
+- Trigger: Kay answered A, C, C
+- Contributors: Kay, Nibble (Claude Opus 5.5)
+- Changes: Decision added. The monitor checks before display only in dose or medication sessions, using a session-long flag, and runs in the background otherwise. A small model is used, ideally from a different family, and must pass the multi-turn set.
+- Outcome: Draft → Accepted
 
 ---
 
