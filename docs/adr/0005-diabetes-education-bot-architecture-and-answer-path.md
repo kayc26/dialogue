@@ -9,7 +9,7 @@ adr teaching map: the example is not the teaching — these are the up-links fro
 # ADR-0005: Diabetes education bot — architecture and answer path
 
 - **Date**: 2026-11-14
-- **Iteration**: 3
+- **Iteration**: 4
 - **Status**: Draft
 - **Deciders**: Kay, Nibble (Claude Opus 5.5)
 
@@ -209,7 +209,7 @@ b
 ---
 
 ### QST-DIAB-DOSE-GUARD: With generated answers, what enforces "never gives insulin dose adjustment advice"?
-- Status: unanswered
+- Status: answered
 - Why asking: The hard constraint is that the bot never gives insulin dose adjustment advice. Three answers in this ADR now combine. The model writes the answers (constrained RAG, QST-WHICH-APPROACH-SHOULD-I: C). It runs its own loop of tool calls (QST-DIAB-ORCHESTRATION: B). And the corpus keeps ADA passages that explain dose arithmetic with worked examples (narrow boundary, QST-DIAB-DOSE-BOUNDARY: B). Nothing in the structure now stops the model from applying a worked example to a user's numbers ("you're at 250, so take 2 more units"), so something has to check every answer.
 - Need: pick a letter (or override — an answer in any shape is complete)
 
@@ -217,13 +217,16 @@ Options:
 - **A — Output gate**: Every final answer passes a deterministic check (insulin words near a number with units, "take N units", ratio or correction arithmetic) and a classifier call. Any hit, error, or timeout replaces the whole answer with the fixed "your care team can help with doses" card. The gate runs after the loop ends, outside it, and its deterministic part is tested in the gate (`vitest`).
 - **B — Prompt and classifier**: The system prompt forbids dose advice, and a classifier reviews each answer. No deterministic check.
 - **C — Output gate plus verbatim-only dose passages**: Everything in A, and in addition passages tagged as dose-related are never given to the model to rewrite. When one is the best match, it is shown word for word with a "Talk to your care team before changing any dose" header. Kay's narrow boundary still decides which passages stay in the corpus.
+- **D — C plus a conversation monitor** *(added in iteration 4, from Kay's proposal)*: Everything in C, plus a second model that reads the whole conversation and each draft answer before display. It can veto the draft or raise the escalation tier, but never write user-facing text. It catches dose advice built up across several turns, which per-answer checks can't see. Its design is in ADR-0007.
 
 **Recommendation**: (by Nibble, Claude Opus 5.5, 2026-11-14)
 
-**C — Output gate plus verbatim-only dose passages.** *Rationale*: A catches the obvious failures with a check we can test. C also removes the input that makes the dangerous output likely: a model that never has worked dose arithmetic in its context is unlikely to produce it. B depends on the model behaving, and a hard constraint can't rest on that. C keeps the explanatory passages that Kay's narrow boundary chose to keep, but shows them in ADA's words, not the model's. *Confidence*: 0.8 — because the risk is concrete and C costs little. What I haven't tested is how often the deterministic check fires on ordinary answers about carbs and glucose numbers. *If wrong*: if the check blocks many ordinary answers (carb counting in grams, for example), narrow its patterns to insulin units and keep **C**. If Kay wants the model to explain those passages in plain language, flip to **A**.
+**D — C plus a conversation monitor.** *Revised in iteration 4, stated explicitly*: I first recommended C, and Kay's monitor proposal exposed a gap C doesn't cover. A user can assemble a dose calculation over several turns ("what's a correction factor?" → "mine is 50, I'm at 250" → "so what's that come to?") while every single answer passes the per-answer checks. D adds the one check that sees the whole conversation. Everything below is the original case for C, which D includes. *Confidence for D*: 0.75 — lower than C's, because the monitor adds a second model to pin and test, and its benefit is unmeasured until ADR-0007's multi-turn test set runs. *If wrong for D*: if the multi-turn set shows the monitor catching nothing that C misses, drop back to **C**.
+
+*Original rationale for C*: A catches the obvious failures with a check we can test. C also removes the input that makes the dangerous output likely: a model that never has worked dose arithmetic in its context is unlikely to produce it. B depends on the model behaving, and a hard constraint can't rest on that. C keeps the explanatory passages that Kay's narrow boundary chose to keep, but shows them in ADA's words, not the model's. *Confidence*: 0.8 — because the risk is concrete and C costs little. What I haven't tested is how often the deterministic check fires on ordinary answers about carbs and glucose numbers. *If wrong*: if the check blocks many ordinary answers (carb counting in grams, for example), narrow its patterns to insulin units and keep **C**. If Kay wants the model to explain those passages in plain language, flip to **A**.
 
 **ANS:** (by Kay)
-[Fill this in]   <!-- literal placeholder — parser-significant, do not paraphrase -->
+d
 
 ---
 
@@ -330,6 +333,12 @@ Kay answered on 2026-11-14 (iteration 3). Five answers differ from my recommenda
 - Contributors: Kay, Nibble (Claude Opus 5.5)
 - Changes: Decision section added. The answer path is now constrained RAG inside the agent loop, with the safety and dose gates outside the loop. The regimen is kept out of the loop. ADA permission comes first. The narrow dose boundary applies. Two follow-ups opened: QST-DIAB-DOSE-GUARD (the three answers together move the no-dose constraint from structure to checks) and QST-DIAB-PORTAL-SHELL (reconciling this ADR's portal answer with ADR-0004's).
 - Outcome: Draft (two questions open)
+
+### Iteration 4 (2026-11-14)
+- Trigger: Kay proposed a second agent to monitor the conversation
+- Contributors: Kay, Nibble (Claude Opus 5.5)
+- Changes: QST-DIAB-DOSE-GUARD gains option D (C plus a conversation monitor). The recommendation moves from C to D, with the change stated in the block. The monitor's design is in ADR-0007.
+- Outcome: Draft
 
 ---
 
