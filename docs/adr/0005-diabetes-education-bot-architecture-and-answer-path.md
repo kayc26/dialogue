@@ -9,7 +9,7 @@ adr teaching map: the example is not the teaching — these are the up-links fro
 # ADR-0005: Diabetes education bot — architecture and answer path
 
 - **Date**: 2026-11-14
-- **Iteration**: 7
+- **Iteration**: 8
 - **Status**: Accepted
 - **Deciders**: Kay, Nibble (Claude Opus 5.5)
 
@@ -325,6 +325,25 @@ On 2026-11-14 Kay shared the actual corpus: the team's shared Google Drive folde
 - **Coverage is narrow.** The corpus is mostly nutrition plus the two rights-and-standards guides. Questions outside it get the "I don't have information on that" fallback with the nurse line. Log those misses as content requests to the team. Don't fill the gap with the model's general knowledge.
 - **Extraction needs a hand check.** The PDFs are designed layouts (InDesign/Illustrator), so the reading order `pdftotext` gives for the one-pagers is unreliable. With nine documents, checking every chunk by hand is feasible and worth doing.
 
+### Build and load (iteration 8)
+
+`npm run kb:build -- --kb-dir "<team Drive knowledgebase folder>"`, then `npm run kb:load -- --yes`. The code lives in `src/lib/kb/` (tested in the gate) and `kb/`. The manifest (`kb/manifest.json`) lists file names only. All extracted text goes to git-ignored `kb/out/`.
+
+- **Splitting**: passages of at most 180 words, each under its heading. **Headings are search hints only.** On designed layouts the detected heading is sometimes a box label (for example "Wait 15 minutes"), so citations show the **document title** and never the section.
+- **Skipped, never repaired** (Kay: "you can skip infographic"). Two kinds of passage are dropped:
+  - *Infographics extracted out of order.* The type 1 guide's Rule of 15 graphic comes out with its steps scrambled among "circle-N" labels. The type 2 guide's Rule of 15 is clean text and is kept, so the urgent content survives.
+  - *Table-cell scraps under 7 to 8 words.* "80–130 mg/dL before meals" without its "target" label reads as a statement about the patient.
+
+  As a result, the **Exercise and Nutrition** one-pager (all infographic) contributes nothing, and the type 2 guide's targets table is lost. If the team wants that table, it can go into the FAQ doc as plain text.
+- **The team FAQ** was exported from the Google Doc into git-ignored `kb/local-sources/FAQs.md`, without the author's internal note ("I didn't think it'd be appropriate to include specific brands…"), which is addressed to the team, not patients.
+- **Tags** use deliberately broad patterns: `dose_related` (22 passages), `urgent` (28), and `medication`. Every `dose_related` passage is listed in `kb/out/review.md` for a person to check.
+- **Build of 2026-11-14**: 136 passages kept and 58 skipped.
+
+**RAG, not long context (Kay asked, iteration 8).** At about 23k tokens the whole corpus would fit in one prompt, but RAG stays, for three reasons:
+1. QST-DIAB-DOSE-GUARD: D says dose-related passages are **never given to the model**. Long context would put all 22 in front of it every turn.
+2. Cost: about 4k vs. 23k input tokens per turn, which matters under the $15 budget (ADR-0012).
+3. Citations point to the few passages actually used.
+
 ---
 
 ## Trade-offs (proposed design)
@@ -406,6 +425,12 @@ On 2026-11-14 Kay shared the actual corpus: the team's shared Google Drive folde
 - Contributors: Kay, Nibble (Claude Opus 5.5)
 - Changes: Added to the inventory as a triage source only, not answer content. Its RED FLAGS box now defines URGENT (ADR-0006, iteration 5). Kay also answered QST-DIAB-FAQ-SOURCE: A: the FAQ doc is already clinician-approved, is used as-is, and is labeled "From your care team".
 - Outcome: Accepted (no questions open)
+
+### Iteration 8 (2026-11-14)
+- Trigger: Knowledge-base loader built. Kay: "you can skip infographic", "are you using rag or long context", "what do you mean internal note about brands".
+- Contributors: Kay, Nibble (Claude Opus 5.5)
+- Changes: Build and load section added: splitting, skipped infographics and table scraps, headings as hints only, FAQ export without the author's note, tag counts. RAG over long context reaffirmed, with reasons.
+- Outcome: Accepted
 
 ---
 
