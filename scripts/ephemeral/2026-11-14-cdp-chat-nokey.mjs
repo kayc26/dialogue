@@ -13,7 +13,7 @@ import { join } from 'node:path'
 const [email, shotDir] = process.argv.slice(2)
 mkdirSync(shotDir, { recursive: true })
 const chrome = spawn('/Applications/Google Chrome.app/Contents/MacOS/Google Chrome', [
-  '--headless=new', '--remote-debugging-port=9334', `--user-data-dir=${join(shotDir, 'profile')}`, '--window-size=1100,1600',
+  '--headless=new', '--remote-debugging-port=9334', `--user-data-dir=${join(shotDir, 'profile')}`, `--window-size=${process.env.WINDOW ?? '1100,1600'}`,
   '--no-first-run', '--no-default-browser-check', 'about:blank',
 ], { stdio: 'ignore' })
 // Watchdog: the first version hung silently without --no-first-run.
@@ -63,3 +63,7 @@ ws.close(); chrome.kill()
 // floor wrongly applied to "no key"), fixed so it shows only the add-your-key note. No
 // OpenRouter request was made in either run; no page errors. The first run hung without
 // --no-first-run; a 90 s watchdog now prevents silent hangs.
+
+// Also used 2026-11-14 with WINDOW=1500,950 and WINDOW=430,900 to check the mockup-style
+// chat window: desktop fine first time; phone first showed the footer squeezing the chat,
+// fixed by compact phone styles; rerun showed the Ask row and help button both clear.

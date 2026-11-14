@@ -88,6 +88,14 @@ b
 
 NOT: Kay amended B the same day: "penn color is fine". The live shell now uses Penn Blue (#011F5B) and Penn Red (#990000). Still out: Penn Medicine and PennChart **names, logos, and fonts**. The brand stays "Patient Portal (placeholder brand · demo)", and the sign-in page stays "Diabetes Education Assistant (demo)". Built from the mockup's details: Home/Menu squares, avatar pill, "Learn more", conversation search and previews, the soft message area, chat bubbles, and the "Ask" composer. Static parts say they aren't in the demo. Checked in headless Chrome at desktop and narrow widths.
 
+NOT: Kay, same day: "i want to keep the mock up's chatbox view". The assistant thread is now the mockup's chat window:
+- **Header**: thread title and the AI bar.
+- **Patient bar**: name, age, type, and latest glucose, with **My insulin**, which opens the read-back panel, and **Change patient**.
+- **Messages**: a scrolling area on the soft background, with a welcome bubble and suggestion chips. Answers appear as white bubbles with 📄 source chips and "answered from N approved passages". The patient's messages are Penn Blue bubbles.
+- **Composer**: the **Ask** bar pinned at the bottom.
+
+The portal fills the screen height, and each pane scrolls on its own. The fixed "Get help now" button keeps clear of the Ask button: there's space on its right on desktop, and on phones it sits below the Ask row. On phones the footer, subtitles, and fine print are hidden so the chat keeps its space. Checked in headless Chrome at 1500×950 and 430×900, with no errors and no OpenRouter requests.
+
 ---
 
 ## Decision
