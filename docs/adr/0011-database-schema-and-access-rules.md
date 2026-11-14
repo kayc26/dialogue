@@ -70,6 +70,12 @@ Kay: "can we call patient_tester, careteam_tester, and admin (see both)". The ta
 * `db/migrations/0002_role_names.sql` renames existing rows, adds `app.is_patient()`, `app.is_careteam()`, and `app.careteam_can_see()`, recreates the affected policies, and drops the old sponsor helpers. It was applied to `rls-dev`, then to production. Both branches now have **identical policies**: the same md5 fingerprint over every policy's command and expressions, 16 policies.
 * Tests: **24/24** with an admin user added. New cases: a care-team tester can't start a session; admin uses both views; admin can't read a kept summary.
 
+### First production member (2026-11-14)
+
+* **Kay, `admin`**, created on request through the Neon connection (`create_auth_user`) and added to `members`. Emails stay out of this public record.
+* Neon's admin-created accounts have **no password**. Sign-up is off, so the first password is set through the **reset-password email** (Neon's shared sender, `auth@mail.myneon.app`). That needs a "set your password" screen, which is part of the sign-in screen built with the bot. Until then, the account exists and has its role but can't sign in.
+* Adding later testers follows the same steps: create the account, add a `members` row with the role, and the tester sets a password from the email.
+
 **Second mutation lesson.** Widening `sessions_create` to any member didn't make "the care team can't start a session" fail. The test sent `Prefer: return=representation`, and RETURNING needs read access too, so the insert was blocked by the *read* rule, not the write rule. A real client can send `return=minimal`. Every write-denial test now uses `return=minimal`. Re-run against widened `sessions_create` and `messages_create`, exactly the two expected tests failed. Rows the weakened rules had let in were deleted, the real rules were restored, and the suite was back to 24/24. The suite also now signs in sequentially and retries on Neon Auth's 429 rate limit.
 
 ### Positive Consequences
