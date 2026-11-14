@@ -9,11 +9,11 @@ adr teaching map: the example is not the teaching — these are the up-links fro
 # ADR-0010: Diabetes education bot — how test users reach it
 
 - **Date**: 2026-11-14
-- **Iteration**: 1
+- **Iteration**: 2
 - **Status**: Draft
 - **Deciders**: Kay, Nibble (Claude Opus 5.5)
 
-**TL;DR**: Sharing the GitHub Pages link doesn't give a test user a working bot as currently designed. The knowledge base isn't on the site, they'd need an OpenRouter key, and their sessions stay in their own browser where the team can't see them. Proposed: moderated sessions on the team's device for older test users, and the shared link only for teammates.
+**TL;DR**: The bare GitHub Pages link gives a tester no knowledge base, no model key, and no way for the team to see their sessions. Since testers are only the clinical sponsor and teammates (iteration 2), proposed: the link plus a private setup kit from the team Drive (a capped key, one knowledge-base file, and session export back to Drive), starting with a guided walkthrough for the sponsor.
 
 ---
 
@@ -63,10 +63,18 @@ Options:
 - **A — Moderated sessions, plus the link for teammates**: Older test users try the bot on the team's device, with the knowledge base loaded and the key set up, while a teammate watches and takes notes. Teammates who test remotely get the knowledge-base files privately (a Drive share), import them with a file picker, and paste their own key. Nothing about the architecture changes.
 - **B — Remote link, with a capped key and session export**: Each tester gets a dedicated OpenRouter key with a low credit limit, pasted once. The knowledge base is bundled into the site, which **requires confirming ADA material may be redistributed publicly**. A "Download my session" button saves the conversation and summary as a file the tester emails back.
 - **C — Remote link, with a small backend**: A serverless function holds the key (the browser never sees it), a hosted database stores each session for the team, and the knowledge base is served only after login. Testers just open the link. This amends ADR-0001 (no backend) and ADR-0008 (one device), and it's real infrastructure to build and secure.
+- **D — Link plus a private setup kit, starting with a guided walkthrough** *(added in iteration 2, for testers who are only the clinical sponsor and teammates)*: Everyone opens the public link and sets it up once from a kit shared through the team Drive:
+  - a personal OpenRouter key with a low credit limit, one per tester so each can be revoked;
+  - **one knowledge-base bundle file** (the PDFs and FAQ already split into chunks by a team script), imported with a single file picker;
+  - a **"Download my session"** button whose file the tester drops back into the team Drive.
+
+  The sponsor's first session is a guided video walkthrough of the six demo patients, using both the patient and the care-team views. After that, the sponsor explores alone. No backend, and the ADA material never touches the public site.
 
 **Recommendation**: (by Nibble, Claude Opus 5.5, 2026-11-14)
 
-**A — Moderated sessions, plus the link for teammates.** *Rationale*: For the people this bot is designed for, moderated testing is the better method anyway. Asking an older, low-tech user to paste an API key or email back a file tests the setup, not the bot. And watching where they hesitate is the finding you're after. A needs no infrastructure, keeps the ADA material off the public site, and fits the one-device design already decided. B depends on a redistribution permission nobody has confirmed. C is a project of its own, and once real testers are typing, it holds data that drifts toward PHI. *Confidence*: 0.7 — because if the course requires unmoderated remote testing at scale, A can't deliver it. *If wrong*: if testers must be remote and unmoderated, flip to **B** once ADA redistribution is confirmed, or to **C** if it isn't.
+**D — Link plus a private setup kit, starting with a guided walkthrough.** *Revised in iteration 2, stated explicitly*: Kay narrowed the testers to the clinical sponsor and teammates, with no older test users. That removes A's main reason: watching low-tech users hesitate. It also makes remote access practical, because every tester already has access to the team Drive, where the knowledge base lives. D keeps every earlier decision intact: no backend, the key stays in the browser, one device per tester, and the corpus stays private. Sessions still come back to the team, through Drive. The guided first session matters because the sponsor's real job is clinical review, not using the app: signing off the Clinical assumptions log (ADR-0006), judging whether the care-team summaries are useful (ADR-0008), and checking that the demo regimens and traces are plausible (ADR-0009). A walkthrough gets that done in one sitting. *Confidence*: 0.75 — because it assumes the sponsor can get through a one-time setup (paste a key, pick a file). If that's too much, the walkthrough alone still works. *If wrong*: if the sponsor won't do any setup, keep only the walkthrough, with Kay driving and sharing the screen, which is **A** for the sponsor. If more testers join from outside the team, revisit **B** or **C**.
+
+*Original rationale for A, which applied when testers included older adults*: For the people this bot is designed for, moderated testing is the better method anyway. Asking an older, low-tech user to paste an API key or email back a file tests the setup, not the bot. And watching where they hesitate is the finding you're after. A needs no infrastructure, keeps the ADA material off the public site, and fits the one-device design already decided. B depends on a redistribution permission nobody has confirmed. C is a project of its own, and once real testers are typing, it holds data that drifts toward PHI. *Confidence*: 0.7 — because if the course requires unmoderated remote testing at scale, A can't deliver it. *If wrong*: if testers must be remote and unmoderated, flip to **B** once ADA redistribution is confirmed, or to **C** if it isn't.
 
 **ANS:** (by Kay)
 [Fill this in]   <!-- literal placeholder — parser-significant, do not paraphrase -->
@@ -93,6 +101,12 @@ Options:
 - Trigger: Kay asked how sharing the GitHub Pages link works for a test user
 - Contributors: Kay, Nibble (Claude Opus 5.5)
 - Changes: Mapped what a remote tester gets, and posed QST-TEST-ACCESS.
+- Outcome: Draft
+
+### Iteration 2 (2026-11-14)
+- Trigger: Kay: testing is only with the clinical sponsor and teammates.
+- Contributors: Kay, Nibble (Claude Opus 5.5)
+- Changes: Option D added (link, private setup kit through the team Drive, guided first session for the sponsor). The recommendation moves from A to D, with the reason stated. With no older adults being recruited, the IRB concern mostly falls away, because this is an internal design review. Still confirm with course staff.
 - Outcome: Draft
 
 ---
