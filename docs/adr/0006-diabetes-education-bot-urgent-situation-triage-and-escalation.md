@@ -9,7 +9,7 @@ adr teaching map: the example is not the teaching — these are the up-links fro
 # ADR-0006: Diabetes education bot — urgent-situation triage and escalation
 
 - **Date**: 2026-11-14
-- **Iteration**: 4
+- **Iteration**: 5
 - **Status**: Accepted
 - **Deciders**: Kay, Nibble (Claude Opus 5.5)
 
@@ -57,7 +57,7 @@ adr teaching map: the example is not the teaching — these are the up-links fro
 
 | Layer | Runs | Catches | On failure |
 |---|---|---|---|
-| **Rules** (local, synchronous, tested in the gate) | first, instantly | a symptom list including misspellings and everyday phrasing ("feel funny", "can't think straight", "won't wake up", "can't keep anything down", "fruity breath", "breathing hard"); glucose numbers with units (<70, <54, >300, a "HI" meter reading); ketones ("moderate", "large"); distress phrases | can't fail at runtime |
+| **Rules** (local, synchronous, tested in the gate) | first, instantly | a symptom list including misspellings and everyday phrasing ("feel funny", "can't think straight", "won't wake up", "can't keep anything down", "fruity breath", "breathing hard"); glucose numbers with units (<70, <54, >300, a "HI" meter reading; *thresholds superseded in iteration 5, see "Urgent criteria"*); ketones ("moderate", "large"); distress phrases | can't fail at runtime |
 | **Model classifier** (pinned model and provider, temperature 0, JSON schema) | in parallel | paraphrase, indirect wording, reports about someone else ("my husband is acting strange"), garbled input | timeout (~4 s), error, or invalid JSON counts as "check-in" (see tiers), never as "none" |
 
 The two are **OR-combined: the higher tier wins.** The one exception is QST-TRIAGE-ASKING-VS-HAVING, which lets the model *soften* a rules hit by one step, but never to "none".
@@ -159,7 +159,7 @@ b
 ---
 
 ### QST-TRIAGE-HIGH-THRESHOLD: At what glucose reading does a high number trigger escalation?
-- Status: unanswered
+- Status: answered — override, not a letter: Kay answered in chat by pointing to the clinic's red-flag list (>350 for URGENT); recorded by Nibble
 - Why asking: The bot's rules layer escalates glucose readings above 300 mg/dL (iteration 1). The team's FAQ in the knowledge base (ADR-0005, iteration 6) uses **250 mg/dL** as its "high blood sugar" point. It also lists when to seek care immediately: blood sugar that stays very high, vomiting, stomach pain, trouble breathing, confusion, or positive ketones. If triage and content use different numbers, a user who reports 270 gets the FAQ's high-sugar advice but no nurse-line banner. Missed escalations cost far more than false alarms.
 - Need: pick a letter (or override — an answer in any shape is complete)
 
@@ -171,6 +171,45 @@ Options:
 **Recommendation**: (by Nibble, Claude Opus 5.5, 2026-11-14)
 
 **A — Use the team's numbers.** *Rationale*: The rules that trigger escalation should come from the same source as the content the bot shows, so they can't disagree. Since missed escalations cost more than false alarms, the lower threshold wins. The FAQ's own list of warning signs gives an EMERGENCY rule already written in the team's words. *Confidence*: 0.7 — because the clinical threshold is the team's call, and a clinician might choose a different number. *If wrong*: if test users between 250 and 300 see so many banners that they start ignoring them, flip to **B**.
+
+**ANS:** (by Kay, 2026-11-14)
+"We can use the first box to define 'urgent' requests." The first box is the RED FLAGS list in the clinic's call-triage workflow, and its high-glucose criterion is severe hyperglycemia above 350 mg/dL.
+
+---
+
+NOT: The answer sets URGENT at >350. It doesn't say what the 250–350 band gets. The **Urgent criteria** section below puts that band at CHECK-IN, showing the FAQ's high-sugar card, and Kay can override that.
+
+### QST-TRIAGE-SEVERE-HYPO: What counts as "severe hypoglycemia", and what does an ordinary low get?
+- Status: unanswered
+- Why asking: Kay set URGENT to mean the clinic's red flags, and one of them is "severe hypoglycemia or more than 2 episodes in 48 hours". The workflow doesn't define "severe". ADA's levels are: level 1, under 70 mg/dL; level 2, under 54; level 3, a severe event in which the person needs someone else's help. The rules from iteration 1 put any reading under 70 at URGENT. Following the red-flag list strictly moves an ordinary low down to CHECK-IN. The user would still see the Rule of 15 card, but with the help buttons inline instead of a banner. Missed escalations cost far more than false alarms.
+- Need: pick a letter (or override — an answer in any shape is complete)
+
+Options:
+- **A — Severe means under 54, or needing help**: Levels 2 and 3 count as severe and trigger URGENT. Needing help *right now* (can't treat it alone, confused, can't swallow) triggers EMERGENCY. A single low of 54–69 gets CHECK-IN, with the Rule of 15 card shown first.
+- **B — Severe means needing help only**: Only level 3 counts as severe (URGENT if it was reported after the fact, EMERGENCY if it's happening now). Every reading of 54–69, and below 54 if the user is handling it, gets CHECK-IN with the Rule of 15 card.
+- **C — Every low is URGENT**: Keep iteration 1's rule. Any reading under 70 triggers URGENT, which is stricter than the clinic's list.
+
+**Recommendation**: (by Nibble, Claude Opus 5.5, 2026-11-14)
+
+**A — Severe means under 54, or needing help.** *Rationale*: A reading under 54 is the point at which ADA calls a low clinically significant, and for older users (slower to notice symptoms, more fall risk) a missed escalation costs more. A is the reading of an undefined term that is cautious without being alarmist. C goes back against Kay's explicit choice to use the clinic's list, and B could leave a user at 45 handling it alone with no banner. Either way, the Rule of 15 card is shown first. *Confidence*: 0.65 — because the clinic's own definition of "severe" is what should decide this, and the document doesn't give it. *If wrong*: if a clinician on the team says the clinic means level 3 only, flip to **B**.
+
+**ANS:** (by Kay)
+[Fill this in]   <!-- literal placeholder — parser-significant, do not paraphrase -->
+
+---
+
+### QST-TRIAGE-PROFILE-FLAGS: May the rules layer use facts in the stored profile to raise urgency?
+- Status: unanswered
+- Why asking: Three of the clinic's red flags are facts about the patient, not about the message: "history of DKA" (combined with high glucose), pregnancy, and insulin pump use (which makes "pump failure" possible). Users often won't mention these in a message. The synthetic profile already holds the insulin regimen, which is read back only and never shown to the model (ADR-0005). The question is whether deterministic code (not the model) may read a few profile flags, only to *raise* urgency.
+- Need: pick a letter (or override — an answer in any shape is complete)
+
+Options:
+- **A — Message only**: Triage sees only what the user says. "History of DKA" and pregnancy count only if the user mentions them in the conversation.
+- **B — Profile flags, raise-only, code-only**: The synthetic profile gains `history_of_dka`, `pregnant`, and `uses_pump`. The rules layer (code, not the model) reads them. A high reading from a user with a DKA history triggers URGENT, any glucose concern from a pregnant user triggers URGENT, and pump words carry more weight for pump users. The flags can only raise the tier, and the model never sees them.
+
+**Recommendation**: (by Nibble, Claude Opus 5.5, 2026-11-14)
+
+**B — Profile flags, raise-only, code-only.** *Rationale*: These red flags depend on who is asking, and older users are the least likely to volunteer their history in a short message. Three yes/no facts, read by code that can only raise urgency, don't break the spirit of "read-back only": the model still never reasons over user data. This also differs from QST-TRIAGE-CGM (answered A), where the problem was a static synthetic reading posing as current. A history of DKA doesn't go out of date. *Confidence*: 0.6 — because it extends what the stored profile is used for, beyond what Kay originally specified. *If wrong*: if Kay wants the profile to stay strictly display-only, flip to **A**, and the bot asks "Have you ever had DKA?" when a reading is high.
 
 **ANS:** (by Kay)
 [Fill this in]   <!-- literal placeholder — parser-significant, do not paraphrase -->
@@ -187,6 +226,19 @@ On 2026-11-14 Kay answered all four questions, each as recommended:
 - **QST-TRIAGE-DEMO-DIAL: B.** Demo mode is on by default. The call buttons show the real numbers but open a "this is a demo" dialog instead of dialing.
 
 The proposed design stands, with one placement fixed by ADR-0005's switch to an agent loop: triage runs on the user's message **before the loop starts**, not as a tool inside it. **988 has been dropped** (Kay, iteration 4). The help panel has two rows, 911 and the nurse line, and the DISTRESS tier uses them.
+
+### Urgent criteria from the clinic's triage workflow (iteration 5)
+
+Kay: "We can use the first box to define 'urgent' requests." The source is the clinic's call-triage workflow in the team folder. Its first decision box, **RED FLAGS**, sends a call to an attending for same-day advice. That's the clinic's equivalent of this bot's URGENT tier, where the nurse line is the same-day contact. The workflow's other boxes (high-touch criteria, visit scheduling, staff routing) are internal clinic operations. They stay out of this public repo, and out of the bot's answer corpus.
+
+| Tier | Criteria |
+|---|---|
+| **EMERGENCY** (911 first) | Unchanged from iteration 1, and limited to danger *happening now*: can't be woken, a seizure, a low the person can't treat alone, DKA signs (vomiting or can't keep fluids down, trouble breathing, confusion, fruity breath), chest pain, intent to self-harm. A red flag combined with any of these also triggers EMERGENCY. |
+| **URGENT** (nurse line, same day) = **the clinic's red flags** | Glucose above 350 mg/dL. High glucose with ketones, or with a history of DKA (QST-TRIAGE-PROFILE-FLAGS). Severe hypoglycemia, or more than 2 lows in 48 hours (QST-TRIAGE-SEVERE-HYPO). Insulin pump failure (alarms, occlusion, "pump stopped", "site came out"). Pregnancy. |
+| **CHECK-IN** (help buttons inline, with the matching approved card) | 250–350 mg/dL, showing the team FAQ's high-sugar card (my reading; Kay can override). Lows that don't meet the red-flag definition, showing the Rule of 15 card first. |
+
+- **"More than 2 lows in 48 hours" comes from what the user says**, for example "third time I've gone low since yesterday". Matching on that is mostly the model classifier's job, with a rules pattern for counts. Stored CGM data could compute it exactly, but QST-TRIAGE-CGM was answered A (read-back only), so for now it isn't used. That's a known gap, recorded here.
+- **The thresholds now come from three sources.** The FAQ says 250, the clinic says 350, and iteration 1 said 300. The table settles it: 350 is URGENT (Kay's answer), and 250–350 is CHECK-IN, so a user in that range still sees help and the FAQ card. The rules row in the triage table above is superseded by this table.
 
 ---
 
@@ -232,6 +284,12 @@ The proposed design stands, with one placement fixed by ADR-0005's switch to an 
 - Contributors: Kay, Nibble (Claude Opus 5.5)
 - Changes: 988 removed from the help panel and the DISTRESS tier. QST-TRIAGE-HIGH-THRESHOLD opened, because the team's FAQ uses 250 mg/dL and these rules used 300. The urgent cards now have a source: the Rule of 15 (both ADA guides), glucagon (the type 1 guide), and the FAQ's high-sugar answer and warning signs.
 - Outcome: Accepted (one question open)
+
+### Iteration 5 (2026-11-14)
+- Trigger: Kay added the clinic's call-triage workflow to the team folder: "We can use the first box to define 'urgent' requests."
+- Contributors: Kay, Nibble (Claude Opus 5.5)
+- Changes: URGENT is now defined as the clinic's RED FLAGS: >350, high glucose with ketones or a DKA history, severe or repeated lows, pump failure, and pregnancy. QST-TRIAGE-HIGH-THRESHOLD is recorded as answered by override, and 250–350 is mapped to CHECK-IN. Two questions opened: QST-TRIAGE-SEVERE-HYPO ("severe" isn't defined) and QST-TRIAGE-PROFILE-FLAGS (three red flags are facts about the patient). The clinic's internal routing and staff scripts are kept out of this public record.
+- Outcome: Accepted (two questions open)
 
 ---
 

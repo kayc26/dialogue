@@ -9,7 +9,7 @@ adr teaching map: the example is not the teaching — these are the up-links fro
 # ADR-0005: Diabetes education bot — architecture and answer path
 
 - **Date**: 2026-11-14
-- **Iteration**: 6
+- **Iteration**: 7
 - **Status**: Accepted
 - **Deciders**: Kay, Nibble (Claude Opus 5.5)
 
@@ -250,7 +250,7 @@ a
 ---
 
 ### QST-DIAB-FAQ-SOURCE: Can the team-written FAQ doc be used as approved content?
-- Status: unanswered
+- Status: answered
 - Why asking: The knowledge base Kay shared (iteration 6) has eight ADA PDFs and one **team-written** Google Doc, "FAQs", with 13 questions and answers in about 650 words. ADA's review doesn't cover the doc. The project requires clinician-approved content. Some of the doc's answers matter for safety: what to do above 250 mg/dL, when to seek care (vomiting, stomach pain, trouble breathing, confusion, positive ketones), when to take mealtime insulin, and correction insulin "if you have not taken insulin in the last 4 hours". It's also the most useful source for this audience: short, plain-language answers to the questions people actually ask.
 - Need: pick a letter (or override — an answer in any shape is complete), and say who wrote it
 
@@ -264,7 +264,7 @@ Options:
 **B — Use after review**, or **A** if a clinician already wrote or reviewed it. *Rationale*: The content fills the nutrition questions the ADA one-pagers cover only visually, in wording that suits this audience, so leaving it out (C) loses the best-fitting material. But its high-sugar answer gives insulin guidance (correction insulin and the 4-hour rule). Under the narrow dose boundary that passage gets tagged dose-related either way, so it's shown word for word and never rewritten (QST-DIAB-DOSE-GUARD: D). *Confidence*: 0.6 — because the answer depends on facts only Kay knows: who wrote it and who has seen it. *If wrong*: if the author is a clinician, flip to **A**. If no one can review it before the demo, flip to **C**.
 
 **ANS:** (by Kay)
-[Fill this in]   <!-- literal placeholder — parser-significant, do not paraphrase -->
+a
 
 ---
 
@@ -313,7 +313,8 @@ On 2026-11-14 Kay shared the actual corpus: the team's shared Google Drive folde
 | Portion Size vs. Serving Size | ADA (by branding; not confirmed in the text) | ~570 | |
 | Food & Nutrition FAQs | ADA (by branding; not confirmed in the text) | ~500 | |
 | Exercise and Nutrition (InSIGHT, patient version) | ADA | ~190 | |
-| FAQs (Google Doc) | **Team-written** | ~650 | 13 Q&As. See QST-DIAB-FAQ-SOURCE |
+| FAQs (Google Doc) | **Team-written, clinician-approved** (QST-DIAB-FAQ-SOURCE: A) | ~650 | 13 Q&As. Answers drawn from it are labeled "From your care team", not "ADA". The correction-insulin passage is tagged dose-related and shown word for word |
+| Clinic call-triage workflow (docx, added in iteration 7) | Clinic-internal | — | **Not answer content.** Its RED FLAGS box defines ADR-0006's URGENT tier. The rest (staff routing, scripts, scheduling) is internal operations: kept out of the corpus the bot answers from, and out of this public repo |
 
 **What this changes:**
 
@@ -399,6 +400,12 @@ On 2026-11-14 Kay shared the actual corpus: the team's shared Google Drive folde
 - Contributors: Kay, Nibble (Claude Opus 5.5)
 - Changes: Knowledge base section added, with an inventory of eight ADA PDFs and one team-written FAQ doc (~17k words). Corrected iteration 2's assumption that the corpus was ADA's entire library. Hosting stays local, with no corpus text in git or on Pages. Urgent cards and dose tagging are now tied to specific passages. QST-DIAB-FAQ-SOURCE opened about the team-written doc. ADR-0006 got its threshold question from the same review.
 - Outcome: Accepted (one question open)
+
+### Iteration 7 (2026-11-14)
+- Trigger: Kay added the clinic's call-triage workflow to the knowledge base folder.
+- Contributors: Kay, Nibble (Claude Opus 5.5)
+- Changes: Added to the inventory as a triage source only, not answer content. Its RED FLAGS box now defines URGENT (ADR-0006, iteration 5). Kay also answered QST-DIAB-FAQ-SOURCE: A: the FAQ doc is already clinician-approved, is used as-is, and is labeled "From your care team".
+- Outcome: Accepted (no questions open)
 
 ---
 
