@@ -9,7 +9,7 @@ adr teaching map: the example is not the teaching — these are the up-links fro
 # ADR-0005: Diabetes education bot — architecture and answer path
 
 - **Date**: 2026-11-14
-- **Iteration**: 9
+- **Iteration**: 10
 - **Status**: Accepted
 - **Deciders**: Kay, Nibble (Claude Opus 5.5)
 
@@ -290,6 +290,7 @@ Kay answered on 2026-11-14 (iteration 3). Five answers differ from my recommenda
 - **Labeling.** Answers are generated, so they're labeled "Based on ADA material", with links to the sections used, never "ADA says".
 - **Corpus.** Nothing from ADA is committed or deployed until ADA replies. Development uses local files in a gitignored folder. (My reading of C: local development isn't publishing.)
 - **Portal.** The portal layout stays static, and the diabetes assistant is the one working part inside it. Confirmed (QST-DIAB-PORTAL-SHELL: A). The assistant opens in a large-type, single-screen view.
+  - *Built late (iteration 10).* The first build of the signed-in screens left the shell out. Kay caught it: "i thought the interface would be similar with what you built in the mockup". It's now in `src/app/HomeScreen.vue`, following `docs/mockups/portal-assistant.html`: a top bar with the placeholder brand; the Message Center (only "Ask the assistant" and, for admins, "Care team inbox" work); Conversations with the Diabetes Assistant pinned; and the assistant thread with the AI disclaimer bar. Static parts say "isn't included in this demo" when clicked. Below 1100 px, only the assistant shows, with admin tabs for the two views. The mockup's message-search features (searching, reply drafts) stay out, per ADR-0004: A.
 
 ### Trade-offs accepted
 

@@ -21,7 +21,7 @@ mkdirSync(shotDir, { recursive: true })
 const CHROME = '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome'
 const chrome = spawn(CHROME, [
   '--headless=new', '--remote-debugging-port=9333', `--user-data-dir=${join(shotDir, 'profile')}`,
-  '--window-size=1100,1300', '--no-first-run', 'about:blank',
+  `--window-size=${process.env.WINDOW ?? '1100,1300'}`, '--no-first-run', 'about:blank',
 ], { stdio: 'ignore' })
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms))
