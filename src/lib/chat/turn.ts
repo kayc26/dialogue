@@ -16,7 +16,7 @@ import type { ChatMessage, ToolSpec } from '../types'
 import { combineTriage, parseClassifier, type CombinedTriage } from './combine'
 import { checkAnswer, stripCitations } from './guard'
 import { ANSWER_SYSTEM, ANSWER_TOOL_ROUNDS } from './prompts'
-import type { Hit, Index, KbPassage } from './retrieve'
+import { direction, type Hit, type Index, type KbPassage } from './retrieve'
 import { maxTier, triageRules, type Profile, type Tier } from './triage'
 
 export type Card =
@@ -94,8 +94,14 @@ export function parseMonitor(text: string | null): MonitorVerdict | null {
 }
 
 /** The approved passage to show on an escalation: lows get the low card, highs the high one. */
+/** The approved "what to do" passage for a red flag, only when the message says which
+ *  way the problem points (a reading, or words like "low" / "high"). Without that,
+ *  the escalation card stands alone: a check-in that came from a failed classifier on
+ *  "What fruit can I eat?" must not arrive with the Rule of 15 for lows attached. */
 function urgentPassage(index: Index, message: string, glucose: number | null): KbPassage | null {
-  const q = glucose !== null && glucose > 180 ? `${message} high blood sugar ketones` : `${message} low blood glucose treat`
+  const dir = glucose !== null ? (glucose > 180 ? 'high' : glucose < 70 ? 'low' : null) : direction(message)
+  if (!dir) return null
+  const q = dir === 'high' ? `${message} high blood sugar ketones` : `${message} low blood glucose treat`
   return index.search(q, 12).map((h) => h.passage).find((p) => p.tags.includes('urgent')) ?? null
 }
 

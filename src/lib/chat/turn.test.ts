@@ -155,6 +155,22 @@ describe('Regression tests', () => {
     expect(o.blockedDraft).toContain("I don't have information")
   })
 
+  it('a failed classifier on "What fruit can I eat?" shows the check-in card without the treat-a-low passage (Kay, 2026-11-14)', async () => {
+    // Bug: the classifier failed (logged as classifier_unavailable), so the turn
+    // became a check-in; with no glucose number, the urgent passage was searched as
+    // "<message> low blood glucose treat", which attached the Rule of 15 for lows to
+    // a question about fruit. Fixed: the urgent passage needs a direction (a reading,
+    // or words like low/high); otherwise the check-in card stands alone.
+    const { m } = models({ classify: new Error('timeout'), answers: ['Berries are good. [kb:fruit]'] })
+    const o = await turn('What fruit can I eat?', m)
+    expect(o.tier).toBe('checkin')
+    expect(o.cards[0]).toMatchObject({ kind: 'escalation', tier: 'checkin' })
+    expect(o.cards.some((c) => c.kind === 'passage' && c.passage.id === 'hypo')).toBe(false)
+    // a check-in that does name a low still gets the low passage
+    const low = await turn('I feel low and shaky', models({ classify: cls('checkin') }).m)
+    expect(low.cards).toContainEqual({ kind: 'passage', why: 'urgent', passage: expect.objectContaining({ id: 'hypo' }) })
+  })
+
   it('an empty model reply is its own guard reason, not "no citation"', async () => {
     // All three of Kay's answers on 2026-11-14 were logged as no_citation with no
     // draft kept, so an empty reply and an uncited one looked the same.

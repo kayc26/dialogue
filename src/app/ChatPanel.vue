@@ -129,6 +129,7 @@ async function send(): Promise<void> {
     outcome = rulesOnly(message, false)
     note = 'To get answers, add your OpenRouter key (below the Ask box). Help is always available with the red button.'
   } else {
+    meter.notes = [] // this turn's model calls, for the care-team log
     try {
       outcome = await runTurn({
         message, history, profile: props.profile, index: index.value, doseSession,
@@ -153,7 +154,7 @@ async function send(): Promise<void> {
   busy.value = false
   await scrollDown()
 
-  log.record(message, outcome).catch(() => {
+  log.record(message, outcome, apiKey.value ? [...(meter.notes ?? [])] : []).catch(() => {
     saveProblem.value = "This conversation couldn't be saved. You can keep chatting."
   })
 

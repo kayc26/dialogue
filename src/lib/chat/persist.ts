@@ -4,6 +4,7 @@
 // Saving must never block the patient: failures are reported, chatting continues.
 
 import type { DataClient } from '../neon/data'
+import type { CallNote } from './models'
 import type { Card, TurnOutcome } from './turn'
 
 /** A plain-text record of what the patient was shown this turn (stored as the reply). */
@@ -38,7 +39,7 @@ export class ConversationLog {
     return this.sessionId
   }
 
-  async record(message: string, outcome: TurnOutcome): Promise<void> {
+  async record(message: string, outcome: TurnOutcome, calls: CallNote[] = []): Promise<void> {
     if (!this.sessionId) {
       const [s] = await this.data.post<{ id: string }>('sessions', { patient_id: this.patientId })
       this.sessionId = s.id
@@ -63,6 +64,7 @@ export class ConversationLog {
         monitor: outcome.monitor,
         monitor_verdict: outcome.monitorVerdict,
         model_calls: outcome.modelCalls,
+        calls, // per-call finish reason, tokens, timing (models.ts CallNote)
       },
     })
   }
