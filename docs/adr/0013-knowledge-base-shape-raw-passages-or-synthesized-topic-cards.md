@@ -9,11 +9,11 @@ adr teaching map: the example is not the teaching — these are the up-links fro
 # ADR-0013: Knowledge base shape — raw passages or synthesized topic cards
 
 - **Date**: 2026-11-14
-- **Iteration**: 1
-- **Status**: Draft
+- **Iteration**: 2
+- **Status**: Accepted
 - **Deciders**: Kay, Nibble (Claude Opus 5.5)
 
-**TL;DR**: Open. The question: keep answering from 136 passages cut straight from the ADA documents, or add an offline step that groups the material by topic into plain-language "topic cards" a clinician approves. Recommended: C — cards for the common topics, with raw passages kept for everything else.
+**TL;DR**: Decided (Kay: C, A). An offline step drafts plain-language topic cards from the ADA library for the 20–30 common topics, and Kay's clinical sponsor approves every card before it can be searched. The assistant searches approved cards first and falls back to the raw passages for anything else.
 
 ---
 
@@ -53,7 +53,7 @@ What the first live test showed (details under Supporting Materials):
 ## Questions
 
 ### QST-KB-SHAPE: What should the assistant answer from?
-- Status: unanswered
+- Status: answered
 - Why asking: Today the assistant searches 136 passages cut straight from the source PDFs: 99 from the two ADA "Your Rights and Care Standards" guides, 37 from the plate, sweeteners, portion, nutrition and liver leaflets, and 13 care-team FAQs. The misfires in the first live test came from those raw chunks (stale headings, two topics per chunk). The FAQs, shaped as one question and one answer, behaved best. The alternative is an offline step that groups the material by topic and writes plain-language cards. Those cards would be new medical text, so they need a clinician's approval (see QST-KB-REVIEW).
 - Need: pick a letter (or override — an answer in any shape is complete)
 
@@ -79,12 +79,12 @@ Options:
 - If logged questions show most turns falling past the cards to raw passages, the card list is wrong. Grow it toward **B** rather than abandon it.
 
 **ANS:** (by Kay)
-[Fill this in]   <!-- literal placeholder — parser-significant, do not paraphrase -->
+c
 
 ---
 
 ### QST-KB-REVIEW: If we write topic cards, who approves them before patients see them?
-- Status: unanswered
+- Status: answered
 - Why asking: This only matters if the answer to QST-KB-SHAPE is B or C. Cards are model-written medical text. The original brief requires clinician-approved education content, and raw ADA text met that by source; a card can't. The approval rule decides whether synthesis is a safety gain (written once, checked once) or a quieter version of the runtime risk.
 - Need: pick a letter (or override — an answer in any shape is complete)
 
@@ -103,7 +103,7 @@ Options:
 *Confidence*: 0.8 — because the requirement is explicit; the only real uncertainty is the sponsor's time. *If wrong*: if the sponsor says spot-checking a sample is how their clinic already reviews patient education material, flip to **B**, and record that norm here.
 
 **ANS:** (by Kay)
-[Fill this in]   <!-- literal placeholder — parser-significant, do not paraphrase -->
+a
 
 ---
 
@@ -135,7 +135,22 @@ Cost: drafting about 25 cards with Haiku 5.5 over about 60k source tokens is aro
 
 ## Decision
 
-Pending Kay's answers to QST-KB-SHAPE and QST-KB-REVIEW.
+### Chosen: C (topic cards for common questions, passages for the rest), with A (the sponsor approves every card)
+
+**Rationale**: as in the two Recommendations. The first live test's misfires came from raw chunks, and the FAQ-shaped passages worked. Capping cards at the common topics keeps review to one sitting. The raw-passage fallback keeps Kay's earlier "entire ADA material" coverage (ADR-0005).
+
+**What this means in the design**:
+1. **Cards are data with an approval state.**
+   - Each card has: topic, plain-language text, source passage ids, `status` (draft or approved), `approved_by`, and `approved_at`.
+   - Search sees approved cards only.
+   - Editing a card's text sends it back to draft.
+   - Card text is ADA-derived, so it stays out of the public repo, like `kb/out/`.
+2. **Drafting is offline, and numbers are checked mechanically.** `kb:synthesize` drafts one card per topic from that topic's passages, then rejects any card with a number that doesn't appear in its sources (the answer guard's rule, applied at build time).
+3. **Review is a document the sponsor reads.** `kb:review` writes each card beside its source passages, and approvals are recorded per card.
+4. **Retrieval goes cards first.** The assistant searches approved cards, then raw passages. Card ids are cited the same way passage ids are.
+5. **Dose content keeps its rules.** No card gives dose instructions. Dose-tagged passages stay verbatim-only (ADR-0005), and a topic whose sources are mostly dose-tagged gets no card.
+
+**Trade-offs accepted**: cards depend on the sponsor's time, and nothing goes live until they approve it. Until then, the assistant answers from raw passages as it does today.
 
 ---
 
@@ -147,6 +162,16 @@ Pending Kay's answers to QST-KB-SHAPE and QST-KB-REVIEW.
 
 ---
 
+## Action Items
+
+- [ ] Draft the topic list (20–30) from the care-team FAQ questions, the clinic's triage workflow, and the first testers' questions; Kay to confirm the list. Owner: Nibble, then Kay
+- [ ] Build `kb:synthesize`, with its number check, and `kb:review`; add a cards table (draft or approved, approver, date) with search limited to approved cards. Owner: Nibble
+- [ ] Live drafting run (about $0.05, Haiku 5.5): needs Kay's OK first (ADR-0012). Owner: Kay to approve, then Nibble
+- [ ] Sponsor reviews and approves cards. Owner: Kay's clinical sponsor
+- [ ] Fix TD-5 (stale chunk headings): the raw passages remain the fallback. Owner: Nibble
+
+---
+
 ## Iterations
 
 ### Iteration 1 (2026-11-14)
@@ -154,6 +179,12 @@ Pending Kay's answers to QST-KB-SHAPE and QST-KB-REVIEW.
 - Contributors: Kay, Nibble (Claude Opus 5.5)
 - Changes: Options drawn up as raw (A), cards only (B), cards plus raw fallback (C), and tags only (D). Review rule asked separately. Evidence from the first live test recorded.
 - Outcome: Draft (two questions open)
+
+### Iteration 2 (2026-11-14)
+- Trigger: Kay answered QST-KB-SHAPE: C and QST-KB-REVIEW: A
+- Contributors: Kay, Nibble (Claude Opus 5.5)
+- Changes: Decision filled in: cards as data with an approval state; offline drafting with a build-time number check; a review document; cards-first retrieval with raw fallback; dose rules unchanged. Action items listed.
+- Outcome: Draft → Accepted
 
 ---
 

@@ -9,7 +9,7 @@ adr teaching map: the example is not the teaching — these are the up-links fro
 # ADR-0004: Portal assistant — an AI chatbot inside a patient-portal message center
 
 - **Date**: 2026-11-12
-- **Iteration**: 2
+- **Iteration**: 3
 - **Status**: Accepted
 - **Deciders**: Kay, Nibble (Claude Opus 5.5)
 
@@ -111,7 +111,7 @@ Decided by Kay: **the Diabetes Assistant is the "Non-urgent medical question" pa
 - The fixed-rule triage still runs on every message: a person who confirms "not urgent" can still be wrong.
 
 ### QST-PORTAL-SHORTCUT: Keep a one-tap shortcut to the assistant, or only the real portal's four-step path?
-- Status: unanswered
+- Status: answered
 - Why asking: The real portal reaches a non-urgent medical question in four steps (Send a message → Contact your care team → disclaimer → question type). The original brief for the diabetes assistant (ADR-0005) asks for **minimal navigation depth** for older, low-tech-literacy users. The earlier mockup had a direct "✦ Ask the assistant" button.
 - Need: pick a letter (or override — an answer in any shape is complete)
 
@@ -125,9 +125,11 @@ Options:
 **B — Real path plus a shortcut.** *Rationale*: B shows the sponsor exactly where the assistant would sit in the real portal, and still meets the minimal-depth requirement for the users the brief is about. The shortcut lands on the disclaimer, so the "not for emergencies" step always happens. *Confidence*: 0.7 — because whether a real portal would allow a shortcut button is the clinic's call, not ours. *If wrong*: if the sponsor wants a demo identical to the portal, flip to **A**. If user testing shows the four steps lose people, the shortcut is already there.
 
 **ANS:** (by Kay)
-[Fill this in]   <!-- literal placeholder — parser-significant, do not paraphrase -->
+c
 
 ---
+
+NOT: Built (2026-11-14). The Message Center has one button, "✦ Ask a non-urgent question". It opens the Diabetes Assistant window directly. The Send a message menu, the disclaimer step, and the question-type list were removed. Without the disclaimer step, "not for emergencies" lives in the window's yellow banner, which is shown on every visit: "Messages are not for emergencies: use Get help now or call 911." This differs from my recommendation (B), which kept the disclaimer step on the shortcut. Kay chose fewer steps over that confirmation click.
 
 ## Decision
 
@@ -157,6 +159,12 @@ Options:
 - Contributors: Kay, Nibble (Claude Opus 5.5)
 - Changes: Decision filled in. The mockup stays static and serves as the shell for ADR-0005's diabetes bot.
 - Outcome: Draft → Accepted
+
+### Iteration 3 (2026-11-14)
+- Trigger: Kay answered QST-PORTAL-SHORTCUT: C
+- Contributors: Kay, Nibble (Claude Opus 5.5)
+- Changes: One button opens the assistant. The four-step portal path is removed, and the banner carries the emergency message. A dark-mode contrast bug in the portal shell was fixed at the same time (navy text on a dark background).
+- Outcome: Accepted
 
 ---
 
