@@ -79,5 +79,46 @@ for (const [i, c] of draft.cards.entries()) {
 }
 
 writeFileSync('kb/out/cards-draft.md', md.join('\n'))
+
+// The same review as a local web page (Kay: "where can i see the cards"). It stays in
+// kb/out/, which is gitignored, and opens from disk; nothing is published.
+const esc = (s: string) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+const html = [
+  '<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">',
+  '<title>Topic cards (draft)</title><style>',
+  ':root{--bg:#f3f5f9;--card:#fff;--text:#1c1f26;--muted:#4f5563;--line:#c9ced8;--accent:#011f5b;--warn:#fff6df;--warnText:#6b4e00}',
+  '@media (prefers-color-scheme: dark){:root{--bg:#111318;--card:#191c22;--text:#eef0f4;--muted:#b9becb;--line:#4a505c;--accent:#9db7ef;--warn:#3a3220;--warnText:#f5dc9a}}',
+  'body{margin:0;background:var(--bg);color:var(--text);font:18px/1.55 system-ui,-apple-system,sans-serif}',
+  'main{max-width:52rem;margin:0 auto;padding:1.5rem 1rem 4rem}h1{color:var(--accent);margin:.2rem 0}',
+  '.banner{background:var(--warn);color:var(--warnText);padding:.7rem 1rem;border-radius:8px;margin:1rem 0}',
+  'nav ol{columns:2;column-gap:2rem;padding-left:1.4rem}@media (max-width:640px){nav ol{columns:1}}',
+  'a{color:var(--accent)}section{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:1rem 1.25rem;margin:1.25rem 0}',
+  'section h2{margin:.1rem 0 .4rem;font-size:1.25rem}.asks{color:var(--muted);font-size:.92rem}',
+  '.answer{border-left:4px solid var(--accent);padding:.4rem .9rem;margin:.8rem 0;font-size:1.05rem}',
+  '.meta{color:var(--muted);font-size:.85rem}.notes{background:var(--warn);color:var(--warnText);border-radius:8px;padding:.5rem .9rem .5rem 1.8rem;font-size:.92rem}',
+  'details{margin-top:.6rem}summary{cursor:pointer;color:var(--accent)}pre{white-space:pre-wrap;background:var(--bg);border:1px solid var(--line);border-radius:6px;padding:.6rem;font-size:.85rem}',
+  '.tag{font-size:.75rem;border:1px solid var(--line);border-radius:4px;padding:0 .3rem;margin-left:.3rem}',
+  '</style></head><body><main>',
+  '<h1>Topic cards (draft)</h1>',
+  `<div class="banner"><strong>Not clinician-approved.</strong> ${esc(draft.status)}</div>`,
+  '<p>Each card shows the proposed answer, the kinds of questions it is for, questions for the reviewer, and the passages it was written from. Checked automatically: no dose advice, and every number appears in its sources.</p>',
+  '<nav><ol>',
+  ...draft.cards.map((c) => `<li><a href="#${c.id}">${esc(c.topic)}</a></li>`),
+  '</ol></nav>',
+  ...draft.cards.map((c, i) => {
+    const src = c.sources.map((s) => byId.get(s)).filter((p): p is Passage => !!p)
+    return [
+      `<section id="${c.id}"><h2>${i + 1}. ${esc(c.topic)}</h2>`,
+      `<div class="asks">For questions like: ${c.asks.map((a) => `“${esc(a)}”`).join(' · ')}</div>`,
+      `<div class="answer">${esc(c.answer)}</div>`,
+      `<div class="meta">${c.answer.split(/\s+/).length} words · ${c.sources.length} source passage${c.sources.length === 1 ? '' : 's'}</div>`,
+      c.review_notes.length ? `<ul class="notes">${c.review_notes.map((n) => `<li>${esc(n)}</li>`).join('')}</ul>` : '',
+      `<details><summary>Source passages</summary>${src.map((p) => `<p><strong>${p.id}</strong>${p.tags.includes('dose_related') ? '<span class="tag">dose-tagged</span>' : ''} · ${esc(p.docTitle)}${p.section ? ` · ${esc(p.section)}` : ''}</p><pre>${esc(p.body.trim())}</pre>`).join('')}</details>`,
+      '</section>',
+    ].join('')
+  }),
+  '</main></body></html>',
+].join('\n')
+writeFileSync('kb/out/cards-draft.html', html)
 console.log(`\n${draft.cards.length} cards, ${failed} failed. Wrote kb/out/cards-draft.md`)
 process.exit(failed ? 1 : 0)
