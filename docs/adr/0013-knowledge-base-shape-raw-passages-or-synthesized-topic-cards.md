@@ -9,7 +9,7 @@ adr teaching map: the example is not the teaching — these are the up-links fro
 # ADR-0013: Knowledge base shape — raw passages or synthesized topic cards
 
 - **Date**: 2026-11-14
-- **Iteration**: 3
+- **Iteration**: 4
 - **Status**: Accepted
 - **Deciders**: Kay, Nibble (Claude Opus 5.5)
 
@@ -174,7 +174,12 @@ Cost: drafting about 25 cards with Haiku 5.5 over about 60k source tokens is aro
    - Card text is ADA-derived, so it stays out of the public repo, like `kb/out/`.
 2. **Drafting is offline, and numbers are checked mechanically.** `kb:synthesize` drafts one card per topic from that topic's passages, then rejects any card with a number that doesn't appear in its sources (the answer guard's rule, applied at build time).
 3. **Review is a document the sponsor reads.** `kb:review` writes each card beside its source passages, and approvals are recorded per card.
-4. **Retrieval goes cards first.** The assistant searches approved cards, then raw passages. Card ids are cited the same way passage ids are.
+4. **Retrieval goes cards first, and a matched card is shown as written** (QST-KB-CARD-USE: A).
+   - Search shortlists about 3 approved cards.
+   - The AI returns only a card id or "none", and code checks that the id is on the shortlist.
+   - The patient sees that card word for word, with its sources.
+   - With "none", or no approved card, the turn falls back to raw passages and today's AI-written, guarded answer.
+   - If the card-picking call fails, the top-scoring card is shown only above a score threshold; otherwise the raw-passage path runs.
 5. **Dose content keeps its rules.** No card gives dose instructions. Dose-tagged passages stay verbatim-only (ADR-0005), and a topic whose sources are mostly dose-tagged gets no card.
 
 **Trade-offs accepted**: cards depend on the sponsor's time, and nothing goes live until they approve it. Until then, the assistant answers from raw passages as it does today.
@@ -229,6 +234,12 @@ Cost: drafting about 25 cards with Haiku 5.5 over about 60k source tokens is aro
   
   New question QST-KB-CARD-USE asks what the patient sees when a card matches.
 - Outcome: Accepted (one question open)
+
+### Iteration 4 (2026-11-14)
+- Trigger: Kay answered QST-KB-CARD-USE: A
+- Contributors: Kay, Nibble (Claude Opus 5.5)
+- Changes: Decision item 4 now reads: a matched card is shown as written; the AI only picks the card id; raw passages and AI-written answers remain for questions no card covers.
+- Outcome: Accepted (no questions open)
 
 ---
 
