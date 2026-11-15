@@ -98,6 +98,37 @@ The portal fills the screen height, and each pane scrolls on its own. The fixed 
 
 ---
 
+NOT: Kay, same day, with four screenshots of the real portal's message flow: "this is the current ui in mychart, and we will be non-urgent medical question". The real flow is:
+1. Message Center (navigation, plus a wide conversation list), then **Send a message**.
+2. A docked **"New message" window** at the bottom right, over a dimmed page: "What would you like to do?" (Schedule an appointment / Refill a medication / Billing assistance / **Contact your care team**).
+3. A **messaging disclaimer**: not for emergencies; 911; confirm the message isn't urgent.
+4. **"What type of medical question?"** (**Non-urgent medical question** / Prescription / Test results / Appointment / Attach document / Referral).
+
+Decided by Kay: **the Diabetes Assistant is the "Non-urgent medical question" path.** The shell is rebuilt to that flow:
+- The two-column Message Center replaces the three-column mockup layout.
+- The other options are static ("not part of this demo").
+- The disclaimer is in this project's own words. The real portal's text isn't copied, and there are no MyChart, Epic, or Penn names or logos (QST-PORTAL-BRANDING: B, with Penn colors).
+- The fixed-rule triage still runs on every message: a person who confirms "not urgent" can still be wrong.
+
+### QST-PORTAL-SHORTCUT: Keep a one-tap shortcut to the assistant, or only the real portal's four-step path?
+- Status: unanswered
+- Why asking: The real portal reaches a non-urgent medical question in four steps (Send a message → Contact your care team → disclaimer → question type). The original brief for the diabetes assistant (ADR-0005) asks for **minimal navigation depth** for older, low-tech-literacy users. The earlier mockup had a direct "✦ Ask the assistant" button.
+- Need: pick a letter (or override — an answer in any shape is complete)
+
+Options:
+- **A — Real path only**: The assistant is reachable only through the four steps, exactly like the real portal. It's the most faithful to the portal for the sponsor's review, and the hardest for older users.
+- **B — Real path plus a shortcut**: The four-step path works as in the real portal, *and* a visible "Ask a non-urgent question" button in the Message Center jumps straight to the disclaimer step, then the assistant. The disclaimer is never skipped.
+- **C — Shortcut only**: The assistant opens directly from one button, and the other steps aren't built.
+
+**Recommendation**: (by Nibble, Claude Opus 5.5, 2026-11-14)
+
+**B — Real path plus a shortcut.** *Rationale*: B shows the sponsor exactly where the assistant would sit in the real portal, and still meets the minimal-depth requirement for the users the brief is about. The shortcut lands on the disclaimer, so the "not for emergencies" step always happens. *Confidence*: 0.7 — because whether a real portal would allow a shortcut button is the clinic's call, not ours. *If wrong*: if the sponsor wants a demo identical to the portal, flip to **A**. If user testing shows the four steps lose people, the shortcut is already there.
+
+**ANS:** (by Kay)
+[Fill this in]   <!-- literal placeholder — parser-significant, do not paraphrase -->
+
+---
+
 ## Decision
 
 **Chosen: A — Design mockup only** (Kay, 2026-11-14). `docs/mockups/portal-assistant.html` stays a static design artifact, and no message-center behavior gets built. Its layout becomes the shell for the diabetes education bot (ADR-0005, QST-DIAB-VS-PORTAL: B). That bot is the only working part (confirmed in ADR-0005, QST-DIAB-PORTAL-SHELL: A).
