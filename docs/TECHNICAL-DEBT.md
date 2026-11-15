@@ -41,3 +41,12 @@ Workarounds and compromises, each with where it lives and how to retire it (CLAU
 - **Impact**: Extra code in the bundle (loaded only on `#/harness`) and tests to maintain.
 - **Fix**: Once the diabetes chat works, remove the v1 UI files and the `#/harness` branch, and keep `src/lib/`.
 - **Priority**: Low.
+
+## TD-5: KB passages carry stale section headings from the chunker
+
+- **Discovered**: 2026-11-14, tracing why "how to lower my blood sugar after a meal" showed how to treat a low
+- **Location**: `src/lib/kb/chunk.ts` (section tracking), output in `kb/out/passages.json` and the production `kb_chunks` table
+- **Issue**: In the two ADA "Your Rights and Care Standards" guides, a list item or table cell is taken as the current heading and carried forward. Six type 2 passages, `ada-t2-guide-020` to `025`, are all headed "After eating". One of them, `021`, is the hypoglycemia Rule of 15. A type 1 passage about high glucose is headed "Wait 15 minutes". Retrieval counts the section twice, so a wrong heading pulls a passage toward unrelated questions. The heading also shows on source chips.
+- **Impact**: Retrieval ranks wrong passages first for after-meal questions, and the patient sees a misleading source label. Partly offset in `src/lib/chat/retrieve.ts`: a passage about the opposite direction keeps only half its score.
+- **Fix**: In the chunker, accept a heading only from real heading lines (not list items, table cells, or numbered steps). Then rebuild with `kb:build`, check `kb/out/review.md`, and reload production with `kb:load` (a write to production: Kay's OK first).
+- **Priority**: Medium. This is the first thing to fix if testers report off-topic answers.

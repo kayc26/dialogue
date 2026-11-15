@@ -57,6 +57,9 @@ export interface TurnOutcome {
   cards: Card[]
   doseSession: boolean
   guard: string | null // why an answer was blocked, if it was
+  /** The model's draft when the guard blocked it, kept for the care-team log so a
+   *  block can be diagnosed later (the patient never sees it). */
+  blockedDraft?: string
   monitor: 'none' | 'blocking' | 'background'
   monitorVerdict: MonitorVerdict | null
   /** For background review: resolves after display; may raise the tier next screen. */
@@ -65,6 +68,8 @@ export interface TurnOutcome {
 }
 
 const MIN_SCORE = 2.0
+/** The model's "nothing in the passages" reply (ANSWER_SYSTEM asks for this wording). */
+const NO_INFO = /\bI don[’']?t have (?:any )?information (?:on|about) (?:that|this)\b/i
 const MEDICAL_TOPIC = /\b(sugar|glucose|insulin|ketone|medic|dose|pump|shot|injection|metformin|pill|high|low|a1c|dka)\w*/i
 const isDose = (p: KbPassage) => p.tags.includes('dose_related')
 
@@ -191,8 +196,12 @@ export async function runTurn(input: TurnInput): Promise<TurnOutcome> {
     cards.push({ kind: 'passage', passage: context[0], why: 'fallback' })
   }
   if (!verdict.ok) {
-    fallback()
-    return done({ guard: verdict.reason })
+    // The prompt tells the model to say "I don't have information on that" when the
+    // passages don't answer. That reply carries no citation, and showing the top
+    // passage in its place answers a question the model just said it couldn't.
+    if (verdict.reason === 'no_citation' && NO_INFO.test(draft)) cards.push({ kind: 'no_info' })
+    else fallback()
+    return done({ guard: verdict.reason, blockedDraft: draft })
   }
   const answer: Card = { kind: 'answer', text: stripCitations(draft), sources: verdict.citations.map((id) => shown.get(id)!).filter(Boolean) }
 

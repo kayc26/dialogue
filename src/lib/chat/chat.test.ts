@@ -3,8 +3,8 @@
 
 import { describe, expect, it } from 'vitest'
 import { combineTriage, parseClassifier } from './combine'
-import { buildIndex, type KbPassage } from './retrieve'
-import { checkAnswer, stripCitations } from './guard'
+import { buildIndex, direction, type KbPassage } from './retrieve'
+import { checkAnswer, citationsIn, stripCitations } from './guard'
 import { triageRules, type Profile } from './triage'
 
 const NONE: Profile = { history_of_dka: false, pregnant: false, uses_pump: false }
@@ -110,5 +110,44 @@ describe('answer guard (QST-DIAB-DOSE-GUARD: D, output gate)', () => {
 
   it('removes citation markers from what the patient reads', () => {
     expect(stripCitations('Water is the best choice [kb:drinks].')).toBe('Water is the best choice.')
+  })
+})
+
+describe('Regression tests', () => {
+  // Shaped like the real KB collision: the ADA guide's hypoglycemia passage carries a
+  // stale "After eating" section heading, so it shares "blood", "glucose", "after"
+  // and "eating" with a question about lowering sugar after meals.
+  const real = buildIndex([
+    P('t2-021', 'After eating', 'Treating a low: when low blood glucose (hypoglycemia) drops under 70 mg/dL, have fast-acting carbohydrate, check your blood glucose again after 15 minutes, then have a snack before eating your next meal.', ['urgent']),
+    P('t2-022', 'After eating', 'What is high blood glucose (hyperglycemia)? High blood glucose after meals can come from eating more carbohydrate than usual, missed medicine, illness or stress.', ['urgent']),
+    P('plate', 'How to portion your plate', 'Fill half the plate with non-starchy vegetables to keep blood glucose steadier after a meal.'),
+    P('faq-high', 'Why is my blood sugar high?', 'Common causes include eating more carbohydrates than usual, missed medications, illness, stress, or poor sleep.'),
+  ])
+
+  it('"how to lower my blood sugar after a meal" does not rank the treat-a-low passage first (Kay, 2026-11-14)', () => {
+    // Bug: "lower" shares no word with "high", and the everyday-word expansion added
+    // "glucose" at full weight, so the hypoglycemia passage ranked first and was shown.
+    // Fixed: retrieval reads the direction from the verb (lower → high glucose) and
+    // halves the score of passages about the opposite problem.
+    const top = real.search('how to lower my blood sugar after a meal')[0].passage.id
+    expect(top).not.toBe('t2-021')
+    expect(real.search('what do I do if my sugar is low')[0].passage.id).toBe('t2-021') // lows still find it
+  })
+
+  it('reads the direction of a glucose question from its verb', () => {
+    expect(direction('how to lower my blood sugar')).toBe('high')
+    expect(direction('how do I bring my sugar down')).toBe('high')
+    expect(direction('my sugar is low, how do I raise it')).toBe('low')
+    expect(direction('what fruit can I eat')).toBeNull()
+    expect(direction('what is the difference between a low and a high')).toBeNull()
+  })
+
+  it('accepts the citation shapes models actually write', () => {
+    // A grouped citation "[kb:a, kb:b]" used to parse as no citation at all, and the
+    // whole answer was blocked as no_citation.
+    expect(citationsIn('Berries are fine [kb:fruit, kb:plate].')).toEqual(['fruit', 'plate'])
+    expect(citationsIn('Berries are fine [kb: fruit; plate].')).toEqual(['fruit', 'plate'])
+    expect(citationsIn('Berries are fine (kb:fruit).')).toEqual(['fruit'])
+    expect(stripCitations('Berries are fine [kb:fruit, kb:plate].')).toBe('Berries are fine.')
   })
 })

@@ -138,3 +138,29 @@ describe('turn orchestration', () => {
     expect(calls.complete).toBe(0)
   })
 })
+
+describe('Regression tests', () => {
+  it('"how to lower my blood sugar after a meal" never shows the treat-a-low passage in place of a "no information" reply (Kay, 2026-11-14)', async () => {
+    // Bug: Kay asked how to LOWER their blood sugar and was shown how to treat a LOW.
+    // The model followed ANSWER_SYSTEM and replied "I don't have information on
+    // that…", which (as instructed) cites nothing; the guard blocked it as
+    // no_citation, and the fallback then showed the top-ranked passage verbatim —
+    // the Rule of 15 for hypoglycemia, the opposite problem.
+    // Fixed: a no-citation "no information" reply becomes the no_info card, and the
+    // blocked draft is kept for the care-team log so blocks can be diagnosed.
+    const { m } = models({ answers: ["I don't have information on that. Your care team can help."] })
+    const o = await turn('how to lower my blood sugar after a meal', m)
+    expect(o.guard).toBe('no_citation')
+    expect(o.cards.map((c) => c.kind)).toEqual(['no_info'])
+    expect(o.blockedDraft).toContain("I don't have information")
+  })
+
+  it('an empty model reply is its own guard reason, not "no citation"', async () => {
+    // All three of Kay's answers on 2026-11-14 were logged as no_citation with no
+    // draft kept, so an empty reply and an uncited one looked the same.
+    const { m } = models({ answers: [''] })
+    const o = await turn('What fruit can I eat?', m)
+    expect(o.guard).toBe('empty_answer')
+    expect(o.cards).toContainEqual({ kind: 'passage', why: 'fallback', passage: expect.objectContaining({ id: 'fruit' }) })
+  })
+})

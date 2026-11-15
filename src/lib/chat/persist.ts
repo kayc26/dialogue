@@ -59,6 +59,7 @@ export class ConversationLog {
         softened: outcome.triage.softened,
         dose_intent: outcome.triage.doseIntent,
         guard: outcome.guard,
+        blocked_draft: outcome.blockedDraft?.slice(0, 1500) ?? null,
         monitor: outcome.monitor,
         monitor_verdict: outcome.monitorVerdict,
         model_calls: outcome.modelCalls,

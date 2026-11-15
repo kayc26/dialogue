@@ -19,10 +19,13 @@ const DOSE_ADVICE: RegExp[] = [
   /\b1 unit (?:for|per)\b/i,
 ]
 
-const CITE = /\[kb:([a-z0-9-]+)\]/gi
+// A citation group: "[kb:a]", and the shapes models actually write besides it —
+// "[kb: a]", "[kb:a, kb:b]", "[kb:a; b]", "(kb:a)", "【kb:a】". Every id inside counts.
+const CITE = /[[(【]\s*kb:\s*([a-z0-9-]+(?:\s*[,;]\s*(?:kb:\s*)?[a-z0-9-]+)*)\s*[\])】]/gi
 
 export function citationsIn(text: string): string[] {
-  return [...new Set([...text.matchAll(CITE)].map((m) => m[1].toLowerCase()))]
+  const ids = [...text.matchAll(CITE)].flatMap((m) => m[1].split(/\s*[,;]\s*/).map((s) => s.replace(/^kb:\s*/i, '').toLowerCase()))
+  return [...new Set(ids)]
 }
 
 /** Numbers as written, ignoring citation ids. "70–180" yields 70 and 180. */
@@ -35,6 +38,7 @@ export function checkAnswer(
   shown: { id: string; body: string }[],
   userMessage: string,
 ): GuardResult {
+  if (!answer.trim()) return { ok: false, reason: 'empty_answer' }
   for (const re of DOSE_ADVICE) if (re.test(answer)) return { ok: false, reason: `dose_advice:${re.source.slice(0, 40)}` }
 
   const citations = citationsIn(answer)
