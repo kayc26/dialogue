@@ -94,6 +94,23 @@ a
 
 ---
 
+## First live test: caps and settings changed (2026-11-14)
+
+NOT: Kay's first live chats found that both picked models reason before answering, and the hidden reasoning counts against the output caps. Evidence from the per-call log (`triage_events.detail.calls`):
+
+* **Answer, Haiku 5.5, cap 500:** 361 reasoning tokens. Finished with "length" after 308 characters. Earlier answers were most likely cut off before their citations, which is why they were blocked as `no_citation`.
+* **Classifier, gpt-oss-20b, JSON mode:** replied `{}` (3 tokens), so every turn fell back to the check-in card.
+
+Changes:
+
+* Answer cap raised to 1500.
+* Classifier and monitor caps raised to 400, with `reasoning: { effort: "low" }` and no JSON mode. The prompt still asks for JSON, and the parsers extract it from plain text.
+* An answer that finishes with "length" is never shown. The guard blocks it, and an approved passage is shown instead.
+
+Worst-case cost per question is now about $0.001. Measured cost per turn is still to be confirmed against the $0.0007 estimate above.
+
+---
+
 ## Links
 
 * Budget for the calls in [ADR-0005](0005-diabetes-education-bot-architecture-and-answer-path.md) (answers), [ADR-0006](0006-diabetes-education-bot-urgent-situation-triage-and-escalation.md) (triage), and [ADR-0007](0007-diabetes-education-bot-a-second-model-that-monitors-the-conversation.md) (monitor)
