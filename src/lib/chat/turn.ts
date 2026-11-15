@@ -140,13 +140,18 @@ export async function runTurn(input: TurnInput): Promise<TurnOutcome> {
   let tier = triage.tier
   const doseSession = input.doseSession || triage.doseIntent || MEDICAL_TOPIC.test(message) && /\b(insulin|dose|medic|pump|shot|injection)\w*/i.test(message)
 
+  // One question, one reply (Kay, 2026-11-14: "I ask one question and it gives me
+  // several cards"). Besides the help notice, a turn shows ONE body: the answer, or a
+  // single approved passage, or a fixed card. Only an urgent red flag adds its "what
+  // to do" passage, because there that passage is the point.
   if (tier !== 'none') {
     cards.push({ kind: 'escalation', tier, criteria: triage.criteria })
-    if (tier === 'urgent' || tier === 'checkin') {
+    if (tier === 'urgent') {
       const p = urgentPassage(index, message, rules.glucose)
       if (p) cards.push({ kind: 'passage', passage: p, why: 'urgent' })
     }
   }
+  const hasPassage = () => cards.some((c) => c.kind === 'passage')
 
   const done = (extra: Partial<TurnOutcome> = {}): TurnOutcome => ({
     triage, tier, cards, doseSession, guard: null, monitor: 'none', monitorVerdict: null, background: null, modelCalls, ...extra,
@@ -161,12 +166,13 @@ export async function runTurn(input: TurnInput): Promise<TurnOutcome> {
   // 4–5. Retrieval.
   const hits: Hit[] = index.search(message, 8)
   const top = hits[0]
-  if (top && isDose(top.passage) && MEDICAL_TOPIC.test(message)) {
-    cards.push({ kind: 'passage', passage: top.passage, why: 'dose' })
-  }
+  // A dose-tagged best match is never given to the model; it is shown word for word,
+  // but only when no answer is shown (as the one passage in place of an answer).
+  const dosePassage = top && isDose(top.passage) && MEDICAL_TOPIC.test(message) ? top.passage : null
   const context = hits.filter((h) => !isDose(h.passage) && h.score >= MIN_SCORE).slice(0, 4).map((h) => h.passage)
   if (context.length === 0) {
-    if (!cards.some((c) => c.kind === 'passage')) cards.push({ kind: 'no_info' })
+    if (dosePassage && !hasPassage()) cards.push({ kind: 'passage', passage: dosePassage, why: 'dose' })
+    else if (!hasPassage()) cards.push({ kind: 'no_info' })
     return done()
   }
 
@@ -201,7 +207,8 @@ export async function runTurn(input: TurnInput): Promise<TurnOutcome> {
   // 7. Guard.
   const verdict = checkAnswer(draft, [...shown.values()], message)
   const fallback = (): void => {
-    cards.push({ kind: 'passage', passage: context[0], why: 'fallback' })
+    if (hasPassage()) return // an urgent passage is already the reply's body
+    cards.push(dosePassage ? { kind: 'passage', passage: dosePassage, why: 'dose' } : { kind: 'passage', passage: context[0], why: 'fallback' })
   }
   if (!verdict.ok) {
     // The prompt tells the model to say "I don't have information on that" when the

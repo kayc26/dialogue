@@ -206,8 +206,10 @@ const uniqueDocs = (sources: KbPassage[]) => [...new Map(sources.map((s) => [s.d
           <p v-if="item.who === 'you'" class="bubble me"><span class="sr">You said: </span>{{ item.text }}</p>
           <p v-else-if="item.who === 'note'" class="note-text" role="status">{{ item.text }}</p>
           <template v-else>
+            <!-- One question, one reply (Kay, 2026-11-14). Emergency, urgent and distress
+                 keep their own alert card above the reply; a check-in is one line inside it. -->
             <template v-for="(c, j) in item.cards" :key="j">
-              <div v-if="c.kind === 'escalation'" :class="['bubble', 'esc', c.tier]" role="alert">
+              <div v-if="c.kind === 'escalation' && c.tier !== 'checkin'" :class="['bubble', 'esc', c.tier]" role="alert">
                 <p class="esc-title">{{ escalation(c.tier).title }}</p>
                 <p>{{ escalation(c.tier).text }}</p>
                 <div class="esc-buttons">
@@ -215,19 +217,22 @@ const uniqueDocs = (sources: KbPassage[]) => [...new Map(sources.map((s) => [s.d
                   <a class="call nurse" href="#demo-nurse">Call the nurse line</a>
                 </div>
               </div>
-              <div v-else-if="c.kind === 'passage'" class="bubble bot">
+            </template>
+            <div v-if="item.cards?.some((c) => c.kind !== 'escalation' || c.tier === 'checkin')" class="bubble bot">
+            <template v-for="(c, j) in item.cards" :key="j">
+              <div v-if="c.kind === 'passage'">
                 <p v-if="c.why === 'dose'" class="dose-head">Talk to your care team before changing any dose.</p>
                 <p class="verbatim">{{ c.passage.body }}</p>
                 <span class="cite">📄 {{ c.passage.doc_title }} · {{ SOURCE[c.passage.source_label] }}</span>
                 <p class="meta">Shown word for word from approved material</p>
               </div>
-              <div v-else-if="c.kind === 'dose_refusal'" class="bubble bot">
+              <div v-else-if="c.kind === 'dose_refusal'">
                 <p>I can't give advice about insulin or medicine doses. Your care team can help with that. Call the nurse line if you need an answer today.</p>
               </div>
-              <div v-else-if="c.kind === 'no_info'" class="bubble bot">
+              <div v-else-if="c.kind === 'no_info'">
                 <p>I don't have information on that. Your care team can help.</p>
               </div>
-              <div v-else-if="c.kind === 'answer'" class="bubble bot">
+              <div v-else-if="c.kind === 'answer'">
                 <p class="answer-text">{{ c.text }}</p>
                 <span v-for="s in uniqueDocs(c.sources)" :key="s.id" class="cite">📄 {{ s.doc_title }} · {{ SOURCE[s.source_label] }}</span>
                 <p class="meta">
@@ -235,6 +240,10 @@ const uniqueDocs = (sources: KbPassage[]) => [...new Map(sources.map((s) => [s.d
                 </p>
               </div>
             </template>
+            <p v-if="item.cards?.some((c) => c.kind === 'escalation' && c.tier === 'checkin')" class="checkin">
+              If this is happening to you now, <a href="#demo-nurse">call the nurse line</a>, or 911 if you feel very unwell.
+            </p>
+            </div>
           </template>
         </li>
       </ol>
@@ -391,6 +400,23 @@ const uniqueDocs = (sources: KbPassage[]) => [...new Map(sources.map((s) => [s.d
   margin-top: 0.4rem !important;
   color: var(--muted);
   font-size: 0.75rem;
+}
+/* the check-in notice: one quiet line at the foot of the reply, not its own card */
+.checkin {
+  margin-top: 0.6rem !important;
+  padding-top: 0.5rem;
+  border-top: 1px solid var(--border);
+  color: var(--muted);
+  font-size: 0.85rem;
+}
+.checkin:first-child {
+  margin-top: 0 !important;
+  padding-top: 0;
+  border-top: 0;
+}
+.checkin a {
+  color: var(--accent);
+  font-weight: 600;
 }
 .verbatim {
   white-space: pre-line;

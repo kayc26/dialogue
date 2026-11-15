@@ -181,9 +181,40 @@ describe('Regression tests', () => {
     expect(o.tier).toBe('checkin')
     expect(o.cards[0]).toMatchObject({ kind: 'escalation', tier: 'checkin' })
     expect(o.cards.some((c) => c.kind === 'passage' && c.passage.id === 'hypo')).toBe(false)
-    // a check-in that does name a low still gets the low passage
-    const low = await turn('I feel low and shaky', models({ classify: cls('checkin') }).m)
+    // an urgent red flag that names a low still gets the low passage
+    const low = await turn('I keep going low and feel shaky', models({ classify: cls('urgent') }).m)
     expect(low.cards).toContainEqual({ kind: 'passage', why: 'urgent', passage: expect.objectContaining({ id: 'hypo' }) })
+  })
+
+  it('one question gets one reply: a help notice at most, then a single body (Kay, 2026-11-14)', async () => {
+    // Bug: "why is my blood sugar high" showed four blocks — a check-in card, an
+    // "urgent" passage, a dose passage, and a fallback passage — for one question.
+    // Fixed: a check-in adds no passage; a dose-tagged best match is shown only in place
+    // of an answer; a blocked answer is replaced by exactly one passage.
+    // Shaped like the real case: the best match is a dose-tagged "after eating" passage.
+    const afterMeals = buildIndex([
+      P('meal-dose', 'After eating', 'If blood sugar is high after eating, follow your provider plan for correction insulin after eating.', ['dose_related', 'medication', 'urgent']),
+      P('high', 'High blood sugar', 'If blood sugar stays very high, or you are vomiting or have ketones, seek medical attention.', ['urgent']),
+      // unrelated passages, so word rarity behaves as it does in a real corpus
+      P('fruit', 'What fruit can I eat?', 'Berries, apples and pears are good choices. Keep fruit to one cup.'),
+      P('plate', 'Plan your plate', 'Fill half the plate with non-starchy vegetables.'),
+      P('drinks', 'Beverages', 'Water is the best choice. Limit soda and juice.'),
+      P('walk', 'Activity', 'A short walk most days helps your heart and mood.'),
+    ])
+    const ask = (answer: string) =>
+      runTurn({
+        message: 'why is my blood sugar high after eating', history: [], profile: NONE, index: afterMeals, doseSession: false,
+        models: models({ classify: cls('checkin'), answers: [answer] }).m, timeoutMs: 50, monitorEnabled: false,
+      })
+
+    // the answer gets through: the help notice and the answer, nothing else
+    const answered = await ask('If it stays very high, seek medical attention. [kb:high]')
+    expect(answered.cards.map((c) => c.kind)).toEqual(['escalation', 'answer'])
+
+    // the answer is blocked: exactly one passage, the dose passage shown word for word
+    const blocked = await ask('')
+    expect(blocked.cards.map((c) => c.kind)).toEqual(['escalation', 'passage'])
+    expect(blocked.cards[1]).toMatchObject({ why: 'dose', passage: { id: 'meal-dose' } })
   })
 
   it('an empty model reply is its own guard reason, not "no citation"', async () => {
