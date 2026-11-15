@@ -9,7 +9,7 @@ adr teaching map: the example is not the teaching — these are the up-links fro
 # ADR-0006: Diabetes education bot — urgent-situation triage and escalation
 
 - **Date**: 2026-11-14
-- **Iteration**: 6
+- **Iteration**: 7
 - **Status**: Accepted
 - **Deciders**: Kay, Nibble (Claude Opus 5.5)
 
@@ -314,6 +314,18 @@ New entries go at the bottom of this table. Don't edit rows that are already the
 - Contributors: Kay, Nibble (Claude Opus 5.5)
 - Changes: The urgent criteria table now uses both answers. The profile gains `history_of_dka`, `pregnant`, and `uses_pump`, read only by the rules code to raise urgency. A **Clinical assumptions log** was started, with four entries, each awaiting confirmation by a clinician.
 - Outcome: Accepted (no questions open)
+
+### Iteration 7 (2026-11-14)
+- Trigger: Kay, after the first live chats: "I don't like the fact that I ask one question and it gives me several cards of answers." One question had shown a check-in card, an urgent passage, a dose passage, and a fallback passage.
+- Contributors: Kay, Nibble (Claude Opus 5.5)
+- Changes: **One question, one reply.**
+  - Emergency, urgent, and distress keep their own alert card above the reply. Only URGENT also adds its "what to do" passage.
+  - CHECK-IN is now a single line at the foot of the reply ("If this is happening to you now, call the nurse line…"). It's no longer a separate card, and it adds no passage.
+  - The reply's body is exactly one of: the answer, a single approved passage, the dose refusal, or "no information".
+  - A dose-tagged best match (ADR-0005) is shown word for word only in place of an answer, never alongside one.
+  - Code: `src/lib/chat/turn.ts`, `src/app/ChatPanel.vue`. Regression test in `turn.test.ts`.
+- NOT: Doubt to keep in view. The CHECK-IN line is now quieter, which serves the alarm-fatigue concern in this ADR. But a real check-in, such as a mild low, now relies on the answer itself to carry the "treat it now" content: the urgent passage is no longer attached. If clinicians want the Rule of 15 shown for every mild low, CHECK-IN turns from rules (not from a failed classifier) should get that passage back.
+- Outcome: Accepted
 
 ---
 
