@@ -9,7 +9,7 @@ adr teaching map: the example is not the teaching — these are the up-links fro
 # ADR-0013: Knowledge base shape — raw passages or synthesized topic cards
 
 - **Date**: 2026-11-14
-- **Iteration**: 2
+- **Iteration**: 3
 - **Status**: Accepted
 - **Deciders**: Kay, Nibble (Claude Opus 5.5)
 
@@ -107,6 +107,33 @@ a
 
 ---
 
+### QST-KB-CARD-USE: When an approved card matches a question, what does the patient see?
+- Status: answered
+- Why asking: Kay asked "so when will the education material be queried". Under the decision above, an ordinary question searches approved cards first, and the raw ADA passages only when no card fits. Emergencies and dose questions don't search at all, and urgent questions also get the matching raw "what to do" passage. Not yet decided: what happens once a card matches. Earlier, Kay chose AI-written answers over showing ADA text as written (ADR-0005, QST-WHICH-APPROACH-SHOULD-I: C), partly because ADA sections run long. Cards are short and clinician-approved, so the trade-off is different now.
+- Need: pick a letter (or override — an answer in any shape is complete)
+
+Options:
+- **A — The card as written, chosen by the AI**: search shortlists about 3 cards. The AI only picks which one answers the question, or "none". The patient sees that card word for word, so every word was approved by the clinician. If no card fits, the assistant falls back to the raw passages and writes an answer as today. Cheapest and safest, but the answer can't be tailored ("my sugar is 280" gets the general high-sugar card).
+- **B — The AI answers from the card only**: the AI writes a short answer to the exact question using only the card, and the guard checks that every number is in the card. The answer fits the question better, but the patient reads AI-written text again, not the approved wording.
+- **C — The AI answers from the card plus raw passages**: like today, with the card added as the first source. The most flexible and the least controlled.
+
+**Recommendation**: (by Nibble, Claude Opus 5.5, 2026-11-14)
+
+**A — the card as written, chosen by the AI.** *Rationale*:
+- Showing approved wording is the whole reason for clinician review (QST-KB-REVIEW: A). B and C put unapproved AI wording back in front of the patient for exactly the questions cards cover best.
+- Kay's earlier reason for AI-written answers was the length of ADA sections. Cards are 42–84 words (`scripts/ephemeral/2026-11-14-cards-check.ts`), so that reason no longer applies.
+- Having the AI pick among a shortlist handles paraphrase ("my sugar's low" vs "hypoglycemia") better than keyword search alone, and code can check that the id it returns is on the shortlist.
+- Questions no card covers keep today's AI-written answers.
+
+This is a deliberate partial walk-back of my own earlier support for RAG for these questions, which I'm stating openly.
+
+*Confidence*: 0.6 — because no tester has seen a card yet, and older adults may find a general card unresponsive to their specific question. *If wrong*: if testers' feedback shows cards answering "around" their question rather than to it, flip to **B**.
+
+**ANS:** (by Kay)
+a
+
+---
+
 ## Supporting Materials
 
 ### NOT: what the knowledge base holds today (from `kb/out/passages.json`, 2026-11-14)
@@ -190,6 +217,18 @@ Cost: drafting about 25 cards with Haiku 5.5 over about 60k source tokens is aro
 - Contributors: Kay, Nibble (Claude Opus 5.5)
 - Changes: Decision filled in: cards as data with an approval state; offline drafting with a build-time number check; a review document; cards-first retrieval with raw fallback; dose rules unchanged. Action items listed.
 - Outcome: Draft → Accepted
+
+### Iteration 3 (2026-11-14)
+- Trigger: Kay asked "so when will the education material be queried"
+- Contributors: Kay, Nibble (Claude Opus 5.5)
+- Changes: Query order spelled out:
+  - emergency and dose questions don't search;
+  - urgent questions get the urgent card plus the matching raw "what to do" passage;
+  - ordinary questions search approved cards first, then raw passages if no card fits;
+  - until cards are approved, everything uses raw passages.
+  
+  New question QST-KB-CARD-USE asks what the patient sees when a card matches.
+- Outcome: Accepted (one question open)
 
 ---
 
