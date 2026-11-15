@@ -24,13 +24,14 @@ const views = computed(() => viewsFor(props.membership.role))
 const view = ref<'patient' | 'careteam'>(views.value[0])
 const initial = computed(() => props.membership.display_name.trim().charAt(0).toUpperCase() || '?')
 
-// The docked window: opened at the portal's first step, or (shortcut, QST-PORTAL-
-// SHORTCUT pending) straight at the disclaimer, which is never skipped.
-const windowStart = ref<'menu' | 'disclaimer' | null>(null)
+// The assistant opens straight from one button (QST-PORTAL-SHORTCUT: C, Kay): the
+// portal's Send a message → care team → disclaimer → question-type steps aren't built.
+// The window's yellow banner keeps the "not for emergencies" message.
+const windowOpen = ref(false)
 let windowKey = 0
-function openWindow(start: 'menu' | 'disclaimer'): void {
+function openWindow(): void {
   windowKey++
-  windowStart.value = start
+  windowOpen.value = true
 }
 
 const notice = ref('')
@@ -85,10 +86,7 @@ function toggleHc(): void {
       <div class="page">
         <aside class="nav" aria-label="Message Center">
           <h1>Message Center</h1>
-          <button v-if="views.includes('patient')" class="send" type="button" @click="openWindow('menu')">Send a message</button>
-          <button v-if="views.includes('patient')" class="shortcut" type="button" @click="openWindow('disclaimer')">
-            ✦ Ask a non-urgent question
-          </button>
+          <button v-if="views.includes('patient')" class="send" type="button" @click="openWindow">✦ Ask a non-urgent question</button>
           <ul>
             <li>
               <button type="button" :class="{ on: view === 'patient' }" @click="views.includes('patient') ? (view = 'patient') : staticPart('Conversations')">
@@ -132,7 +130,7 @@ function toggleHc(): void {
               <span class="conv-body">
                 <span class="t">Welcome to your patient portal <time>example</time></span>
                 <span class="who">Care Team</span>
-                <span class="pv">To ask a non-urgent question, choose Send a message, then Contact your care team.</span>
+                <span class="pv">To ask a non-urgent question, choose Ask a non-urgent question.</span>
               </span>
             </button>
             <p class="end">There are no more conversations to show.</p>
@@ -153,13 +151,16 @@ function toggleHc(): void {
       </footer>
     </div>
 
-    <NewMessageWindow v-if="windowStart" :key="windowKey" :data="data" :start="windowStart" @close="windowStart = null" />
+    <NewMessageWindow v-if="windowOpen" :key="windowKey" :data="data" @close="windowOpen = false" />
   </div>
 </template>
 
 <style scoped>
 .portal {
   --navy: var(--portal-navy, #011f5b); /* high-contrast theme sets --portal-navy (app.css) */
+  /* navy as TEXT follows --accent, which turns light in dark mode; navy text on the
+     dark-mode background was nearly invisible (logo, selected nav item, links) */
+  --navy-text: var(--accent);
   min-height: 100vh;
   display: flex;
   flex-direction: column;
@@ -181,7 +182,7 @@ button {
 .logo {
   font-size: 1.3rem;
   font-weight: 600;
-  color: var(--navy);
+  color: var(--navy-text);
   line-height: 1.1;
 }
 .logo small {
@@ -281,17 +282,6 @@ button {
   color: #fff;
   font-weight: 600;
 }
-.shortcut {
-  display: block;
-  width: 100%;
-  min-height: 2.75rem;
-  margin-top: 0.5rem;
-  border: 1px solid #c9d3ea;
-  border-radius: 4px;
-  background: #eef2fb;
-  color: var(--navy);
-  font-weight: 700;
-}
 .nav ul {
   list-style: none;
   padding: 0;
@@ -313,7 +303,7 @@ button {
 .nav li button.on {
   border-left-color: var(--navy);
   background: var(--soft);
-  color: var(--navy);
+  color: var(--navy-text);
 }
 .count {
   margin-left: auto;
@@ -426,7 +416,7 @@ button {
 .link {
   border: 0;
   background: none;
-  color: var(--navy);
+  color: var(--navy-text);
   text-decoration: underline;
   padding: 0.25rem;
   min-height: 2.5rem;
