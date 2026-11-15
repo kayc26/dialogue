@@ -66,7 +66,7 @@ console.log('  click Non-urgent medical question:', await click('Non-urgent medi
 await sleep(1500)
 console.log('  pick first demo patient:', await js(`(document.querySelector('button.card')?.click(), 'ok')`))
 await sleep(2000)
-await js(setVal('#ask', "my husband won't wake up and his sugar was low"))
+await js(setVal('#ask', process.env.MESSAGE ?? "my husband won't wake up and his sugar was low"))
 await js(`document.querySelector('form.ask button[type=submit]').click()`)
 await shot('06-chat-expanded', 'sent an emergency message with no key')
 console.log('  shrink:', await js(`(document.querySelector('[aria-label="Make the window smaller"]')?.click(), 'ok')`))
