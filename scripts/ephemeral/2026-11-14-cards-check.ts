@@ -20,7 +20,11 @@
 import { readFileSync, writeFileSync } from 'node:fs'
 import { checkAnswer } from '../../src/lib/chat/guard.ts'
 
-type Passage = { id: string; docTitle: string; section: string | null; body: string; tags: string[] }
+type Passage = { id: string; docTitle: string; sourceLabel: 'ADA' | 'care_team'; section: string | null; body: string; tags: string[] }
+// How the card will be credited in the chat (ChatPanel's source chips): by source, not document title.
+const SOURCE = { ADA: 'American Diabetes Association', care_team: 'Your care team' } as const
+const creditFor = (ids: string[], byId: Map<string, Passage>) =>
+  [...new Set(ids.map((s) => byId.get(s)?.sourceLabel).filter((l): l is Passage['sourceLabel'] => !!l))].map((l) => `📄 ${SOURCE[l]}`).join('  ')
 type Card = { id: string; topic: string; asks: string[]; answer: string; sources: string[]; review_notes: string[] }
 
 const passages = (JSON.parse(readFileSync('kb/out/passages.json', 'utf8')) as { passages: Passage[] }).passages
@@ -65,6 +69,8 @@ for (const [i, c] of draft.cards.entries()) {
     '',
     `> ${c.answer}`,
     '',
+    `**Shown to patients as:** ${creditFor(c.sources, byId)}`,
+    '',
     `*${words} words · automatic checks: ${ok ? 'passed' : `FAILED (${verdict.ok ? 'missing source' : verdict.reason})`}*`,
     '',
   )
@@ -95,6 +101,7 @@ const html = [
   'a{color:var(--accent)}section{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:1rem 1.25rem;margin:1.25rem 0}',
   'section h2{margin:.1rem 0 .4rem;font-size:1.25rem}.asks{color:var(--muted);font-size:.92rem}',
   '.answer{border-left:4px solid var(--accent);padding:.4rem .9rem;margin:.8rem 0;font-size:1.05rem}',
+  '.credit{display:inline-block;font-size:.85rem;border:1px solid var(--line);border-radius:999px;padding:.1rem .6rem;margin-bottom:.4rem}',
   '.meta{color:var(--muted);font-size:.85rem}.notes{background:var(--warn);color:var(--warnText);border-radius:8px;padding:.5rem .9rem .5rem 1.8rem;font-size:.92rem}',
   'details{margin-top:.6rem}summary{cursor:pointer;color:var(--accent)}pre{white-space:pre-wrap;background:var(--bg);border:1px solid var(--line);border-radius:6px;padding:.6rem;font-size:.85rem}',
   '.tag{font-size:.75rem;border:1px solid var(--line);border-radius:4px;padding:0 .3rem;margin-left:.3rem}',
@@ -111,6 +118,7 @@ const html = [
       `<section id="${c.id}"><h2>${i + 1}. ${esc(c.topic)}</h2>`,
       `<div class="asks">For questions like: ${c.asks.map((a) => `“${esc(a)}”`).join(' · ')}</div>`,
       `<div class="answer">${esc(c.answer)}</div>`,
+      `<div class="credit">${esc(creditFor(c.sources, byId))}</div>`,
       `<div class="meta">${c.answer.split(/\s+/).length} words · ${c.sources.length} source passage${c.sources.length === 1 ? '' : 's'}</div>`,
       c.review_notes.length ? `<ul class="notes">${c.review_notes.map((n) => `<li>${esc(n)}</li>`).join('')}</ul>` : '',
       `<details><summary>Source passages</summary>${src.map((p) => `<p><strong>${p.id}</strong>${p.tags.includes('dose_related') ? '<span class="tag">dose-tagged</span>' : ''} · ${esc(p.docTitle)}${p.section ? ` · ${esc(p.section)}` : ''}</p><pre>${esc(p.body.trim())}</pre>`).join('')}</details>`,
