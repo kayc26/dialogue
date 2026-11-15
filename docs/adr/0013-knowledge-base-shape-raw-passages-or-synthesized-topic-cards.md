@@ -165,6 +165,11 @@ Cost: drafting about 25 cards with Haiku 5.5 over about 60k source tokens is aro
 ## Action Items
 
 - [ ] Draft the topic list (20–30) from the care-team FAQ questions, the clinic's triage workflow, and the first testers' questions; Kay to confirm the list. Owner: Nibble, then Kay
+  - NOT (2026-11-14): Kay asked to see topics and answers directly, so Nibble hand-drafted 30 cards. That cost $0, with no model run.
+    - Local file `kb/out/cards-draft.json`, and the review document `kb/out/cards-draft.md`, both gitignored.
+    - All 30 pass the answer guard (`scripts/ephemeral/2026-11-14-cards-check.ts`).
+    - Gaps found: the before-meal and A1C targets were lost in PDF extraction, and there's no daily foot-care content.
+    - The live drafting run may now be unnecessary. The hand-drafted cards can go straight to review.
 - [ ] Build `kb:synthesize`, with its number check, and `kb:review`; add a cards table (draft or approved, approver, date) with search limited to approved cards. Owner: Nibble
 - [ ] Live drafting run (about $0.05, Haiku 5.5): needs Kay's OK first (ADR-0012). Owner: Kay to approve, then Nibble
 - [ ] Sponsor reviews and approves cards. Owner: Kay's clinical sponsor
