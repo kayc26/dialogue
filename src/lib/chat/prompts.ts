@@ -4,9 +4,12 @@
 
 /** ADR-0012 (QST-MODEL-PICKS: A). Cheap models; per-call output caps. */
 export const MODELS = {
-  answer: { id: 'anthropic/claude-haiku-5.5', maxTokens: 500 },
-  classifier: { id: 'openai/gpt-oss-20b', maxTokens: 150 },
-  monitor: { id: 'openai/gpt-oss-20b', maxTokens: 150 },
+  // Both models think before answering, and the thinking counts against these caps.
+  // At 500, Haiku spent 361 tokens thinking and its answer was cut off (Kay's test,
+  // 2026-11-14), so caps leave room for it. Worst case per question is about $0.001.
+  answer: { id: 'anthropic/claude-haiku-5.5', maxTokens: 1500 },
+  classifier: { id: 'openai/gpt-oss-20b', maxTokens: 400 },
+  monitor: { id: 'openai/gpt-oss-20b', maxTokens: 400 },
 } as const
 
 /** The monitor (ADR-0007's second model) is paused: Kay, 2026-11-14, while the answer

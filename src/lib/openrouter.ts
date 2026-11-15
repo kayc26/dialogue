@@ -59,8 +59,10 @@ export interface CompleteOptions {
   /** Output cap per call (ADR-0012 spending guard). */
   maxTokens?: number
   temperature?: number
-  /** Ask for a JSON object (classifier and monitor). */
+  /** Ask for a JSON object. */
   json?: boolean
+  /** For reasoning models: how hard to think. Hidden reasoning counts against maxTokens. */
+  reasoningEffort?: 'minimal' | 'low' | 'medium' | 'high'
   /** App name OpenRouter shows in its usage logs. */
   title?: string
 }
@@ -87,6 +89,7 @@ export async function completeChat(opts: CompleteOptions): Promise<CompletionRes
     if (opts.maxTokens !== undefined) body.max_tokens = opts.maxTokens
     if (opts.temperature !== undefined) body.temperature = opts.temperature
     if (opts.json) body.response_format = { type: 'json_object' }
+    if (opts.reasoningEffort) body.reasoning = { effort: opts.reasoningEffort, exclude: true }
 
     const res = await fetchImpl(`${API_BASE}/chat/completions`, {
       method: 'POST',

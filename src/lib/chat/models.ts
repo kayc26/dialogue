@@ -65,8 +65,11 @@ export function openRouterModels(apiKey: string, meter: CostMeter, signal?: Abor
   }
   const json = async (role: 'classify' | 'monitor', model: { id: string; maxTokens: number }, system: string, user: string) => {
     const r = await noted(meter, role, model.id, () =>
+      // No JSON mode: with it, gpt-oss-20b replied "{}" (3 tokens) and every turn fell
+      // back to a check-in (Kay's test, 2026-11-14). The prompt asks for JSON and
+      // parseClassifier / parseMonitor take the {...} out of plain text.
       completeChat({
-        apiKey, model: model.id, maxTokens: model.maxTokens, temperature: 0, json: true, title, signal,
+        apiKey, model: model.id, maxTokens: model.maxTokens, temperature: 0, reasoningEffort: 'low', title, signal,
         messages: [{ role: 'system', content: system }, { role: 'user', content: user }],
       }),
     )
@@ -81,6 +84,13 @@ export function openRouterModels(apiKey: string, meter: CostMeter, signal?: Abor
       }),
     )
     record(r.usage?.cost)
+    // An answer cut off by the output cap is never shown: the missing half of a medical
+    // sentence can be the part that matters. Emptied, the guard blocks it
+    // (empty_answer) and an approved passage is shown instead; the call note keeps
+    // finish "length" for the log.
+    if (r.finishReason === 'length' && !r.message.tool_calls?.length) {
+      return { message: { ...r.message, content: '' }, usage: r.usage, aborted: r.aborted }
+    }
     return { message: r.message, usage: r.usage, aborted: r.aborted }
   }
   return {
