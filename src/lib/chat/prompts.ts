@@ -9,6 +9,10 @@ export const MODELS = {
   monitor: { id: 'openai/gpt-oss-20b', maxTokens: 150 },
 } as const
 
+/** The monitor (ADR-0007's second model) is paused: Kay, 2026-11-14, while the answer
+ *  and classifier failures are diagnosed. Flip to false to bring it back. */
+export const MONITOR_PAUSED = true
+
 /** Agent-loop tool rounds per answer: under ADR-0003's cap of 8, kept low for the budget. */
 export const ANSWER_TOOL_ROUNDS = 3
 

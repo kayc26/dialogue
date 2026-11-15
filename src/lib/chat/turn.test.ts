@@ -46,8 +46,13 @@ function models(o: { classify?: string | null | Error; answers?: string[]; monit
   }
   return { m, calls }
 }
-const turn = (message: string, m: TurnModels, extra: { doseSession?: boolean; profile?: Profile } = {}) =>
-  runTurn({ message, history: [], profile: extra.profile ?? NONE, index, doseSession: extra.doseSession ?? false, models: m, timeoutMs: 50 })
+// The monitor is on here unless a test says otherwise: these tests guard its behavior
+// for when it is unpaused (MONITOR_PAUSED, ADR-0007).
+const turn = (message: string, m: TurnModels, extra: { doseSession?: boolean; profile?: Profile; monitorEnabled?: boolean } = {}) =>
+  runTurn({
+    message, history: [], profile: extra.profile ?? NONE, index, doseSession: extra.doseSession ?? false, models: m, timeoutMs: 50,
+    monitorEnabled: extra.monitorEnabled ?? true,
+  })
 
 describe('turn orchestration', () => {
   it('emergency: 911 card first and the approved passage, with no model call at all', async () => {
@@ -129,6 +134,16 @@ describe('turn orchestration', () => {
     expect(o.tier).toBe('checkin')
     expect(o.triage.classifierFailed).toBe(true)
     expect(o.cards.some((c) => c.kind === 'answer')).toBe(true)
+  })
+
+  it('with the monitor paused, no monitor call is made, even in a dose session, and the guard still blocks dose advice', async () => {
+    const { m, calls } = models({ answers: ['Berries are good. [kb:fruit]', 'Take 4 units before dinner. [kb:fruit]'] })
+    const ok = await turn('What fruit can I eat?', m, { doseSession: true, monitorEnabled: false })
+    expect(ok.monitor).toBe('paused')
+    expect(ok.cards.map((c) => c.kind)).toEqual(['answer'])
+    const bad = await turn('What fruit can I eat?', m, { doseSession: true, monitorEnabled: false })
+    expect(bad.guard).toMatch(/^dose_advice/)
+    expect(calls.monitor).toBe(0)
   })
 
   it('nothing relevant in the knowledge base: "no information", and no answer model call', async () => {

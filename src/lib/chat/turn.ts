@@ -15,7 +15,7 @@ import { runAgent, type CompleteFn } from '../agent'
 import type { ChatMessage, ToolSpec } from '../types'
 import { combineTriage, parseClassifier, type CombinedTriage } from './combine'
 import { checkAnswer, stripCitations } from './guard'
-import { ANSWER_SYSTEM, ANSWER_TOOL_ROUNDS } from './prompts'
+import { ANSWER_SYSTEM, ANSWER_TOOL_ROUNDS, MONITOR_PAUSED } from './prompts'
 import { direction, type Hit, type Index, type KbPassage } from './retrieve'
 import { maxTier, triageRules, type Profile, type Tier } from './triage'
 
@@ -49,6 +49,8 @@ export interface TurnInput {
   doseSession: boolean // sticky once a dose/medication topic has come up (ADR-0007)
   models: TurnModels
   timeoutMs?: number
+  /** Overrides MONITOR_PAUSED (tests run both ways). */
+  monitorEnabled?: boolean
 }
 
 export interface TurnOutcome {
@@ -60,7 +62,7 @@ export interface TurnOutcome {
   /** The model's draft when the guard blocked it, kept for the care-team log so a
    *  block can be diagnosed later (the patient never sees it). */
   blockedDraft?: string
-  monitor: 'none' | 'blocking' | 'background'
+  monitor: 'none' | 'blocking' | 'background' | 'paused'
   monitorVerdict: MonitorVerdict | null
   /** For background review: resolves after display; may raise the tier next screen. */
   background: Promise<MonitorVerdict | null> | null
@@ -211,7 +213,13 @@ export async function runTurn(input: TurnInput): Promise<TurnOutcome> {
   }
   const answer: Card = { kind: 'answer', text: stripCitations(draft), sources: verdict.citations.map((id) => shown.get(id)!).filter(Boolean) }
 
-  // 8. Monitor.
+  // 8. Monitor (paused by Kay, 2026-11-14: ADR-0007). While paused, no monitor call is
+  // made; the fixed-rule guard above still blocks dose advice, and dose questions still
+  // get the refusal card before any model writes.
+  if (!(input.monitorEnabled ?? !MONITOR_PAUSED)) {
+    cards.push(answer)
+    return done({ monitor: 'paused' })
+  }
   const transcript = [...input.history, { role: 'user', content: message }]
     .map((m) => `${m.role === 'user' ? 'Patient' : 'Assistant'}: ${m.content ?? ''}`)
     .join('\n')
