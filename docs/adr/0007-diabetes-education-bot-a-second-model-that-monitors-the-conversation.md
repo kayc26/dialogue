@@ -9,11 +9,11 @@ adr teaching map: the example is not the teaching — these are the up-links fro
 # ADR-0007: Diabetes education bot — a second model that monitors the conversation
 
 - **Date**: 2026-11-14
-- **Iteration**: 2
+- **Iteration**: 3
 - **Status**: Accepted
 - **Deciders**: Kay, Nibble (Claude Opus 5.5)
 
-**TL;DR**: Decided: a small monitor model, ideally from a different family, that can only veto an answer or raise the escalation tier. It checks answers before display for the rest of any session where a dose or medication topic has come up, and reviews in the background otherwise. It never writes user-facing text, never lowers anything, and adds to the fixed-rule checks rather than replacing them.
+**TL;DR**: **Paused 2026-11-14 at Kay's request (Iteration 3): no monitor calls are made until `MONITOR_PAUSED` is flipped back.** Decided: a small monitor model, ideally from a different family, that can only veto an answer or raise the escalation tier. It checks answers before display for the rest of any session where a dose or medication topic has come up, and reviews in the background otherwise. It never writes user-facing text, never lowers anything, and adds to the fixed-rule checks rather than replacing them.
 
 ---
 
@@ -155,6 +155,7 @@ On 2026-11-14, Kay answered: **QST-MONITOR-ROLE: A** (veto and escalate only, as
 
 - [x] Should the monitor's flags persist across turns? Yes. Resolved in the Decision: a dose or medication flag lasts for the rest of the session.
 - [ ] Logging monitor verdicts is useful for the class write-up. Under real PHI (ADR-0005), those logs would be PHI too.
+- [ ] Unpause the monitor (`MONITOR_PAUSED = false` in `src/lib/chat/prompts.ts`) once answers come through reliably, and before testers who aren't on the team use the site. While it's paused, dose-flagged sessions have no check across turns. A dose request split over several messages relies on the fixed-rule guard alone.
 
 ---
 
@@ -171,6 +172,17 @@ On 2026-11-14, Kay answered: **QST-MONITOR-ROLE: A** (veto and escalate only, as
 - Contributors: Kay, Nibble (Claude Opus 5.5)
 - Changes: Decision added. The monitor checks before display only in dose or medication sessions, using a session-long flag, and runs in the background otherwise. A small model is used, ideally from a different family, and must pass the multi-turn set.
 - Outcome: Draft → Accepted
+
+### Iteration 3 (2026-11-14)
+- Trigger: Kay, during the first live chat test: "can we pause the second agent". In that test every answer was blocked as uncited, and the classifier failed on the last three turns.
+- Contributors: Kay, Nibble (Claude Opus 5.5)
+- Changes: Monitor paused with one constant, `MONITOR_PAUSED` in `src/lib/chat/prompts.ts`. No monitor call is made, neither the check before display in dose sessions nor the background review. Turns log `monitor: "paused"`. What still protects the patient:
+  - dose intent from the rules or the classifier gets the fixed refusal card, with no answer model call;
+  - the fixed-rule guard blocks dose advice, unsupported numbers and uncited answers;
+  - dose-tagged passages never reach the model.
+  
+  The monitor code and its tests stay in place; the tests run with the monitor on.
+- Outcome: Accepted (paused). Unpause condition in Open Follow-ups.
 
 ---
 
