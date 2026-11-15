@@ -1,14 +1,15 @@
 <script setup lang="ts">
-// Signed-in home, in the portal layout of docs/mockups/portal-assistant.html.
-// ADR-0005 QST-DIAB-PORTAL-SHELL: A (and ADR-0004: A): the portal is a STATIC shell;
-// the diabetes assistant is the one working part. Static parts say so when clicked
-// instead of pretending to work. On narrow screens only the assistant shows (the
-// mockup's single-column layout), keeping the large-type single-screen view.
-// Admins open the care-team inbox from the Message Center (ADR-0011: both views).
+// Signed-in home, laid out like the real patient portal's Message Center (ADR-0004,
+// from Kay's screenshots): a white top bar; a centered white page on a blue gradient;
+// Message Center navigation on the left and the conversation list on the right; and
+// the docked "New message" window. The Diabetes Assistant is the "Non-urgent medical
+// question" path inside that window. Static parts say they aren't in the demo.
+// Unbranded (QST-PORTAL-BRANDING: B, Penn colors allowed): no portal vendor or
+// health-system names or logos.
 import { computed, ref } from 'vue'
 import type { User } from '../lib/neon/auth'
 import { viewsFor, type DataClient, type Membership } from '../lib/neon/data'
-import PatientView from './PatientView.vue'
+import NewMessageWindow from './NewMessageWindow.vue'
 
 const props = defineProps<{ user: User; membership: Membership; data: Required<DataClient> }>()
 const emit = defineEmits<{ signOut: [] }>()
@@ -20,12 +21,46 @@ const ROLE_LABEL = {
 } as const
 
 const views = computed(() => viewsFor(props.membership.role))
-const view = ref(views.value[0])
+const view = ref<'patient' | 'careteam'>(views.value[0])
 const initial = computed(() => props.membership.display_name.trim().charAt(0).toUpperCase() || '?')
+
+// The docked window: opened at the portal's first step, or (shortcut, QST-PORTAL-
+// SHORTCUT pending) straight at the disclaimer, which is never skipped.
+const windowStart = ref<'menu' | 'disclaimer' | null>(null)
+let windowKey = 0
+function openWindow(start: 'menu' | 'disclaimer'): void {
+  windowKey++
+  windowStart.value = start
+}
 
 const notice = ref('')
 function staticPart(name: string): void {
-  notice.value = `“${name}” is part of the portal's look, but it isn't included in this demo. The Diabetes Assistant is the part that works.`
+  notice.value = `“${name}” is part of the portal's look, but it isn't included in this demo.`
+}
+
+// High-contrast theme: a working accessibility switch (low-vision users, ADR-0005),
+// remembered in this browser.
+const HC = 'dea.highContrast'
+const highContrast = ref(readHc())
+function readHc(): boolean {
+  try {
+    return localStorage.getItem(HC) === '1'
+  } catch {
+    return false
+  }
+}
+function applyHc(on: boolean): void {
+  document.documentElement.classList.toggle('high-contrast', on)
+}
+applyHc(highContrast.value)
+function toggleHc(): void {
+  highContrast.value = !highContrast.value
+  applyHc(highContrast.value)
+  try {
+    localStorage.setItem(HC, highContrast.value ? '1' : '0')
+  } catch {
+    /* lasts for this page */
+  }
 }
 </script>
 
@@ -34,7 +69,7 @@ function staticPart(name: string): void {
     <header class="top">
       <div class="logo">Patient Portal<small>placeholder brand · demo</small></div>
       <button class="sq" type="button" aria-label="Home" @click="staticPart('Home')">⌂</button>
-      <button class="sq" type="button" aria-label="Menu" @click="staticPart('Menu')">☰</button>
+      <button class="sq navy" type="button" aria-label="Menu" @click="staticPart('Menu')">☰</button>
       <span class="spacer" />
       <div class="me">
         <span class="avatar" aria-hidden="true"><span>{{ initial }}</span>▾</span>
@@ -46,157 +81,102 @@ function staticPart(name: string): void {
       </div>
     </header>
 
-    <nav v-if="views.length > 1" class="mobile-tabs" aria-label="Choose a view">
-      <button type="button" :aria-pressed="view === 'patient'" :class="{ on: view === 'patient' }" @click="view = 'patient'">
-        Diabetes Assistant
-      </button>
-      <button type="button" :aria-pressed="view === 'careteam'" :class="{ on: view === 'careteam' }" @click="view = 'careteam'">
-        Care team inbox
-      </button>
-    </nav>
+    <div class="stage">
+      <div class="page">
+        <aside class="nav" aria-label="Message Center">
+          <h1>Message Center</h1>
+          <button v-if="views.includes('patient')" class="send" type="button" @click="openWindow('menu')">Send a message</button>
+          <button v-if="views.includes('patient')" class="shortcut" type="button" @click="openWindow('disclaimer')">
+            ✦ Ask a non-urgent question
+          </button>
+          <ul>
+            <li>
+              <button type="button" :class="{ on: view === 'patient' }" @click="views.includes('patient') ? (view = 'patient') : staticPart('Conversations')">
+                <span class="ico" aria-hidden="true">💬</span>Conversations
+              </button>
+            </li>
+            <li v-if="views.includes('careteam')">
+              <button type="button" :class="{ on: view === 'careteam' }" @click="view = 'careteam'">
+                <span class="ico" aria-hidden="true">🩺</span>Care team inbox
+              </button>
+            </li>
+            <li><button type="button" @click="staticPart('Bookmarked')"><span class="ico" aria-hidden="true">🔖</span>Bookmarked</button></li>
+            <li>
+              <button type="button" @click="staticPart('Automated messages')">
+                <span class="ico" aria-hidden="true">🗂</span>Automated messages <span class="count">1</span>
+              </button>
+            </li>
+            <li><button type="button" @click="staticPart('Archive')"><span class="ico" aria-hidden="true">🗄</span>Archive</button></li>
+          </ul>
+        </aside>
 
-    <div class="page">
-      <aside class="nav" aria-label="Message Center">
-        <h1>Message Center</h1>
-        <button class="learn" type="button" @click="staticPart('Learn more')">ⓘ Learn more</button>
-        <button class="send" type="button" @click="staticPart('Send a message')">Send a message</button>
-        <button v-if="views.includes('patient')" class="ask" type="button" @click="view = 'patient'">✦ Ask the assistant</button>
-        <ul>
-          <li>
-            <button type="button" :class="{ on: view === 'patient' && views.includes('patient') }" @click="views.includes('patient') ? (view = 'patient') : staticPart('Conversations')">
-              <span class="ico" aria-hidden="true">💬</span>Conversations
-            </button>
-          </li>
-          <li v-if="views.includes('careteam')">
-            <button type="button" :class="{ on: view === 'careteam' }" @click="view = 'careteam'">
-              <span class="ico" aria-hidden="true">🩺</span>Care team inbox
-            </button>
-          </li>
-          <li><button type="button" @click="staticPart('Bookmarked')"><span class="ico" aria-hidden="true">🔖</span>Bookmarked</button></li>
-          <li><button type="button" @click="staticPart('Automated messages')"><span class="ico" aria-hidden="true">🗂</span>Automated messages</button></li>
-          <li><button type="button" @click="staticPart('Archive')"><span class="ico" aria-hidden="true">🗄</span>Archive</button></li>
-        </ul>
-      </aside>
+        <main class="main">
+          <p v-if="notice" class="notice" role="status">
+            {{ notice }} <button type="button" class="link" @click="notice = ''">OK</button>
+          </p>
 
-      <section class="list" aria-label="Conversations">
-        <h2>Conversations</h2>
-        <div class="search">
-          <input
-            placeholder="Search conversations"
-            aria-label="Search conversations (not part of the demo)"
-            readonly
-            @focus="staticPart('Search conversations')"
-          />
-          <button type="button" aria-label="Search" @click="staticPart('Search conversations')">⌕</button>
-        </div>
-        <button v-if="views.includes('patient')" type="button" :class="['conv', { on: view === 'patient' }]" @click="view = 'patient'">
-          <span class="ic ai" aria-hidden="true">✦</span>
-          <span>
-            <span class="t">Diabetes Assistant <span class="tag">AI</span></span>
-            <span class="who">Diabetes education · always on top</span>
-            <span class="pv">Ask about food, low or high sugar, and more…</span>
-          </span>
-        </button>
-        <button type="button" class="conv static" @click="staticPart('Appointment Reminder')">
-          <span class="ic" aria-hidden="true">👥</span>
-          <span>
-            <span class="t">Appointment Reminder <time>example</time></span>
-            <span class="who">Clinic Scheduling</span>
-            <span class="pv">This is a reminder of your upcoming visit…</span>
-          </span>
-        </button>
-        <button type="button" class="conv static" @click="staticPart('Lab results are ready')">
-          <span class="ic" aria-hidden="true">👥</span>
-          <span>
-            <span class="t">Lab results are ready <time>example</time></span>
-            <span class="who">Care Team</span>
-            <span class="pv">Your recent lab results are available…</span>
-          </span>
-        </button>
-      </section>
-
-      <main class="thread">
-        <p v-if="notice" class="notice" role="status">
-          {{ notice }} <button type="button" class="link" @click="notice = ''">OK</button>
-        </p>
-
-        <template v-if="view === 'patient'">
-          <div class="th-head">
-            <span class="ic ai" aria-hidden="true">✦</span>
-            <div>
-              <h2>Diabetes Assistant</h2>
-              <p>AI · answers from approved diabetes education material</p>
+          <template v-if="view === 'patient'">
+            <div class="main-head">
+              <h2>Conversations</h2>
+              <div class="search">
+                <input placeholder="Search conversations" aria-label="Search conversations (not part of the demo)" readonly @focus="staticPart('Search conversations')" />
+                <button type="button" aria-label="Search" @click="staticPart('Search conversations')">⌕</button>
+              </div>
             </div>
-          </div>
-          <div class="disclaimer">
-            This assistant is AI and can be wrong. It does not give medical advice or insulin doses. In an emergency, use
-            <strong>Get help now</strong> or call 911.
-          </div>
-          <div class="th-body">
-            <PatientView :data="data" />
-          </div>
-        </template>
-
-        <template v-else>
-          <div class="th-head">
-            <span class="ic" aria-hidden="true">🩺</span>
-            <div>
-              <h2>Care team inbox</h2>
-              <p>Summaries patients shared with the care team</p>
+            <div class="list-meta">
+              <button type="button" class="link" @click="staticPart('Manage conversations')">✎ Manage conversations</button>
+              <span>Showing 1 of 1</span>
             </div>
-          </div>
-          <div class="th-body">
-            <p class="th-pad">Coming next: the inbox of conversation summaries that patients shared, with replies.</p>
-          </div>
-        </template>
-      </main>
+            <button type="button" class="conv" @click="staticPart('Welcome to your patient portal')">
+              <span class="ic" aria-hidden="true">👥</span>
+              <span class="conv-body">
+                <span class="t">Welcome to your patient portal <time>example</time></span>
+                <span class="who">Care Team</span>
+                <span class="pv">To ask a non-urgent question, choose Send a message, then Contact your care team.</span>
+              </span>
+            </button>
+            <p class="end">There are no more conversations to show.</p>
+          </template>
+
+          <template v-else>
+            <div class="main-head"><h2>Care team inbox</h2></div>
+            <p>Coming next: the summaries patients shared with the care team, with replies.</p>
+          </template>
+        </main>
+      </div>
+
+      <footer>
+        <button type="button" class="link" @click="staticPart('Frequently Asked Questions')">Frequently Asked Questions</button>
+        <button type="button" class="link" @click="staticPart('Terms & Conditions')">Terms &amp; Conditions</button>
+        <button type="button" class="link" @click="staticPart('Contact Us')">Contact Us</button>
+        <button type="button" class="hc" :aria-pressed="highContrast" @click="toggleHc">High Contrast Theme</button>
+      </footer>
     </div>
 
-    <footer>
-      <button type="button" class="link" @click="staticPart('Frequently Asked Questions')">Frequently Asked Questions</button>
-      <button type="button" class="link" @click="staticPart('Terms & Conditions')">Terms &amp; Conditions</button>
-      <button type="button" class="link" @click="staticPart('Contact Us')">Contact Us</button>
-      <button type="button" class="link" @click="staticPart('About the AI assistant')">About the AI assistant</button>
-    </footer>
+    <NewMessageWindow v-if="windowStart" :key="windowKey" :data="data" :start="windowStart" @close="windowStart = null" />
   </div>
 </template>
 
 <style scoped>
 .portal {
-  --navy: #011f5b;
-  --ai: #5b3fd6;
-  --ai-soft: #efebff;
-  --soft: #f4f6fa;
-  --warn-bg: #fff6df;
-  --warn-ink: #6b4e00;
-  height: 100vh;
-  height: 100dvh; /* the chat window fills the screen; panes scroll inside (mockup) */
+  --navy: var(--portal-navy, #011f5b); /* high-contrast theme sets --portal-navy (app.css) */
+  min-height: 100vh;
   display: flex;
   flex-direction: column;
-}
-@media (prefers-color-scheme: dark) {
-  .portal {
-    --navy: #9fb5f5;
-    --ai: #b8a8ff;
-    --ai-soft: #2a2347;
-    --soft: #181a20;
-    --warn-bg: #3a3220;
-    --warn-ink: #f5dc9a;
-  }
 }
 button {
   font: inherit;
   cursor: pointer;
 }
 
-/* top bar */
+/* top bar (white, full width) */
 .top {
   display: flex;
   align-items: center;
-  gap: 0.75rem;
-  padding: 0.5rem 1rem;
-  border-bottom: 1px solid var(--border);
+  gap: 0.6rem;
+  padding: 0.4rem 1rem;
   background: var(--panel);
+  border-bottom: 1px solid var(--border);
 }
 .logo {
   font-size: 1.3rem;
@@ -211,72 +191,33 @@ button {
   text-transform: uppercase;
   color: var(--muted);
 }
-.spacer {
-  flex: 1;
-}
 .sq {
   width: 2.6rem;
   height: 2.6rem;
   border: 0;
   border-radius: 8px;
-  background: #111;
+  background: #6b6f78;
   color: #fff;
   font-size: 1.1rem;
-  display: grid;
-  place-items: center;
 }
-.learn {
-  border: 0;
-  background: none;
-  padding: 0.25rem 0;
-  margin-bottom: 0.75rem;
-  color: var(--navy);
-  font-weight: 600;
-  min-height: 2.5rem;
-}
-.search {
-  display: flex;
-  border: 1px solid var(--border);
-  border-radius: 6px;
-  overflow: hidden;
-  margin-bottom: 0.25rem;
-}
-.search input {
-  flex: 1;
-  min-width: 0;
-  border: 0;
-  padding: 0.5rem 0.6rem;
-  font: inherit;
-  font-size: 0.85rem;
-  background: var(--panel);
-  color: var(--text);
-}
-.search button {
-  width: 2.6rem;
-  border: 0;
+.sq.navy {
   background: var(--navy);
-  color: #fff;
 }
-.pv {
-  color: var(--muted);
-  font-size: 0.8rem;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+.spacer {
+  flex: 1;
 }
 .me {
   display: flex;
   align-items: center;
   gap: 0.6rem;
 }
-/* the mockup's dark avatar pill: initial in a navy circle, then a caret */
 .avatar {
   display: flex;
   align-items: center;
   gap: 0.3rem;
-  padding: 0.25rem 0.5rem 0.25rem 0.25rem;
+  padding: 0.2rem 0.45rem 0.2rem 0.2rem;
   border-radius: 8px;
-  background: #111;
+  background: #6b6f78;
   color: #fff;
 }
 .avatar span {
@@ -284,7 +225,6 @@ button {
   height: 2rem;
   border-radius: 50%;
   background: var(--navy);
-  color: #fff;
   display: grid;
   place-items: center;
   font-weight: 700;
@@ -299,64 +239,71 @@ button {
   font-size: 0.75rem;
 }
 .signout {
-  min-height: 2.75rem;
+  min-height: 2.6rem;
   padding: 0 1rem;
-  border: 2px solid var(--border);
-  border-radius: 8px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
   background: var(--panel);
   color: var(--text);
 }
 
-/* layout: Message Center | Conversations | assistant thread */
+/* the blue gradient stage with the centered white page */
+.stage {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  background: var(--stage-bg, linear-gradient(180deg, #3d78ad 0%, #24527e 45%, #0f2742 100%));
+}
 .page {
   flex: 1;
+  width: min(92rem, 100% - 3rem);
+  margin: 0 auto;
   display: grid;
-  grid-template-columns: 15rem 16rem 1fr;
-  min-height: 0;
-  overflow: hidden;
+  grid-template-columns: 17rem 1fr;
+  background: var(--panel);
 }
 .nav {
   border-right: 1px solid var(--border);
-  padding: 1rem;
-  overflow-y: auto;
+  padding: 1rem 1.1rem;
 }
 .nav h1 {
-  font-size: 1.4rem;
+  font-size: 1.45rem;
   font-weight: 400;
-  margin: 0 0 0.75rem;
+  margin: 0 0 1rem;
 }
 .send {
   display: block;
   width: 100%;
   min-height: 2.75rem;
-  margin-bottom: 0.5rem;
   border: 0;
-  border-radius: 6px;
+  border-radius: 4px;
   background: var(--navy);
-  color: var(--panel);
+  color: #fff;
   font-weight: 600;
 }
-.ask {
+.shortcut {
+  display: block;
   width: 100%;
   min-height: 2.75rem;
-  border: 1px solid #d4caff;
-  border-radius: 6px;
-  background: var(--ai-soft);
-  color: var(--ai);
+  margin-top: 0.5rem;
+  border: 1px solid #c9d3ea;
+  border-radius: 4px;
+  background: #eef2fb;
+  color: var(--navy);
   font-weight: 700;
 }
 .nav ul {
   list-style: none;
   padding: 0;
-  margin: 1rem 0 0;
+  margin: 1rem -1.1rem 0;
 }
 .nav li button {
   display: flex;
   align-items: center;
-  gap: 0.6rem;
+  gap: 0.7rem;
   width: 100%;
-  min-height: 2.75rem;
-  padding: 0.4rem 0.5rem;
+  min-height: 2.9rem;
+  padding: 0.4rem 1.1rem;
   border: 0;
   border-left: 4px solid transparent;
   background: none;
@@ -367,128 +314,114 @@ button {
   border-left-color: var(--navy);
   background: var(--soft);
   color: var(--navy);
-  font-weight: 600;
 }
-.list {
-  border-right: 1px solid var(--border);
-  padding: 1rem 0.75rem;
+.count {
+  margin-left: auto;
+  min-width: 1.5rem;
+  border-radius: 999px;
+  background: var(--navy);
+  color: #fff;
+  font-size: 0.75rem;
+  text-align: center;
+}
+.main {
+  min-width: 0;
+  padding: 1rem 1.5rem 2rem;
+}
+.main-head {
   display: flex;
-  flex-direction: column;
-  gap: 0.6rem;
-  overflow-y: auto;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1rem;
+  flex-wrap: wrap;
 }
-.list h2 {
-  font-size: 1.3rem;
+.main-head h2 {
+  font-size: 1.45rem;
   font-weight: 400;
-  margin: 0 0 0.25rem 0.25rem;
+  margin: 0.25rem 0;
 }
-.conv {
-  display: grid;
-  grid-template-columns: 2.4rem 1fr;
-  gap: 0.6rem;
-  text-align: left;
-  padding: 0.7rem;
+.search {
+  display: flex;
+  width: min(20rem, 100%);
   border: 1px solid var(--border);
-  border-radius: 8px;
+}
+.search input {
+  flex: 1;
+  min-width: 0;
+  border: 0;
+  padding: 0.45rem 0.6rem;
+  font: inherit;
+  font-size: 0.85rem;
   background: var(--panel);
   color: var(--text);
 }
-.conv.on {
-  border-color: var(--ai);
-  box-shadow: 0 0 0 2px #e2dbff;
+.search button {
+  width: 2.6rem;
+  border: 0;
+  background: var(--navy);
+  color: #fff;
 }
-.conv.static {
-  opacity: 0.75;
+.list-meta {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin: 0.5rem 0;
+  color: var(--muted);
+  font-size: 0.85rem;
 }
-.conv > span:last-child {
+.conv {
+  width: 100%;
+  display: grid;
+  grid-template-columns: 2.6rem 1fr;
+  gap: 0.75rem;
+  padding: 0.8rem 1rem;
+  text-align: left;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  background: var(--panel);
+  color: var(--text);
+}
+.ic {
+  width: 2.6rem;
+  height: 2.6rem;
+  border-radius: 50%;
+  background: var(--navy);
+  display: grid;
+  place-items: center;
+}
+.conv-body {
   min-width: 0;
   display: flex;
   flex-direction: column;
 }
-.ic {
-  width: 2.4rem;
-  height: 2.4rem;
-  border-radius: 50%;
-  display: grid;
-  place-items: center;
-  background: var(--navy);
-  color: var(--panel);
-}
-.ic.ai {
-  background: var(--ai);
-}
 .t {
-  font-weight: 600;
   display: flex;
   justify-content: space-between;
-  align-items: flex-start;
-  gap: 0.4rem;
+  gap: 0.5rem;
+  font-size: 1.15rem;
 }
 .t time {
-  font-weight: 400;
   color: var(--muted);
-  font-size: 0.75rem;
+  font-size: 0.8rem;
 }
 .who {
   color: var(--muted);
-  font-size: 0.85rem;
 }
-.tag {
-  font-size: 0.65rem;
-  font-weight: 700;
-  color: var(--ai);
-  background: var(--ai-soft);
-  border-radius: 4px;
-  padding: 0 0.3rem;
-  align-self: flex-start;
-  white-space: nowrap;
-}
-
-/* assistant thread: the working part, in the app's large type */
-.thread {
-  min-width: 0;
-  min-height: 0;
-  display: flex;
-  flex-direction: column;
-}
-.th-head {
-  display: flex;
-  align-items: center;
-  gap: 0.75rem;
-  padding: 0.75rem 1.25rem;
-  border-bottom: 1px solid var(--border);
-}
-.th-head h2 {
-  margin: 0;
-  font-size: 1.3rem;
-}
-.th-head p {
-  margin: 0;
+.pv {
   color: var(--muted);
   font-size: 0.85rem;
 }
-.disclaimer {
-  background: var(--warn-bg);
-  color: var(--warn-ink);
-  padding: 0.6rem 1.25rem;
-  font-size: 0.95rem;
-}
-/* the thread body hands its full height to the chat window (PatientView/ChatPanel) */
-.th-body {
-  flex: 1;
-  min-height: 0;
-  display: flex;
-  flex-direction: column;
-  background: var(--soft);
-}
-.th-pad {
-  padding: 1rem 1.25rem;
+.end {
+  text-align: center;
+  color: var(--muted);
+  font-size: 0.85rem;
 }
 .notice {
-  margin: 0;
-  padding: 0.6rem 1.25rem;
+  margin: 0 0 0.75rem;
+  padding: 0.6rem 0.9rem;
   background: var(--soft);
-  border-bottom: 1px solid var(--border);
+  border: 1px solid var(--border);
+  border-radius: 4px;
 }
 .link {
   border: 0;
@@ -499,85 +432,52 @@ button {
   min-height: 2.5rem;
 }
 footer {
+  width: min(92rem, 100% - 3rem);
+  margin: 0 auto;
   display: flex;
   justify-content: center;
+  align-items: center;
   flex-wrap: wrap;
-  gap: 0 0.75rem;
-  padding: 0.15rem 13rem 0.15rem 1rem; /* right side left clear for the fixed help button */
+  gap: 0.25rem 0.75rem;
+  padding: 0.3rem 13rem 0.3rem 1rem; /* right side left clear for the fixed help button */
+  background: var(--panel);
   border-top: 1px solid var(--border);
-  font-size: 0.8rem;
+  font-size: 0.85rem;
+}
+.hc {
+  min-height: 2.25rem;
+  padding: 0 0.9rem;
+  border: 0;
+  border-radius: 999px;
+  background: var(--navy);
+  color: #fff;
+  text-decoration: underline;
 }
 
-/* narrow screens: the assistant alone (mockup's single column); admins get two tabs */
-.mobile-tabs {
-  display: none;
-}
-@media (max-width: 1100px) {
+@media (max-width: 900px) {
   .page {
     grid-template-columns: 1fr;
+    width: 100%;
   }
-  .nav,
-  .list {
-    display: none;
+  .nav {
+    border-right: 0;
+    border-bottom: 1px solid var(--border);
   }
-  .mobile-tabs {
-    display: flex;
-    gap: 0.5rem;
-    padding: 0.5rem 1rem;
-  }
-  .mobile-tabs button {
-    flex: 1;
-    min-height: 3rem;
-    border: 2px solid var(--navy);
-    border-radius: 8px;
-    background: var(--panel);
-    color: var(--navy);
-    font-weight: 700;
-  }
-  .mobile-tabs button.on {
-    background: var(--navy);
-    color: var(--panel);
+  footer {
+    width: 100%;
+    padding: 0.3rem 1rem 4.75rem;
   }
   .me-text small {
     display: none;
   }
 }
-
-/* phones: every line of chrome costs chat space, so keep only what matters */
-@media (max-width: 700px) {
-  footer,
+@media (max-width: 600px) {
   .logo small,
-  .me-text,
-  .th-head p {
+  .me-text {
     display: none;
-  }
-  .top {
-    padding: 0.35rem 0.75rem;
-    gap: 0.5rem;
   }
   .logo {
     font-size: 1.05rem;
-  }
-  .sq {
-    width: 2.3rem;
-    height: 2.3rem;
-  }
-  .mobile-tabs {
-    padding: 0.35rem 0.75rem;
-  }
-  .th-head {
-    padding: 0.4rem 0.75rem;
-  }
-  .th-head h2 {
-    font-size: 1.1rem;
-  }
-  .th-head .ic {
-    width: 2rem;
-    height: 2rem;
-  }
-  .disclaimer {
-    padding: 0.35rem 0.75rem;
-    font-size: 0.8rem;
   }
 }
 </style>

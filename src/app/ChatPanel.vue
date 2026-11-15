@@ -420,8 +420,8 @@ const uniqueDocs = (sources: KbPassage[]) => [...new Map(sources.map((s) => [s.d
 .thinking {
   color: var(--muted);
 }
-/* the mockup's composer, pinned at the bottom; extra space on the right keeps the
-   fixed "Get help now" button from covering the Ask button */
+/* the mockup composer, pinned at the bottom of the docked window (which itself sits
+   above the fixed "Get help now" button, so nothing here needs to dodge it) */
 .composer {
   border-top: 1px solid var(--border);
   background: var(--panel);
@@ -431,7 +431,7 @@ const uniqueDocs = (sources: KbPassage[]) => [...new Map(sources.map((s) => [s.d
   display: flex;
   gap: 0.6rem;
   align-items: stretch;
-  padding-right: 13rem;
+  padding-right: 0;
 }
 textarea,
 input {
@@ -489,7 +489,7 @@ button {
     padding: 0.75rem;
   }
   .composer {
-    padding: 0.5rem 0.75rem 4.6rem; /* the fixed help button sits below, never over, the Ask row */
+    padding: 0.5rem 0.75rem;
   }
   .row {
     padding-right: 0;

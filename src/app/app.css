@@ -9,6 +9,7 @@
   --bg: #ffffff;
   --panel: #ffffff;
   --soft: #f3f5f9;
+  --window: #eceef2;
   --text: #1c1f26;
   --muted: #4f5563;
   --border: #c9ced8;
@@ -29,6 +30,7 @@
     --bg: #111318;
     --panel: #191c22;
     --soft: #20242c;
+    --window: #20242c;
     --text: #eef0f4;
     --muted: #b9becb;
     --border: #4a505c;
@@ -40,6 +42,25 @@
     --ok-bg: #16301d;
     --focus: #ffcc4d;
   }
+}
+
+/* "High Contrast Theme" (footer switch): pure black on white, black borders, a thick
+   orange focus ring. Wins over dark mode (class selector is more specific). */
+:root.high-contrast {
+  --bg: #ffffff;
+  --panel: #ffffff;
+  --soft: #ffffff;
+  --window: #ffffff;
+  --text: #000000;
+  --muted: #000000;
+  --border: #000000;
+  --accent: #000000;
+  --accent-text: #ffffff;
+  --danger: #a00000;
+  --danger-bg: #ffffff;
+  --focus: #ff8c00;
+  --portal-navy: #000000;
+  --stage-bg: #000000;
 }
 
 *,
