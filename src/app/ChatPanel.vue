@@ -185,7 +185,12 @@ const ESCALATION = {
   checkin: { title: 'If this is happening to you now', text: 'Call the nurse line, or 911 if you feel very unwell.' },
 } as const
 const escalation = (t: Tier) => ESCALATION[t as Exclude<Tier, 'none'>]
-const uniqueDocs = (sources: KbPassage[]) => [...new Map(sources.map((s) => [s.doc_title, s])).values()]
+// Source chips name the source, not the document (Kay, 2026-11-14): "American Diabetes
+// Association" or "Your care team", one chip per source. The document title stays in
+// the chip's tooltip for anyone who wants it.
+const uniqueSources = (sources: KbPassage[]) => [...new Map(sources.map((s) => [s.source_label, s])).values()]
+const docTitles = (sources: KbPassage[], label: KbPassage['source_label']) =>
+  [...new Set(sources.filter((s) => s.source_label === label).map((s) => s.doc_title))].join('; ')
 </script>
 
 <template>
@@ -223,7 +228,7 @@ const uniqueDocs = (sources: KbPassage[]) => [...new Map(sources.map((s) => [s.d
               <div v-if="c.kind === 'passage'">
                 <p v-if="c.why === 'dose'" class="dose-head">Talk to your care team before changing any dose.</p>
                 <p class="verbatim">{{ c.passage.body }}</p>
-                <span class="cite">📄 {{ c.passage.doc_title }} · {{ SOURCE[c.passage.source_label] }}</span>
+                <span class="cite" :title="c.passage.doc_title">📄 {{ SOURCE[c.passage.source_label] }}</span>
                 <p class="meta">Shown word for word from approved material</p>
               </div>
               <div v-else-if="c.kind === 'dose_refusal'">
@@ -234,7 +239,7 @@ const uniqueDocs = (sources: KbPassage[]) => [...new Map(sources.map((s) => [s.d
               </div>
               <div v-else-if="c.kind === 'answer'">
                 <p class="answer-text">{{ c.text }}</p>
-                <span v-for="s in uniqueDocs(c.sources)" :key="s.id" class="cite">📄 {{ s.doc_title }} · {{ SOURCE[s.source_label] }}</span>
+                <span v-for="s in uniqueSources(c.sources)" :key="s.source_label" class="cite" :title="docTitles(c.sources, s.source_label)">📄 {{ SOURCE[s.source_label] }}</span>
                 <p class="meta">
                   Answered from {{ c.sources.length }} approved passage{{ c.sources.length === 1 ? '' : 's' }}
                 </p>
