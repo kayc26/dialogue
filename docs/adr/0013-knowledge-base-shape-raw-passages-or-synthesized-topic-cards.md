@@ -9,7 +9,7 @@ adr teaching map: the example is not the teaching — these are the up-links fro
 # ADR-0013: Knowledge base shape — raw passages or synthesized topic cards
 
 - **Date**: 2026-11-14
-- **Iteration**: 8
+- **Iteration**: 9
 - **Status**: Accepted
 - **Deciders**: Kay, Nibble (Claude Opus 5.5)
 
@@ -316,7 +316,7 @@ Cost: drafting about 25 cards with Haiku 5.5 over about 60k source tokens is aro
    - With "none", or no approved card, the turn falls back to raw passages and today's AI-written, guarded answer.
    - If the card-picking call fails, the top-scoring card is shown only above a score threshold; otherwise the raw-passage path runs.
 5. **Dose content keeps its rules.** No card gives dose instructions (the answer guard checks every card). Dose-tagged passages stay verbatim-only (ADR-0005). ~~A topic whose sources are mostly dose-tagged gets no card.~~ *Iteration 6 (QST-KB-DOSE-CARDS: B)*: the tag count doesn't decide; the sponsor decides card by card, and the review document marks cards that cite dose-tagged passages for closer reading.
-6. **Iteration 6: the sponsor's source set, with the book under a numbers rule** (QST-KB-BOOK-ROLE: A). Sources are the two ADA guides and *Bright Spots & Landmines*, each tagged with source, year, and diabetes type.
+6. **Iteration 6: the sponsor's source set, with the book under a numbers rule** (QST-KB-BOOK-ROLE: A). Sources are the two ADA guides and *Bright Spots & Landmines*, each tagged with source, year, and diabetes type. *Iteration 9 (QST-KB-BOOK-RECHECK: A)*: the book stays in runtime search even though its passages are mostly first-person; the code holds the safety line, and TD-6 (book chunk quality) is medium priority.
    - The book is searched like the ADA guides, but it is never the authority on numbers. Code enforces this: a number in an answer must appear in a cited ADA passage (or the patient's own message), and citing the book alone doesn't count.
    - A book passage is never shown word for word: not as a fallback, not as an urgent passage, not as a dose passage. Its voice is first-person, and copyright allows only brief quotes.
    - Dose-tagged book passages never reach the model, as with ADA.
@@ -416,6 +416,12 @@ Cost: drafting about 25 cards with Haiku 5.5 over about 60k source tokens is aro
 - Contributors: Nibble (Claude Opus 5.5); the blind drafting agent (Claude Opus 5.5)
 - Changes: recorded the comparison and the recalibration (fallback cutoff 16); new question QST-KB-FAQ-RETURN.
 - Outcome: Accepted (two questions open)
+
+### Iteration 9 (2026-11-16)
+- Trigger: Kay answered QST-KB-BOOK-RECHECK: A (against the recommendation, B).
+- Contributors: Kay, Nibble (Claude Opus 5.5)
+- Changes: Decision item 6 notes the book stays in runtime search; TD-6 (book chunk quality) raised to medium priority.
+- Outcome: Accepted (one question open: QST-KB-FAQ-RETURN)
 
 ---
 

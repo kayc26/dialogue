@@ -59,4 +59,4 @@ Workarounds and compromises, each with where it lives and how to retire it (CLAU
 - **Impact**: Book passages rank on fake headings, and a passage can begin or end mid-thought. Under QST-KB-BOOK-ROLE: A no book passage is shown word for word, so the harm is to retrieval and to the answer model's context, not to what a patient reads directly.
 - **Workaround**: none yet; the build is used as is for card drafting, where the drafter reads neighbouring passages.
 - **Fix**: Treat a one-line paragraph as a heading only if the next paragraph doesn't continue its sentence (starts lowercase), and reject one-letter and single-word all-caps lines in book sources. Or extract the book with `pdftotext -layout` and use its column structure. Rebuild and compare section counts.
-- **Priority**: Medium if the book stays in runtime search (QST-KB-BOOK-ROLE: A); low if it moves to card drafting only.
+- **Priority**: Medium: the book stays in runtime search (ADR-0013, QST-KB-BOOK-RECHECK: A, Kay 2026-11-16).
