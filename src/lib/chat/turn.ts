@@ -18,7 +18,7 @@ import { runAgent, type CompleteFn } from '../agent'
 import type { ChatMessage, ToolSpec } from '../types'
 import { CARD_FALLBACK_SCORE, CARD_MIN_SCORE, CARD_SHORTLIST, parsePick, type CardHit, type CardIndex, type TopicCard } from './cards'
 import { combineTriage, parseClassifier, type CombinedTriage } from './combine'
-import { checkAnswer, stripCitations } from './guard'
+import { checkAnswer, stripCitations, trimBookNumbers } from './guard'
 import { ANSWER_SYSTEM, ANSWER_TOOL_ROUNDS, CARDS_PAUSED, MONITOR_PAUSED } from './prompts'
 import { direction, type DiabetesType, type Hit, type Index, type KbPassage, type SearchOptions } from './retrieve'
 import { maxTier, triageRules, type Profile, type Tier } from './triage'
@@ -214,8 +214,10 @@ export async function runTurn(input: TurnInput): Promise<TurnOutcome> {
   const hasPassage = () => cards.some((c) => c.kind === 'passage')
 
   let cardStep: CardStep | null = null
+  // Set when a book-number sentence was trimmed from an answer that is still shown.
+  let trimNote: Pick<TurnOutcome, 'guard' | 'blockedDraft'> = { guard: null }
   const done = (extra: Partial<TurnOutcome> = {}): TurnOutcome => ({
-    triage, tier, cards, doseSession, guard: null, monitor: 'none', monitorVerdict: null, background: null, modelCalls, card: cardStep, ...extra,
+    triage, tier, cards, doseSession, monitor: 'none', monitorVerdict: null, background: null, modelCalls, card: cardStep, ...trimNote, ...extra,
   })
 
   // 3. Dose question: fixed card, no answer model.
@@ -297,13 +299,16 @@ export async function runTurn(input: TurnInput): Promise<TurnOutcome> {
 
   // 7. Guard.
   const verdict = checkAnswer(draft, [...shown.values()], message, { doseAdvice: enforceDose })
+  // A book-only number costs its sentence, not the whole answer (QST-KB-RAG-ROUND3: B).
+  const trimmed = verdict.ok ? null : trimBookNumbers(draft, [...shown.values()], message, { doseAdvice: enforceDose })
+  if (trimmed) trimNote = { guard: `trimmed_book_number:${verdict.ok ? '' : verdict.reason.slice('unsupported_number:'.length)}`, blockedDraft: draft }
   const fallback = (): void => {
     if (hasPassage()) return // an urgent passage is already the reply's body
     if (dosePassage) return void cards.push({ kind: 'passage', passage: dosePassage, why: 'dose' })
     const best = context.find(showable)
     cards.push(best ? { kind: 'passage', passage: best, why: 'fallback' } : { kind: 'no_info' })
   }
-  if (!verdict.ok) {
+  if (!verdict.ok && !trimmed) {
     // The prompt tells the model to say "I don't have information on that" when the
     // passages don't answer. That reply carries no citation, and showing the top
     // passage in its place answers a question the model just said it couldn't.
@@ -311,11 +316,13 @@ export async function runTurn(input: TurnInput): Promise<TurnOutcome> {
     else fallback()
     return done({ guard: verdict.reason, blockedDraft: draft })
   }
-  if (isOnlyDecline(draft)) {
+  const text = trimmed ? trimmed.text : draft
+  const citations = trimmed ? trimmed.citations : verdict.ok ? verdict.citations : []
+  if (isOnlyDecline(text)) {
     cards.push({ kind: 'no_info' })
     return done({ guard: 'decline_with_citation', blockedDraft: draft })
   }
-  const answer: Card = { kind: 'answer', text: stripCitations(draft), sources: verdict.citations.map((id) => shown.get(id)!).filter(Boolean) }
+  const answer: Card = { kind: 'answer', text: stripCitations(text), sources: citations.map((id) => shown.get(id)!).filter(Boolean) }
 
   // 8. Monitor (paused by Kay, 2026-11-14: ADR-0007). While paused, no monitor call is
   // made; the fixed-rule guard above still blocks dose advice, and dose questions still
@@ -329,7 +336,7 @@ export async function runTurn(input: TurnInput): Promise<TurnOutcome> {
     .join('\n')
   if (doseSession) {
     modelCalls++
-    const mv = parseMonitor(await withTimeout(models.monitor(transcript, draft), timeoutMs))
+    const mv = parseMonitor(await withTimeout(models.monitor(transcript, text), timeoutMs))
     if (!mv) {
       tier = maxTier(tier, 'checkin') // monitor down: fixed checks still applied; show help inline
       if (!cards.some((c) => c.kind === 'escalation')) cards.unshift({ kind: 'escalation', tier, criteria: ['monitor_unavailable'] })
@@ -350,6 +357,6 @@ export async function runTurn(input: TurnInput): Promise<TurnOutcome> {
 
   cards.push(answer)
   modelCalls++
-  const background = withTimeout(models.monitor(transcript, draft), timeoutMs * 2).then(parseMonitor)
+  const background = withTimeout(models.monitor(transcript, text), timeoutMs * 2).then(parseMonitor)
   return done({ monitor: 'background', background })
 }

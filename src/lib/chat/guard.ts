@@ -33,12 +33,6 @@ function numbersIn(text: string): string[] {
   return (text.replace(CITE, ' ').match(/\d+(?:\.\d+)?/g) ?? []).map((n) => String(Number(n)))
 }
 
-/**
- * Rule 2's authority clause (ADR-0013, QST-KB-BOOK-ROLE: A): a 'book' passage can be
- * cited for explanation, but its numbers don't count. The book's personal targets
- * (70–140 mg/dL, under 30 g of carbohydrate per meal) differ from ADA's for older
- * adults, and an answer citing both would otherwise pass with the book's number.
- */
 /** Rule 2's patterns: the reason an answer would be blocked as dose advice, or null.
  *  Exported so a test run with rule 2 paused can still mark what it would have blocked. */
 export function doseAdviceIn(answer: string): string | null {
@@ -46,6 +40,13 @@ export function doseAdviceIn(answer: string): string | null {
   return null
 }
 
+/**
+ * The number check's authority clause (ADR-0013, QST-KB-BOOK-ROLE: A): a 'book'
+ * passage can be cited for explanation, but its numbers don't count. The book's
+ * personal targets (70–140 mg/dL, under 30 g of carbohydrate per meal) differ from
+ * ADA's for older adults, and an answer citing both would otherwise pass with the
+ * book's number.
+ */
 export function checkAnswer(
   answer: string,
   shown: { id: string; body: string; source_label?: string }[],
@@ -73,6 +74,42 @@ export function checkAnswer(
   if (unsupported.length) return { ok: false, reason: `unsupported_number:${[...new Set(unsupported)].join(',')}` }
 
   return { ok: true, citations }
+}
+
+/** Sentences, each keeping the citations written right after it ("…too. [kb:x]"). */
+function sentencesOf(text: string): string[] {
+  const cite = String.raw`\s*[[(【]\s*kb:[^\])】]*[\])】]`
+  return text.match(new RegExp(String.raw`[^.!?]+(?:[.!?]+|$)(?:${cite})*`, 'g'))?.map((s) => s.trim()).filter(Boolean) ?? []
+}
+
+/**
+ * Trim, don't block, on a book number (ADR-0013, QST-KB-RAG-ROUND3: B, Kay 2026-11-16).
+ * When every number the guard rejected appears in a cited book passage, the sentences
+ * carrying those numbers are dropped and the rest is checked again from scratch. The
+ * trimmed answer is returned only if it passes every check and still cites an ADA
+ * passage. Anything else (an invented number, dose advice, a reply left citing only
+ * the book) returns null, and the whole answer stays blocked.
+ */
+export function trimBookNumbers(
+  answer: string,
+  shown: { id: string; body: string; source_label?: string }[],
+  userMessage: string,
+  opts: { doseAdvice?: boolean } = {},
+): { text: string; dropped: string[]; citations: string[] } | null {
+  const first = checkAnswer(answer, shown, userMessage, opts)
+  if (first.ok || !first.reason.startsWith('unsupported_number:')) return null
+  const rejected = first.reason.slice('unsupported_number:'.length).split(',')
+  const cited = new Set(citationsIn(answer))
+  const bookNumbers = new Set(shown.filter((p) => cited.has(p.id.toLowerCase()) && p.source_label === 'book').flatMap((p) => numbersIn(p.body)))
+  if (!rejected.every((n) => bookNumbers.has(n))) return null // an invented number blocks the whole answer
+  const sentences = sentencesOf(answer)
+  const dropped = sentences.filter((s) => numbersIn(s).some((n) => rejected.includes(n)))
+  const text = sentences.filter((s) => !dropped.includes(s)).join(' ')
+  const again = checkAnswer(text, shown, userMessage, opts)
+  if (!again.ok) return null
+  const ada = new Set(shown.filter((p) => p.source_label === 'ADA').map((p) => p.id.toLowerCase()))
+  if (!again.citations.some((c) => ada.has(c))) return null // what's left must still rest on ADA
+  return { text, dropped, citations: again.citations }
 }
 
 /** The text a patient sees: citations removed (they are shown as source chips). */

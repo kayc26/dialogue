@@ -116,7 +116,9 @@ for (const [i, f] of faq.entries()) {
     ...o.cards.map(shown),
     '',
     ...(wouldStop.length ? [`⚠ **Paused dose rule would have stopped this**: ${wouldStop.join('; ')}`, ''] : []),
-    ...(o.blockedDraft ? [`*Blocked draft (never shown)*: ${o.blockedDraft}`, ''] : []),
+    ...(o.blockedDraft
+      ? [o.guard?.startsWith('trimmed_book_number') ? `*Original draft (a sentence with a book-only number was trimmed)*: ${o.blockedDraft}` : `*Blocked draft (never shown)*: ${o.blockedDraft}`, '']
+      : []),
     '**Score**: numbers right ☐ · citations right ☐ · declined when it should ☐ · agrees with the FAQ ☐ · notes:',
     '',
   )

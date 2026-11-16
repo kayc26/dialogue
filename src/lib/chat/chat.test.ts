@@ -4,7 +4,7 @@
 import { describe, expect, it } from 'vitest'
 import { combineTriage, parseClassifier } from './combine'
 import { buildIndex, direction, type KbPassage } from './retrieve'
-import { checkAnswer, citationsIn, stripCitations } from './guard'
+import { checkAnswer, citationsIn, stripCitations, trimBookNumbers } from './guard'
 import { triageRules, type Profile } from './triage'
 
 const NONE: Profile = { history_of_dka: false, pregnant: false, uses_pump: false }
@@ -155,6 +155,32 @@ describe('answer guard (QST-DIAB-DOSE-GUARD: D, output gate)', () => {
     it("passes ADA's number, with the book cited for the explanation", () => {
       const r = checkAnswer('After a meal, aim for under 180 mg/dL [kb:ada-target]. Many people find a walk after eating helps [kb:book-range].', mixed, 'after eating?')
       expect(r).toEqual({ ok: true, citations: ['ada-target', 'book-range'] })
+    })
+  })
+
+  describe('trim, don\'t block, on a book number (ADR-0013, QST-KB-RAG-ROUND3: B)', () => {
+    // Shaped like the third FAQ run: good ADA-backed answers lost over one sentence
+    // carrying the book author's personal figure ("20 minutes", "after 2 pm").
+    const mixed = [
+      { id: 'ada-drinks', body: 'Water is the best choice. Unsweetened tea and coffee are fine. Limit soda, sweet tea, and juice.', source_label: 'ADA' },
+      { id: 'book-coffee', body: 'I switch to decaf coffee after 2 pm so caffeine does not keep me up.', source_label: 'book' },
+    ]
+    it('drops only the sentence with the book number, and shows the rest when it still rests on ADA', () => {
+      const a = 'Water is the best choice, and unsweetened tea or coffee is fine. [kb:ada-drinks] One writer switches to decaf after 2 pm. [kb:book-coffee] Limit soda, sweet tea, and juice. [kb:ada-drinks]'
+      expect(checkAnswer(a, mixed, 'what can I drink?')).toEqual({ ok: false, reason: 'unsupported_number:2' })
+      const t = trimBookNumbers(a, mixed, 'what can I drink?')
+      expect(t?.dropped).toEqual(['One writer switches to decaf after 2 pm. [kb:book-coffee]'])
+      expect(t?.text).toBe('Water is the best choice, and unsweetened tea or coffee is fine. [kb:ada-drinks] Limit soda, sweet tea, and juice. [kb:ada-drinks]')
+      expect(t?.citations).toEqual(['ada-drinks'])
+    })
+    it('keeps blocking when what is left cites only the book (as decided: the rest must rest on ADA)', () => {
+      // The third run's beverages draft cited only book passages, so it stays blocked.
+      const a = 'Plain or sparkling water is a good choice. [kb:book-coffee] One writer switches to decaf after 2 pm. [kb:book-coffee]'
+      expect(trimBookNumbers(a, mixed, 'what can I drink?')).toBeNull()
+    })
+    it('never trims an invented number or dose advice: those block the whole answer', () => {
+      expect(trimBookNumbers('Drink 8 glasses of water a day. [kb:ada-drinks] Decaf after 2 pm helps. [kb:book-coffee]', mixed, 'drinks?')).toBeNull()
+      expect(trimBookNumbers('Take 2 units with coffee. [kb:ada-drinks]', mixed, 'drinks?')).toBeNull()
     })
   })
 

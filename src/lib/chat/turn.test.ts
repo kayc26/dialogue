@@ -478,6 +478,14 @@ describe('the book is never shown word for word', () => {
     expect(o.cards).toEqual([{ kind: 'passage', why: 'fallback', passage: expect.objectContaining({ id: 'ada-walk' }) }])
   })
 
+  it("an ADA-backed answer loses only its book-number sentence, and the draft is kept for the log (QST-KB-RAG-ROUND3: B)", async () => {
+    const draft = 'Regular walking helps manage blood glucose after meals. [kb:ada-walk] One writer walks for 15 minutes after dinner. [kb:book-walk]'
+    const o = await go('Does walking after meals help my blood sugar?', models({ answers: [draft] }).m)
+    expect(o.cards).toEqual([{ kind: 'answer', text: 'Regular walking helps manage blood glucose after meals.', sources: [expect.objectContaining({ id: 'ada-walk' })] }])
+    expect(o.guard).toBe('trimmed_book_number:15')
+    expect(o.blockedDraft).toBe(draft)
+  })
+
   it('the urgent "what to do" passage is always ADA', async () => {
     const o = await go('my sugar is 45 and I feel shaky', models({ classify: cls('urgent'), answers: ['Use the Rule of 15. [kb:ada-low]'] }).m)
     const shown = o.cards.filter((c) => c.kind === 'passage')
