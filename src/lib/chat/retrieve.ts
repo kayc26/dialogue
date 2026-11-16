@@ -10,7 +10,12 @@ export interface KbPassage {
   section: string | null
   body: string
   tags: string[]
+  /** Which diabetes type the passage's document is written for (migration 0003); absent
+   *  until the database has the column, and then search simply doesn't use it. */
+  diabetes_type?: 'type1' | 'type2' | 'any' | null
 }
+
+export type DiabetesType = 'type1' | 'type2'
 
 export interface Hit {
   passage: KbPassage
@@ -100,8 +105,24 @@ function lean(text: string): Direction {
 /** A passage about the opposite problem keeps half its score: still findable, never first by accident. */
 const OPPOSITE_DIRECTION = 0.5
 
+/** A passage written for the patient's own diabetes type scores 1/0.7 (about 1.43×)
+ *  (ADR-0013, QST-KB-RAG-FIXES: B): a type 2 patient gets the type 2 guide ahead of
+ *  the type 1 guide, but the type 1 guide still answers what only it covers (ketones
+ *  and DKA, mostly). It boosts the patient's own type rather than demoting the other:
+ *  the two ADA guides end up in the same order either way, but demoting the type 1
+ *  guide handed its first places to the book (top passage from the book rose 59 → 80
+ *  of 133 questions for a type 2 patient), while boosting the patient's own guide
+ *  keeps ADA ahead (scripts/ephemeral/2026-11-16-diabetes-type-ranking.ts). */
+export const OTHER_TYPE = 0.7
+const OWN_TYPE = 1 / OTHER_TYPE
+
+export interface SearchOptions {
+  /** The patient's diabetes type; passages for the other type rank lower, never vanish. */
+  diabetesType?: DiabetesType
+}
+
 export interface Index {
-  search(query: string, k?: number): Hit[]
+  search(query: string, k?: number, opts?: SearchOptions): Hit[]
 }
 
 /**
@@ -130,8 +151,9 @@ export function buildIndex(passages: KbPassage[], k1 = 1.2, b = 0.75, background
     return Math.log(1 + (N - n + 0.5) / (n + 0.5))
   }
   return {
-    search(query: string, k = 5): Hit[] {
+    search(query: string, k = 5, opts: SearchOptions = {}): Hit[] {
       const dir = direction(query)
+      const own = (p: KbPassage) => opts.diabetesType !== undefined && p.diabetes_type === opts.diabetesType
       const q = expand(query, tokenize(query), dir)
       const hits: Hit[] = []
       docs.forEach((d, i) => {
@@ -141,6 +163,7 @@ export function buildIndex(passages: KbPassage[], k1 = 1.2, b = 0.75, background
           if (f) score += w * idf(t) * ((f * (k1 + 1)) / (f + k1 * (1 - b + (b * d.length) / avgLen)))
         }
         if (dir && leans[i] && leans[i] !== dir) score *= OPPOSITE_DIRECTION
+        if (own(passages[i])) score *= OWN_TYPE
         if (score > 0) hits.push({ passage: passages[i], score })
       })
       return hits.sort((a, b2) => b2.score - a.score).slice(0, k)

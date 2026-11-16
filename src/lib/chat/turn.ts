@@ -19,8 +19,8 @@ import type { ChatMessage, ToolSpec } from '../types'
 import { CARD_FALLBACK_SCORE, CARD_MIN_SCORE, CARD_SHORTLIST, parsePick, type CardHit, type CardIndex, type TopicCard } from './cards'
 import { combineTriage, parseClassifier, type CombinedTriage } from './combine'
 import { checkAnswer, stripCitations } from './guard'
-import { ANSWER_SYSTEM, ANSWER_TOOL_ROUNDS, MONITOR_PAUSED } from './prompts'
-import { direction, type Hit, type Index, type KbPassage } from './retrieve'
+import { ANSWER_SYSTEM, ANSWER_TOOL_ROUNDS, CARDS_PAUSED, MONITOR_PAUSED } from './prompts'
+import { direction, type DiabetesType, type Hit, type Index, type KbPassage, type SearchOptions } from './retrieve'
 import { maxTier, triageRules, type Profile, type Tier } from './triage'
 
 export type Card =
@@ -74,6 +74,10 @@ export interface TurnInput {
   timeoutMs?: number
   /** Overrides MONITOR_PAUSED (tests run both ways). */
   monitorEnabled?: boolean
+  /** Overrides CARDS_PAUSED (tests run both ways). */
+  cardsEnabled?: boolean
+  /** The patient's diabetes type: passages for the other type rank lower (ADR-0013, QST-KB-RAG-FIXES: B). */
+  diabetesType?: DiabetesType
 }
 
 export interface TurnOutcome {
@@ -129,11 +133,11 @@ export function parseMonitor(text: string | null): MonitorVerdict | null {
  *  way the problem points (a reading, or words like "low" / "high"). Without that,
  *  the escalation card stands alone: a check-in that came from a failed classifier on
  *  "What fruit can I eat?" must not arrive with the Rule of 15 for lows attached. */
-function urgentPassage(index: Index, message: string, glucose: number | null): KbPassage | null {
+function urgentPassage(index: Index, message: string, glucose: number | null, opts: SearchOptions = {}): KbPassage | null {
   const dir = glucose !== null ? (glucose > 180 ? 'high' : glucose < 70 ? 'low' : null) : direction(message)
   if (!dir) return null
   const q = dir === 'high' ? `${message} high blood sugar ketones` : `${message} low blood glucose treat`
-  return index.search(q, 12).map((h) => h.passage).find((p) => p.tags.includes('urgent') && showable(p)) ?? null
+  return index.search(q, 12, opts).map((h) => h.passage).find((p) => p.tags.includes('urgent') && showable(p)) ?? null
 }
 
 const SEARCH_TOOL: ToolSpec = {
@@ -152,11 +156,12 @@ export async function runTurn(input: TurnInput): Promise<TurnOutcome> {
   const timeoutMs = input.timeoutMs ?? 6000
   let modelCalls = 0
   const rules = triageRules(message, profile)
+  const byType: SearchOptions = { diabetesType: input.diabetesType }
   const cards: Card[] = []
 
   // 1. Emergency: no model call, 911 first, approved "while you wait" passage.
   if (rules.tier === 'emergency') {
-    const p = urgentPassage(index, message, rules.glucose)
+    const p = urgentPassage(index, message, rules.glucose, byType)
     cards.push({ kind: 'escalation', tier: 'emergency', criteria: rules.criteria })
     if (p) cards.push({ kind: 'passage', passage: p, why: 'urgent' })
     const triage: CombinedTriage = { tier: 'emergency', criteria: rules.criteria, doseIntent: rules.doseIntent, softened: false, classifierFailed: false }
@@ -176,7 +181,7 @@ export async function runTurn(input: TurnInput): Promise<TurnOutcome> {
   if (tier !== 'none') {
     cards.push({ kind: 'escalation', tier, criteria: triage.criteria })
     if (tier === 'urgent') {
-      const p = urgentPassage(index, message, rules.glucose)
+      const p = urgentPassage(index, message, rules.glucose, byType)
       if (p) cards.push({ kind: 'passage', passage: p, why: 'urgent' })
     }
   }
@@ -196,7 +201,9 @@ export async function runTurn(input: TurnInput): Promise<TurnOutcome> {
   // 3b. Approved topic cards. A picked card is the reply's body, shown as approved, so
   // the answer guard and the monitor have nothing to check: no model wrote it, and the
   // sponsor approved it as dose-free (ADR-0013, decision item 5).
-  if (input.cards && input.cards.size > 0) {
+  // Cards are paused (CARDS_PAUSED: Kay, 2026-11-16, QST-KB-RAG-FIRST: "try c first"):
+  // the trial answers from RAG only.
+  if (input.cards && input.cards.size > 0 && (input.cardsEnabled ?? !CARDS_PAUSED)) {
     const shortlist = input.cards.search(message, CARD_SHORTLIST).filter((h) => h.score >= CARD_MIN_SCORE)
     const ids = shortlist.map((h) => h.card.id)
     let shown: CardHit | undefined
@@ -222,7 +229,7 @@ export async function runTurn(input: TurnInput): Promise<TurnOutcome> {
   }
 
   // 4–5. Retrieval.
-  const hits: Hit[] = index.search(message, 8)
+  const hits: Hit[] = index.search(message, 8, byType)
   const top = hits[0]
   // A dose-tagged best match is never given to the model; it is shown word for word,
   // but only when no answer is shown (as the one passage in place of an answer).
@@ -253,7 +260,7 @@ export async function runTurn(input: TurnInput): Promise<TurnOutcome> {
     complete,
     runTool: async (call) => {
       const q = String((JSON.parse(call.function.arguments || '{}') as { query?: string }).query ?? '')
-      const found = index.search(q, 4).filter((h) => !isDose(h.passage)).map((h) => h.passage)
+      const found = index.search(q, 4, byType).filter((h) => !isDose(h.passage)).map((h) => h.passage)
       for (const p of found) shown.set(p.id, p)
       return found.length ? found.map(fmt).join('\n\n') : 'No matching passages.'
     },

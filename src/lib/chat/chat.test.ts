@@ -72,6 +72,39 @@ describe('retrieval', () => {
   it('returns nothing for a question the corpus does not cover', () => {
     expect(index.search('how do I renew my passport')).toEqual([])
   })
+
+  describe("ranks the patient's own diabetes type first (ADR-0013, QST-KB-RAG-FIXES: B)", () => {
+    // Shaped like the two ADA guides: the same topic in each, worded almost alike,
+    // plus a topic only the type 1 guide covers.
+    const typed = buildIndex([
+      { ...P('t1-check', 'Checking your blood glucose', 'Check your blood glucose before meals and at bedtime, and before driving.'), diabetes_type: 'type1' },
+      { ...P('t2-check', 'Checking your blood glucose', 'Check your blood glucose before meals and at bedtime, as your care team suggests.'), diabetes_type: 'type2' },
+      { ...P('t1-ketones', 'Ketones', 'Check for ketones when your blood glucose is high or you feel sick.'), diabetes_type: 'type1' },
+      { ...P('book-walk', 'Walking', 'A short walk after meals helps blood glucose.'), diabetes_type: 'any' },
+    ])
+    const q = 'when should I check my blood glucose?'
+    it("a type 2 patient gets the type 2 guide's passage first, and a type 1 patient the type 1 guide's", () => {
+      expect(typed.search(q, 2, { diabetesType: 'type2' })[0].passage.id).toBe('t2-check')
+      expect(typed.search(q, 2, { diabetesType: 'type1' })[0].passage.id).toBe('t1-check')
+    })
+    it('the other type still answers what only it covers: ketones for a type 2 patient', () => {
+      expect(typed.search('should I check for ketones?', 1, { diabetesType: 'type2' })[0].passage.id).toBe('t1-ketones')
+    })
+    it("the patient's own ADA guide moves ahead of an equally matching book passage, not just ahead of the other guide", () => {
+      // Demoting the other type instead handed its first places to the book (59 → 80
+      // of 133 questions for a type 2 patient); boosting the own type gave 59 → 40.
+      const tie = buildIndex([
+        { ...P('t2-walk', 'Activity', 'A short walk after meals helps blood glucose.'), diabetes_type: 'type2' },
+        { ...P('book-walk', 'Activity', 'A short walk after meals helps blood glucose.'), source_label: 'book', diabetes_type: 'any' },
+        { ...P('t1-other', 'Ketones', 'Check for ketones when sick.'), diabetes_type: 'type1' },
+      ])
+      expect(tie.search('walk after meals', 1, { diabetesType: 'type2' })[0].passage.id).toBe('t2-walk')
+    })
+    it("passages for any type, and searches with no patient type, aren't changed", () => {
+      const walk = (o?: { diabetesType: 'type1' | 'type2' }) => typed.search('walk after meals', 1, o)[0].score
+      expect(walk({ diabetesType: 'type2' })).toBe(walk())
+    })
+  })
 })
 
 describe('answer guard (QST-DIAB-DOSE-GUARD: D, output gate)', () => {

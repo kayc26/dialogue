@@ -9,7 +9,7 @@
 import { computed, nextTick, ref, watch } from 'vue'
 import type { ChatMessage } from '../lib/types'
 import type { DataClient } from '../lib/neon/data'
-import { buildIndex, type KbPassage } from '../lib/chat/retrieve'
+import { buildIndex, type DiabetesType, type KbPassage } from '../lib/chat/retrieve'
 import { buildCardIndex, type TopicCard } from '../lib/chat/cards'
 import { openRouterModels, type CostMeter } from '../lib/chat/models'
 import { ConversationLog, cardsToText } from '../lib/chat/persist'
@@ -24,6 +24,8 @@ const props = defineProps<{
   passages: KbPassage[]
   /** Approved topic cards (ADR-0013); empty until the sponsor approves some. */
   cards: TopicCard[]
+  /** The demo patient's diabetes type: search ranks their type's guide first (ADR-0013, QST-KB-RAG-FIXES: B). */
+  diabetesType: DiabetesType
 }>()
 
 const KEY = 'dea.openrouterKey'
@@ -136,7 +138,7 @@ async function send(): Promise<void> {
     meter.notes = [] // this turn's model calls, for the care-team log
     try {
       outcome = await runTurn({
-        message, history, profile: props.profile, index: index.value, cards: cardIndex.value, doseSession,
+        message, history, profile: props.profile, index: index.value, cards: cardIndex.value, diabetesType: props.diabetesType, doseSession,
         models: openRouterModels(apiKey.value, meter),
       })
     } catch (e) {

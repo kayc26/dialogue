@@ -20,6 +20,10 @@ export const MODELS = {
  *  and classifier failures are diagnosed. Flip to false to bring it back. */
 export const MONITOR_PAUSED = true
 
+/** Topic cards are paused: Kay, 2026-11-16 (ADR-0013, QST-KB-RAG-FIRST: "try c first"),
+ *  a trial of RAG only. The card code stays; flip to false to bring cards back. */
+export const CARDS_PAUSED = true
+
 /** Agent-loop tool rounds per answer: under ADR-0003's cap of 8, kept low for the budget. */
 export const ANSWER_TOOL_ROUNDS = 3
 

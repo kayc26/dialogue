@@ -2,7 +2,7 @@
 // iteration 10; QST-KB-FAQ-EVAL.) The FAQ is held out of the knowledge base, so its
 // 13 questions are an independent test and its answers are the clinical reference.
 //
-//   npm run kb:eval-faq -- [cards file] [--yes]
+//   npm run kb:eval-faq -- [cards file] [--cards] [--type=type1|type2] [--yes]
 //   (reads OPENROUTER_API_KEY from git-ignored .env.local, like the other kb: scripts;
 //    jiti runs the app's own TypeScript modules unchanged; default cards file:
 //    kb/out/cards-blind.json)
@@ -21,12 +21,17 @@
 import { readFileSync, writeFileSync } from 'node:fs'
 import { buildCardIndex, type TopicCard } from '../src/lib/chat/cards'
 import { openRouterModels, type CostMeter } from '../src/lib/chat/models'
-import { buildIndex, type KbPassage } from '../src/lib/chat/retrieve'
+import { buildIndex, type DiabetesType, type KbPassage } from '../src/lib/chat/retrieve'
+import { CARDS_PAUSED } from '../src/lib/chat/prompts'
 import { runTurn, type Card } from '../src/lib/chat/turn'
 import type { DraftCard } from './cards-lib'
 
 const MAX_DOLLARS = 0.25
 const args = process.argv.slice(2)
+// Cards follow the app's switch (CARDS_PAUSED, the RAG-only trial) unless --cards is given.
+const useCards = args.includes('--cards') || !CARDS_PAUSED
+// --type=type1|type2: answer as a patient with that diabetes type (QST-KB-RAG-FIXES: B).
+const diabetesType = args.find((a) => a.startsWith('--type='))?.slice(7) as DiabetesType | undefined
 const cardsFile = args.find((a) => !a.startsWith('--')) ?? 'kb/out/cards-blind.json'
 const key = process.env.OPENROUTER_API_KEY ?? ''
 
@@ -46,7 +51,7 @@ const faq = readFileSync('kb/local-sources/FAQs.md', 'utf8')
     return { q: q.trim(), a: rest.join('\n').trim() }
   })
 
-console.log(`FAQ questions: ${faq.length} · passages: ${passages.length} (no FAQ) · cards: ${cards.length} from ${cardsFile}`)
+console.log(`FAQ questions: ${faq.length} · passages: ${passages.length} (no FAQ) · cards: ${useCards ? `${cards.length} from ${cardsFile}` : "off (CARDS_PAUSED; --cards to include)"} · patient type: ${diabetesType ?? "none"}`)
 console.log(`OpenRouter key: ${key ? 'set' : 'NOT SET (OPENROUTER_API_KEY)'} · stop above $${MAX_DOLLARS}`)
 if (!args.includes('--yes') || !key) {
   console.log('\nDry run: no model calls. Estimated cost about $0.05 (about 3 calls per question). Re-run with --yes.')
@@ -82,7 +87,7 @@ for (const [i, f] of faq.entries()) {
   meter.notes = []
   const o = await runTurn({
     message: f.q, history: [], profile: { history_of_dka: false, pregnant: false, uses_pump: false },
-    index, cards: cardIndex, doseSession: false, models: openRouterModels(key, meter),
+    index, cards: cardIndex, cardsEnabled: useCards, diabetesType, doseSession: false, models: openRouterModels(key, meter),
   })
   const kinds = o.cards.map((c) => c.kind).join('+')
   const line = `${String(i + 1).padStart(2)}. ${kinds.padEnd(24)} card:${o.card?.how ?? '-'}${o.card?.id ? `(${o.card.id})` : ''}${o.guard ? ` guard:${o.guard}` : ''}  ${f.q.slice(0, 55)}`

@@ -257,7 +257,7 @@ describe('approved topic cards', () => {
   })
   const strongFruit = scored([{ card: fruitCard, score: CARD_FALLBACK_SCORE + 2 }, { card: lowCard, score: 3 }])
   const ask = (message: string, m: TurnModels, cards: CardIndex = strongFruit) =>
-    runTurn({ message, history: [], profile: NONE, index, cards, doseSession: false, models: m, timeoutMs: 50, monitorEnabled: false })
+    runTurn({ message, history: [], profile: NONE, index, cards, doseSession: false, models: m, timeoutMs: 50, monitorEnabled: false, cardsEnabled: true })
 
   it('a picked card is shown word for word, with its sources, and the answer model is never called', async () => {
     const { m, calls } = models({ pick: 'card-fruit' })
@@ -329,7 +329,7 @@ describe('approved topic cards', () => {
   it('with no approved cards, turns run exactly as before cards (no pick call)', async () => {
     const { m, calls } = models({ answers: ['Berries are a good choice. [kb:fruit]'] })
     const o = await runTurn({
-      message: 'What fruit can I eat?', history: [], profile: NONE, index, cards: buildCardIndex([draftCard]), doseSession: false, models: m, timeoutMs: 50, monitorEnabled: false,
+      message: 'What fruit can I eat?', history: [], profile: NONE, index, cards: buildCardIndex([draftCard]), doseSession: false, models: m, timeoutMs: 50, monitorEnabled: false, cardsEnabled: true,
     })
     expect(o.card).toBeNull()
     expect(calls.pick).toBe(0)
@@ -355,6 +355,14 @@ describe('approved topic cards', () => {
     expect(await loadApprovedCards(missing)).toEqual([])
     const served: DataClient = { get: <T,>() => Promise.resolve([lowCard, draftCard] as T) }
     expect((await loadApprovedCards(served)).map((c) => c.id)).toEqual(['card-low-treat'])
+  })
+
+  it('while cards are paused (CARDS_PAUSED, the RAG-only trial), approved cards are never searched or picked', async () => {
+    const { m, calls } = models({ pick: 'card-fruit', answers: ['Berries are a good choice. [kb:fruit]'] })
+    const o = await runTurn({ message: 'What fruit can I eat?', history: [], profile: NONE, index, cards: strongFruit, doseSession: false, models: m, timeoutMs: 50, monitorEnabled: false })
+    expect(o.card).toBeNull()
+    expect(calls.pick).toBe(0)
+    expect(o.cards.map((c) => c.kind)).toEqual(['answer'])
   })
 
   describe('Regression tests', () => {

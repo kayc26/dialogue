@@ -5,6 +5,8 @@ import { computed, onMounted, ref } from 'vue'
 import { getNonEmpty, type DataClient } from '../lib/neon/data'
 import type { KbPassage } from '../lib/chat/retrieve'
 import { loadApprovedCards, type TopicCard } from '../lib/chat/cards'
+import { loadPassages } from '../lib/chat/kb-load'
+import { CARDS_PAUSED } from '../lib/chat/prompts'
 import ChatPanel from './ChatPanel.vue'
 import {
   minutesAgo,
@@ -84,10 +86,12 @@ onMounted(async () => {
     // getNonEmpty: a just-woken Neon compute can briefly return [] (see data.ts).
     ;[patients.value, passages.value, cards.value] = await Promise.all([
       getNonEmpty<Patient>(props.data, 'patients?select=id,display_name,age,diabetes_type,regimen,flags&order=display_name.asc'),
-      // The knowledge base (ADR-0005): loaded once, searched in the browser.
-      getNonEmpty<KbPassage>(props.data, 'kb_chunks?select=id,doc_title,source_label,section,body,tags'),
-      // Approved topic cards (ADR-0013). Never throws: no cards means raw passages, as before.
-      loadApprovedCards(props.data),
+      // The knowledge base (ADR-0005): loaded once, searched in the browser; with each
+      // passage's diabetes type when the database has it (kb-load.ts).
+      loadPassages(props.data),
+      // Approved topic cards (ADR-0013). Never throws: no cards means raw passages, as
+      // before. Not even requested while cards are paused (CARDS_PAUSED).
+      CARDS_PAUSED ? Promise.resolve([]) : loadApprovedCards(props.data),
     ])
     let saved: string | null = null
     try {
@@ -154,7 +158,7 @@ onMounted(async () => {
       <p class="note">{{ REGIMEN_DISCLAIMER }}</p>
     </div>
 
-    <ChatPanel :data="data" :patient-id="chosen.id" :profile="chosen.flags" :passages="passages" :cards="cards" />
+    <ChatPanel :data="data" :patient-id="chosen.id" :profile="chosen.flags" :diabetes-type="chosen.diabetes_type" :passages="passages" :cards="cards" />
   </section>
 </template>
 
