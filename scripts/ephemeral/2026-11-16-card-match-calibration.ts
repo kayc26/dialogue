@@ -15,7 +15,7 @@
 // checks that.
 // Prints scores and ranks only (card ids, no card text: ADA-derived, ADR-0005).
 //
-// Usage: node scripts/ephemeral/2026-11-16-card-match-calibration.ts
+// Usage: node scripts/ephemeral/2026-11-16-card-match-calibration.ts [cards file]
 //
 // Outcome (2026-11-16):
 //   - First run (rarity from the cards alone) gave cutoffs 2.5 / 8, but the turn tests
@@ -27,13 +27,18 @@
 //     Set CARD_MIN_SCORE = 2.5, CARD_FALLBACK_SCORE = 13, shortlist 3 (src/lib/chat/cards.ts).
 //   - Measured on the 2026-11-14 drafts, which were written with the FAQ in view; to be
 //     re-run on the blind redraft (ADR-0013, QST-KB-REDRAFT: A).
+//   - Third run, blind redraft (kb/out/cards-blind.json, 120 held-out questions): right
+//     card first 60/120, top 3 94/120, top 5 104/120; right-card min 1.8, p10 4.9,
+//     median 7.9; off-topic max 3.3; WRONG first places up to 14.9. Right and wrong
+//     overlap, so the score can't choose: CARD_FALLBACK_SCORE raised to 16 (a failed
+//     pick almost always takes the raw-passage path); CARD_MIN_SCORE stays 2.5.
 
 import { readFileSync } from 'node:fs'
 import { buildCardIndex, type TopicCard } from '../../src/lib/chat/cards.ts'
 import type { KbPassage } from '../../src/lib/chat/retrieve.ts'
 
 type Draft = { id: string; topic: string; asks: string[]; answer: string; sources: string[] }
-const drafts = (JSON.parse(readFileSync('kb/out/cards-draft.json', 'utf8')) as { cards: Draft[] }).cards
+const drafts = (JSON.parse(readFileSync(process.argv[2] ?? 'kb/out/cards-draft.json', 'utf8')) as { cards: Draft[] }).cards
 type Built = { id: string; docTitle: string; sourceLabel: KbPassage["source_label"]; section: string | null; body: string; tags: string[] }
 const passages: KbPassage[] = (JSON.parse(readFileSync("kb/out/passages.json", "utf8")) as { passages: Built[] }).passages.map((p) => ({
   id: p.id, doc_title: p.docTitle, source_label: p.sourceLabel, section: p.section, body: p.body, tags: p.tags,
