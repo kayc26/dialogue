@@ -371,6 +371,16 @@ Cost: drafting about 25 cards with Haiku 5.5 over about 60k source tokens is aro
 - Changes: Decision item 5 amended (sponsor decides dose-territory cards); items 6–8 added (book under a numbers rule and never verbatim; FAQ held out everywhere for the first pass; blind redraft).
 - Outcome: Accepted (no questions open)
 
+### Iteration 7 (2026-11-16)
+- Trigger: the first build of the sponsor's set met QST-KB-BOOK-ROLE's own "If wrong" condition.
+- Contributors: Nibble (Claude Opus 5.5)
+- Changes:
+  - Built (commits `38e7fb6` to `445d781`): the source set and rebuild (ADA ids unchanged); the ADA-numbers rule in the guard; book passages never shown word for word; the card step in the turn; `kb:cards:check`, `kb:faq-compare`, `kb:cards:load`, `kb:cards:approve`; migration 0003 (written, not applied to any branch).
+  - A regression found while testing: card scores depended on how many cards were approved. Fixed by taking word rarity from the whole knowledge base. Cutoffs recalibrated: shortlist floor 2.5, fallback 13.
+  - Blind redraft started with a drafting agent restricted to `kb/out/passages.json`, the guard, and the checker.
+  - New question QST-KB-BOOK-RECHECK.
+- Outcome: Accepted (one question open)
+
 ---
 
 ## Links
