@@ -9,7 +9,7 @@ adr teaching map: the example is not the teaching — these are the up-links fro
 # ADR-0013: Knowledge base shape — raw passages or synthesized topic cards
 
 - **Date**: 2026-11-14
-- **Iteration**: 6
+- **Iteration**: 7
 - **Status**: Accepted
 - **Deciders**: Kay, Nibble (Claude Opus 5.5)
 
@@ -200,6 +200,24 @@ Options:
 
 **ANS:** (by Kay)
 b
+
+---
+
+### QST-KB-BOOK-RECHECK: The book's passages came out mostly first-person. Keep it in runtime search (A), or move it to cards only (B)?
+- Status: unanswered
+- Why asking: QST-KB-BOOK-ROLE was answered A with this condition: *"if the rebuilt passages show most book chunks are first-person story rather than general guidance, flip to B"*. The first build (2026-11-16, commit `38e7fb6`) shows it: of 340 kept book passages, 85% use first person and 52% heavily (more than 4% of words are I/my/me). Many also start mid-sentence or sit under fake headings ("A", "SMALLER") from drop caps, pull quotes, and page breaks (TD-6), and 388 more were dropped as layout scraps. The book is 340 of 439 passages, so it dominates search. Under A, the code already holds the line: no book passage is shown word for word, and a book number never passes the guard. So the cost of A is answer quality, not safety. This relates to QST-KB-BOOK-ROLE.
+- Need: pick a letter (or override — any shape answers)
+
+Options:
+- **A — Keep it in runtime search**: as built. The answer model reads first-person book passages next to ADA ones and must turn them into general advice. Answers that lean on the book's numbers get blocked and replaced by an ADA passage or "no information". TD-6 (chunk quality) becomes medium priority.
+- **B — Cards only**: the book is used only by the card drafter, where the sponsor approves every sentence. Runtime search sees the two ADA guides (99 passages). The book's mindset, sleep, and walking advice reach patients only through approved cards.
+- **C — Runtime search, chapters filtered**: keep only the book's mindset and sleep chapters, plus exercise passages without dose tags, in runtime search. Food and dose-heavy material is used for cards only.
+
+**Recommendation**: (by Nibble, Claude Opus 5.5, 2026-11-16)
+**B — cards only.** *Rationale*: this is the condition Kay's answer named, and it is met by a wide margin (85% / 52%). B keeps everything Kay's approach wanted from the book ("explanations and examples") and routes it through the one place a clinician reads every sentence. Runtime answers come from ADA alone, which also makes the FAQ comparison and the evaluation easier to interpret. C is a reasonable middle, but it still puts first-person, mid-sentence chunks in front of the answer model. *Confidence*: 0.7 — because the first-person measure is a word count, not a reading. Some first-person passages are good general advice phrased personally. *If wrong*: if the blind cards show the book adds little the ADA guides lack, B costs nothing more. If testers ask many mindset or sleep questions no card covers, revisit **C**.
+
+**ANS:** (by Kay)
+[Fill this in]
 
 ---
 
