@@ -484,6 +484,12 @@ Cost: drafting about 25 cards with Haiku 5.5 over about 60k source tokens is aro
 - Changes: Decision item 7 notes the baseline-only test. Results go under Supporting Materials when the run finishes.
 - Outcome: Accepted (no questions open)
 
+### Iteration 12 (2026-11-16)
+- Trigger: the baseline run finished (approved by Kay; $0.0044).
+- Contributors: Nibble (Claude Opus 5.5)
+- Changes: results recorded under Supporting Materials; new question QST-KB-EVAL-NEXT (four fixes).
+- Outcome: Accepted (one question open)
+
 ---
 
 ## Links
