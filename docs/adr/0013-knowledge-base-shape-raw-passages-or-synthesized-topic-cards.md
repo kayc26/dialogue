@@ -9,7 +9,7 @@ adr teaching map: the example is not the teaching — these are the up-links fro
 # ADR-0013: Knowledge base shape — raw passages or synthesized topic cards
 
 - **Date**: 2026-11-14
-- **Iteration**: 9
+- **Iteration**: 10
 - **Status**: Accepted
 - **Deciders**: Kay, Nibble (Claude Opus 5.5)
 
@@ -222,7 +222,7 @@ a
 ---
 
 ### QST-KB-FAQ-RETURN: The first-pass comparison is done. In what form does the care-team FAQ come back?
-- Status: unanswered
+- Status: answered
 - Why asking: Decision item 7 says the FAQ returns as a source after the comparison, but not in what form. The comparison (Supporting Materials, "blind cards vs. the clinical FAQ") found the blind cards cover only 3 of the FAQ's 13 questions fully and 2 partly. The 7 with no card are all nutrition: hunger, protein, affordable food, shakes, snacks, bedtime snack, supplements. That is exactly where the sponsor's set is thin, now that the six ADA handouts are gone. The FAQ is clinician-written, already one question and one answer each, and its numbers (30–60 g of carbs per meal, 1 cup of fruit, 10–15 minutes before eating for rapid-acting insulin) appear in no remaining source. Three of the demo's own suggestion chips ("What fruit can I eat?", "What is a healthy snack?", "Are sugar substitutes safe?") depend on this content.
 - Need: pick a letter (or override — any shape answers)
 
@@ -233,6 +233,24 @@ Options:
 
 **Recommendation**: (by Nibble, Claude Opus 5.5, 2026-11-16)
 **C — both.** *Rationale*: the FAQ is the only source that answers the seven nutrition questions, and it is already in the shape a card should have. As cards, the clinic's own wording reaches patients unchanged, which fits QST-KB-CARD-USE: A. As raw passages, it also helps nearby questions ("is a banana okay?"). The guard already treats `care_team` numbers as authoritative. The FAQ has done its job as a held-out reference for the first pass. A later pass can hold out a fresh sample of tester questions instead. *Confidence*: 0.7 — because whether the clinic counts its FAQ as already approved, or wants it reviewed like the other cards, is the sponsor's call. *If wrong*: if the sponsor wants the FAQ kept as an evaluation set for a second blind pass, choose **A** for now. Or hold it out again and source nutrition another way, for example by asking the sponsor about the six ADA handouts.
+
+**ANS:** (by Kay)
+my idea is to see whehter we can answer the faqs well without the current FAQ
+
+---
+
+### QST-KB-FAQ-EVAL: How do we test "can we answer the FAQs well without the FAQ"?
+- Status: unanswered
+- Why asking: Kay's answer to QST-KB-FAQ-RETURN makes the 13 FAQ questions a test of the whole assistant, not only of the cards. Cards fully cover 3 of them. The other 10 go to the AI-written path (classifier, then the answer model reading ADA and book passages, then the guard), which only a live run can show. Two choices shape what the result means. First, whether to add cards aimed at the gap topics before testing: their drafter would see the FAQ's *questions*, though never its answers. Second, the run costs real credit (ADR-0012).
+- Need: pick a letter (or override — any shape answers)
+
+Options:
+- **A — Test as is, baseline first**: run the 13 FAQ questions through the real turn (blind cards treated as approved for the test, raw passages from the ADA guides and the book, the real models). Each answer is put beside the FAQ answer and scored separately: numbers right, citations right, declined when it should, agrees with the FAQ. About 13 × 3 model calls, roughly $0.05; script `kb/eval-faq.ts`. This measures what the sponsor material can do today.
+- **B — Draft gap cards first, then test**: a blind drafter writes cards for the 7 nutrition topics. It is told the FAQ's questions but never shown their answers. Then run A. Coverage looks better, but part of it comes from knowing the test questions, so it measures answer quality more than coverage.
+- **C — A, then B**: the baseline first, then gap cards, then a second run. Two runs, about $0.10, and it shows how much targeted cards add.
+
+**Recommendation**: (by Nibble, Claude Opus 5.5, 2026-11-16)
+**C — baseline, then gap cards, then a second run.** *Rationale*: the baseline answers Kay's question honestly: can today's sponsor material answer the FAQ? The second run shows whether the gap is missing *content* (the sources lack it, so cards can't help without inventing) or missing *shape* (the content is there but no card exists). That decides the next ask to the sponsor: more material, or more cards. Both runs together cost under 1% of the budget. *Confidence*: 0.7 — because 13 questions is a small sample, and each AI-written answer varies a little from run to run. *If wrong*: if the baseline already answers most of the 13 well through the raw-passage path, stop after **A**: the cards are doing their job and the rest is fine.
 
 **ANS:** (by Kay)
 [Fill this in]
@@ -320,7 +338,7 @@ Cost: drafting about 25 cards with Haiku 5.5 over about 60k source tokens is aro
    - The book is searched like the ADA guides, but it is never the authority on numbers. Code enforces this: a number in an answer must appear in a cited ADA passage (or the patient's own message), and citing the book alone doesn't count.
    - A book passage is never shown word for word: not as a fallback, not as an urgent passage, not as a dose passage. Its voice is first-person, and copyright allows only brief quotes.
    - Dose-tagged book passages never reach the model, as with ADA.
-7. **Iteration 6: the care-team FAQ is held out everywhere for the first pass** (QST-KB-HOLDOUT-SCOPE: A). It leaves `kb_chunks` and card drafting, and is used only to evaluate: coverage (does a card exist for each FAQ question?) and agreement (do card and FAQ agree on facts and numbers?). It returns as a source after the comparison.
+7. **Iteration 6: the care-team FAQ is held out everywhere for the first pass** (QST-KB-HOLDOUT-SCOPE: A). It leaves `kb_chunks` and card drafting, and is used only to evaluate: coverage (does a card exist for each FAQ question?) and agreement (do card and FAQ agree on facts and numbers?). ~~It returns as a source after the comparison.~~ *Iteration 10 (QST-KB-FAQ-RETURN, Kay: "my idea is to see whether we can answer the faqs well without the current FAQ")*: the FAQ stays held out. The question is no longer only card coverage but whether the whole assistant (cards, then AI-written answers from the ADA guides and the book) answers the FAQ questions well from the sponsor material alone. The FAQ answers are the clinical reference for judging that.
 8. **Iteration 6: all cards are redrafted blind** (QST-KB-REDRAFT: A). A drafting agent that has never seen the FAQ, the old drafts, or the FAQ-derived topic list writes them from the new passages. The topic list comes from Kay's predictable topics (lows, carb counting, sick days, foot care, exercise, medication timing) plus the ADA guides' own sections.
 
 **Trade-offs accepted**: cards depend on the sponsor's time, and nothing goes live until they approve it. Until then, the assistant answers from raw passages as it does today. *Iteration 6*: during the first pass, testers lose the FAQ's 13 passages and the six ADA handouts. The book's numbers never reach a patient on the book's authority alone, even where they are right.
@@ -422,6 +440,12 @@ Cost: drafting about 25 cards with Haiku 5.5 over about 60k source tokens is aro
 - Contributors: Kay, Nibble (Claude Opus 5.5)
 - Changes: Decision item 6 notes the book stays in runtime search; TD-6 (book chunk quality) raised to medium priority.
 - Outcome: Accepted (one question open: QST-KB-FAQ-RETURN)
+
+### Iteration 10 (2026-11-16)
+- Trigger: Kay answered QST-KB-FAQ-RETURN with an override: "my idea is to see whether we can answer the faqs well without the current FAQ".
+- Contributors: Kay, Nibble (Claude Opus 5.5)
+- Changes: Decision item 7 amended: the FAQ stays held out and becomes the reference for testing the whole assistant. New question QST-KB-FAQ-EVAL (how to run that test, and the spend).
+- Outcome: Accepted (one question open)
 
 ---
 
