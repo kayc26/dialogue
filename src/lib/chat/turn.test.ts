@@ -24,6 +24,15 @@ const index = buildIndex([
   P('corr', 'Correction insulin', 'Follow your provider instructions for correction insulin if you have not taken insulin in the last 4 hours.', ['dose_related', 'medication']),
 ])
 
+// A question that retrieves the dose-tagged 'corr' passage WITHOUT tripping the
+// dose-question rules. Regression note (2026-11-16): the hidden-passage test used
+// "what about correction insulin and fruit", but "correction insulin" is itself a
+// dose-question pattern (triage.ts), so the refusal card ended the turn before any
+// model call. The test asserted only that the passage was absent from an empty
+// prompt, and passed without checking anything. Both tests below now also assert
+// that the model was asked.
+const PROVIDER_Q = 'What do my provider instructions say about insulin in the last few hours?'
+
 const cls = (tier: string, happening_now = true, dose_intent = false) =>
   JSON.stringify({ tier, happening_now, dose_intent, reason: 'test' })
 
@@ -112,8 +121,29 @@ describe('turn orchestration', () => {
       prompt = msgs.map((x) => x.content).join('\n')
       return { message: { role: 'assistant', content: 'Berries are a good choice. [kb:fruit]' } as ChatMessage }
     }) as CompleteFn
-    await turn('what about correction insulin and fruit', m)
+    await turn(`${PROVIDER_Q} And what fruit can I eat?`, m) // fruit gives the model something to answer from
+    expect(prompt).toContain('Passages:') // the model really was asked (see the regression note below)
     expect(prompt).not.toContain('correction insulin if you have not taken insulin')
+  })
+
+  it('with dose passages shown to the model (test runs only), the guard still blocks dose advice', async () => {
+    // ADR-0013 (Kay, 2026-11-16): rule 1 is off in kb:eval-faq runs, so the model can
+    // read passages like "sugar over 250, what to do" that merely mention insulin. The
+    // dose-advice block (rule 2) must then be the line that holds.
+    let prompt = ''
+    const { m } = models({ answers: ['If you have not taken insulin in the last 4 hours, take 2 units of correction insulin. [kb:corr]'] })
+    const complete = m.complete
+    m.complete = (async (msgs: ChatMessage[], ...rest: unknown[]) => {
+      prompt = msgs.map((x) => x.content).join('\n')
+      return (complete as (...a: unknown[]) => unknown)(msgs, ...rest)
+    }) as CompleteFn
+    const o = await runTurn({
+      message: PROVIDER_Q, history: [], profile: NONE, index, doseSession: false,
+      models: m, timeoutMs: 50, monitorEnabled: false, hideDosePassages: false,
+    })
+    expect(prompt).toContain('correction insulin if you have not taken insulin') // the model saw it
+    expect(o.guard).toMatch(/^dose_advice/) // and its dose advice never reached the patient
+    expect(o.cards.some((c) => c.kind === 'answer')).toBe(false)
   })
 
   it('in a dose-flagged session the monitor must approve first, and its veto replaces the answer', async () => {

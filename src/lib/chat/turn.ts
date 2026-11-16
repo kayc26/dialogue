@@ -78,6 +78,8 @@ export interface TurnInput {
   cardsEnabled?: boolean
   /** The patient's diabetes type: passages for the other type rank lower (ADR-0013, QST-KB-RAG-FIXES: B). */
   diabetesType?: DiabetesType
+  /** Hide dose-tagged passages from the model (default true; only test runs set false). */
+  hideDosePassages?: boolean
 }
 
 export interface TurnOutcome {
@@ -171,6 +173,11 @@ export async function runTurn(input: TurnInput): Promise<TurnOutcome> {
   let modelCalls = 0
   const rules = triageRules(message, profile)
   const byType: SearchOptions = { diabetesType: input.diabetesType }
+  // Dose-tagged passages are hidden from the model and shown only word for word
+  // (ADR-0005, QST-DIAB-DOSE-GUARD: D) unless a test run turns that off (ADR-0013,
+  // Kay 2026-11-16: "drop the dose-related constraint for testing", rule 1 only). The
+  // answer guard's dose-advice block and the dose-question refusal card stay either way.
+  const hidden = (p: KbPassage) => (input.hideDosePassages ?? true) && isDose(p)
   const cards: Card[] = []
 
   // 1. Emergency: no model call, 911 first, approved "while you wait" passage.
@@ -247,8 +254,8 @@ export async function runTurn(input: TurnInput): Promise<TurnOutcome> {
   const top = hits[0]
   // A dose-tagged best match is never given to the model; it is shown word for word,
   // but only when no answer is shown (as the one passage in place of an answer).
-  const dosePassage = top && isDose(top.passage) && showable(top.passage) && MEDICAL_TOPIC.test(message) ? top.passage : null
-  const context = hits.filter((h) => !isDose(h.passage) && h.score >= MIN_SCORE).slice(0, 4).map((h) => h.passage)
+  const dosePassage = top && hidden(top.passage) && showable(top.passage) && MEDICAL_TOPIC.test(message) ? top.passage : null
+  const context = hits.filter((h) => !hidden(h.passage) && h.score >= MIN_SCORE).slice(0, 4).map((h) => h.passage)
   if (context.length === 0) {
     if (dosePassage && !hasPassage()) cards.push({ kind: 'passage', passage: dosePassage, why: 'dose' })
     else if (!hasPassage()) cards.push({ kind: 'no_info' })
@@ -274,7 +281,7 @@ export async function runTurn(input: TurnInput): Promise<TurnOutcome> {
     complete,
     runTool: async (call) => {
       const q = String((JSON.parse(call.function.arguments || '{}') as { query?: string }).query ?? '')
-      const found = index.search(q, 4, byType).filter((h) => !isDose(h.passage)).map((h) => h.passage)
+      const found = index.search(q, 4, byType).filter((h) => !hidden(h.passage)).map((h) => h.passage)
       for (const p of found) shown.set(p.id, p)
       return found.length ? found.map(fmt).join('\n\n') : 'No matching passages.'
     },

@@ -2,7 +2,7 @@
 // iteration 10; QST-KB-FAQ-EVAL.) The FAQ is held out of the knowledge base, so its
 // 13 questions are an independent test and its answers are the clinical reference.
 //
-//   npm run kb:eval-faq -- [cards file] [--cards] [--type=type1|type2] [--yes]
+//   npm run kb:eval-faq -- [cards file] [--cards] [--type=type1|type2] [--hide-dose] [--yes]
 //   (reads OPENROUTER_API_KEY from git-ignored .env.local, like the other kb: scripts;
 //    jiti runs the app's own TypeScript modules unchanged; default cards file:
 //    kb/out/cards-blind.json)
@@ -32,6 +32,9 @@ const args = process.argv.slice(2)
 const useCards = args.includes('--cards') || !CARDS_PAUSED
 // --type=type1|type2: answer as a patient with that diabetes type (QST-KB-RAG-FIXES: B).
 const diabetesType = args.find((a) => a.startsWith('--type='))?.slice(7) as DiabetesType | undefined
+// Kay, 2026-11-16: in test runs the model may read dose-tagged passages (rule 1 off);
+// the guard's dose-advice block and the dose refusal card stay. --hide-dose restores it.
+const hideDosePassages = args.includes('--hide-dose')
 const cardsFile = args.find((a) => !a.startsWith('--')) ?? 'kb/out/cards-blind.json'
 const key = process.env.OPENROUTER_API_KEY ?? ''
 
@@ -51,7 +54,7 @@ const faq = readFileSync('kb/local-sources/FAQs.md', 'utf8')
     return { q: q.trim(), a: rest.join('\n').trim() }
   })
 
-console.log(`FAQ questions: ${faq.length} · passages: ${passages.length} (no FAQ) · cards: ${useCards ? `${cards.length} from ${cardsFile}` : "off (CARDS_PAUSED; --cards to include)"} · patient type: ${diabetesType ?? "none"}`)
+console.log(`FAQ questions: ${faq.length} · passages: ${passages.length} (no FAQ) · cards: ${useCards ? `${cards.length} from ${cardsFile}` : "off (CARDS_PAUSED; --cards to include)"} · patient type: ${diabetesType ?? "none"} · dose passages: ${hideDosePassages ? "hidden" : "shown to the model"}`)
 console.log(`OpenRouter key: ${key ? 'set' : 'NOT SET (OPENROUTER_API_KEY)'} · stop above $${MAX_DOLLARS}`)
 if (!args.includes('--yes') || !key) {
   console.log('\nDry run: no model calls. Estimated cost about $0.05 (about 3 calls per question). Re-run with --yes.')
@@ -87,7 +90,7 @@ for (const [i, f] of faq.entries()) {
   meter.notes = []
   const o = await runTurn({
     message: f.q, history: [], profile: { history_of_dka: false, pregnant: false, uses_pump: false },
-    index, cards: cardIndex, cardsEnabled: useCards, diabetesType, doseSession: false, models: openRouterModels(key, meter),
+    index, cards: cardIndex, cardsEnabled: useCards, diabetesType, hideDosePassages, doseSession: false, models: openRouterModels(key, meter),
   })
   const kinds = o.cards.map((c) => c.kind).join('+')
   const line = `${String(i + 1).padStart(2)}. ${kinds.padEnd(24)} card:${o.card?.how ?? '-'}${o.card?.id ? `(${o.card.id})` : ''}${o.guard ? ` guard:${o.guard}` : ''}  ${f.q.slice(0, 55)}`
