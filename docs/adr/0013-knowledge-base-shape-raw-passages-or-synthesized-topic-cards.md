@@ -9,7 +9,7 @@ adr teaching map: the example is not the teaching — these are the up-links fro
 # ADR-0013: Knowledge base shape — raw passages or synthesized topic cards
 
 - **Date**: 2026-11-14
-- **Iteration**: 12
+- **Iteration**: 13
 - **Status**: Accepted
 - **Deciders**: Kay, Nibble (Claude Opus 5.5)
 
@@ -258,7 +258,7 @@ a
 ---
 
 ### QST-KB-EVAL-NEXT: The baseline found four fixable failures. Which do we fix before the sponsor review?
-- Status: unanswered
+- Status: deferred — waits on QST-KB-RAG-FIRST; its C reappears in QST-KB-RAG-FIXES, its A and B wait until cards come back, its D stands either way
 - Why asking: the baseline run (Supporting Materials, "baseline: the FAQ questions through the real assistant") had no safety failures. But 4 of 13 answers were wrong or poor, for four separate reasons, and each has a different fix. 3 were honest declines where the sources lack the content.
 - Need: pick any letters (or override — any shape answers)
 
@@ -270,6 +270,45 @@ Options:
 
 **Recommendation**: (by Nibble, Claude Opus 5.5, 2026-11-16)
 **A, B, C (narrowest form), and D.** *Rationale*: A and B are small code changes with tests, and a second run (about $0.005) shows whether they work. C's narrow form keeps the book in runtime search, as Kay chose, but stops it being the *only* basis for an answer. That is exactly how both bad answers happened (sources: 4 book passages; 1 book passage). D is the only fix for the largest group of misses, and it's the sponsor's material to give. *Confidence*: 0.65 — because 13 questions is a small sample, and C's "book alone → decline" may also stop some good answers on mindset and sleep. *If wrong*: if C costs good mindset and sleep answers in the rerun, limit it to food questions (the book's food chapter), or drop it and rely on cards for those topics.
+
+**ANS:** (by Kay)
+[Fill this in]
+
+---
+
+### QST-KB-RAG-FIRST: "I thought we'd use these before the FAQ": the order of the work, or the order at answer time?
+- Status: unanswered
+- Why asking: Kay (2026-11-16), after seeing the cards: "why do we have to use the card approach instead of rag? i thought we'd use these before faq", pointing at the first three parts of the pasted approach (source metadata, dedupe with conflict signals, answer format). Cards came first because QST-KB-SHAPE: C (2026-11-14) put them in front of RAG, and the pasted approach's own FAQ layer does the same ("use the canonical answer when a question matches; otherwise fall back to regular RAG"). RAG is not replaced: it is running, and it wrote answers #1 and #10 in the baseline. "Before" can mean two different things, and they lead to different builds.
+- Need: pick a letter (or override — any shape answers)
+
+Options:
+- **A — Work order: get RAG right first, cards later**: the cards stay built but switched off (none approved, no sponsor review yet). The RAG items in QST-KB-RAG-FIXES get done, the 13 FAQ questions are re-run with RAG only, and the FAQ layer comes back afterwards, rewritten as patient questions. At answer time it would still sit in front of RAG, as in QST-KB-SHAPE: C.
+- **B — Answer-time order: RAG first, cards as fallback**: every question goes to RAG first; a card is shown only when RAG declines or its answer is blocked. This reverses QST-KB-SHAPE: C. Approved wording becomes the backup, not the default.
+- **C — RAG only, no FAQ layer**: drop the cards. One answer path; the clinician approves sources, never answer text.
+
+**Recommendation**: (by Nibble, Claude Opus 5.5, 2026-11-16)
+**A — work order.** *Rationale*: the baseline supports it. Even with good cards, every question no card covers depends on RAG, and RAG produced the two worst answers (book-only sources). Fixing RAG first raises the floor for every question. The cards' value is approved wording on the common questions, and A keeps that for later. B would show AI-written text first even where approved wording exists. C gives that value up, and the Design History File evidence Kay's approach mentions with it. *Confidence*: 0.7 — because I'm inferring what "before" meant from the sentence alone. *If wrong*: if Kay meant that the FAQ layer should only fill gaps RAG can't answer, the answer is **B**.
+
+**ANS:** (by Kay)
+[Fill this in]
+
+---
+
+### QST-KB-RAG-FIXES: Which RAG fixes go in before the RAG-only re-run?
+- Status: unanswered
+- Why asking: checked against the first three parts of Kay's pasted approach, the RAG path today has: source tags ✅; year and diabetes type stored but **not used in search** ◐; ADA wins on numbers ✅ (code-enforced); **no dedupe or conflict flags** ✗; reading level **asked in the prompt, never measured** ◐; numbers verbatim ✅; steps verbatim only for urgent passages ◐; at least one citation per answer, **not one per claim** ◐; book never shown word for word ✅. The baseline also found a failure the approach doesn't name: an answer built from book passages alone passes the author's habits on as advice. This relates to QST-KB-RAG-FIRST (only needed under A or B) and QST-KB-EVAL-NEXT (its C is E here).
+- Need: pick any letters (or override — any shape answers)
+
+Options:
+- **A — Dedupe, keep conflict signals**: at build time, merge near-duplicate passages (the type 1 and type 2 ADA guides share a lot of text). Never merge two that cover the same topic with different numbers; list those in `kb/out/review.md` for the sponsor, with the ADA version kept.
+- **B — Diabetes type in search**: a passage tagged for the patient's other diabetes type ranks lower (not removed), so a type 2 patient gets type 2 guidance first.
+- **C — Reading level, measured**: every answer in the evaluation gets a Flesch-Kincaid grade, and the prompt names 6th–8th grade. Measuring comes first; a blocking rule only if answers keep missing.
+- **D — One citation per sentence**: the guard requires each sentence that states a fact to carry a citation. Closer to "cite a source for every claim", but more answers will be blocked and replaced by a passage or "no information".
+- **E — Book alone → decline**: when every passage the answer cites is from the book, the answer is not shown; the patient gets an ADA passage if one was found, otherwise "no information". The book still adds explanation next to ADA passages.
+- **F — The RAG-only re-run**: after the chosen fixes, the 13 FAQ questions with cards off, beside the baseline. About $0.005 (ADR-0012: needs Kay's OK, which this letter gives).
+
+**Recommendation**: (by Nibble, Claude Opus 5.5, 2026-11-16)
+**A, B, C, E, F; D later.** *Rationale*: A, B, and E are build- or code-level and testable offline. C costs nothing and shows whether 6th–8th grade is a real problem before anything blocks on it. E addresses the cause of both poor RAG answers in the baseline. F tells us whether the fixes worked. D comes later: per-sentence citation would block many answers that are fine, and the evaluation should first show whether uncited sentences are actually wrong. *Confidence*: 0.65 — because A's near-duplicate threshold needs tuning on the real passages, and E may cost some good mindset and sleep answers. *If wrong*: if the re-run shows E blocking good mindset or sleep answers, narrow it to the book's food chapter. If unsupported claims appear in sentences without a citation, add **D**.
 
 **ANS:** (by Kay)
 [Fill this in]
@@ -489,6 +528,15 @@ Cost: drafting about 25 cards with Haiku 5.5 over about 60k source tokens is aro
 - Contributors: Nibble (Claude Opus 5.5)
 - Changes: results recorded under Supporting Materials; new question QST-KB-EVAL-NEXT (four fixes).
 - Outcome: Accepted (one question open)
+
+### Iteration 13 (2026-11-16)
+- Trigger: Kay, after seeing the cards and the side-by-side answers: "i think the cards are poorly written", then "why do we have to use the card approach instead of rag? i thought we'd use these before faq" (pointing at the approach's first three parts), and "show me in adr panel".
+- Contributors: Kay, Nibble (Claude Opus 5.5)
+- Changes:
+  - Two new questions: QST-KB-RAG-FIRST (what "before" means for the build) and QST-KB-RAG-FIXES (which RAG fixes, then a RAG-only re-run).
+  - QST-KB-EVAL-NEXT deferred behind them.
+  - Why the cards read poorly (Nibble's count of the 30 blind cards): topics came from the sources' subjects, not patients' questions. Only 1 of 30 is phrased as a question, 13 combine two or more subjects, 20 end by deferring to a professional, and 13 contain any number.
+- Outcome: Accepted (two questions open, one deferred)
 
 ---
 
