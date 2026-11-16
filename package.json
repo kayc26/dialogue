@@ -14,6 +14,8 @@
     "test:db": "vitest run --config vitest.db.config.ts",
     "kb:build": "node kb/build.ts",
     "kb:load": "node --env-file=.env.local kb/load.ts",
+    "kb:cards:check": "node kb/cards-check.ts",
+    "kb:faq-compare": "node kb/faq-compare.ts",
     "patients:load": "node --env-file=.env.local patients/load.ts"
   },
   "dependencies": {
