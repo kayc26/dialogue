@@ -80,6 +80,8 @@ export interface TurnInput {
   diabetesType?: DiabetesType
   /** Hide dose-tagged passages from the model (default true; only test runs set false). */
   hideDosePassages?: boolean
+  /** Rules 2 and 3 (dose-advice block, dose refusal card). Default true; only test runs set false. */
+  enforceDoseRules?: boolean
 }
 
 export interface TurnOutcome {
@@ -173,11 +175,14 @@ export async function runTurn(input: TurnInput): Promise<TurnOutcome> {
   let modelCalls = 0
   const rules = triageRules(message, profile)
   const byType: SearchOptions = { diabetesType: input.diabetesType }
-  // Dose-tagged passages are hidden from the model and shown only word for word
-  // (ADR-0005, QST-DIAB-DOSE-GUARD: D) unless a test run turns that off (ADR-0013,
-  // Kay 2026-11-16: "drop the dose-related constraint for testing", rule 1 only). The
-  // answer guard's dose-advice block and the dose-question refusal card stay either way.
+  // The three dose rules. All on in the live app; test runs may pause them (ADR-0013,
+  // Kay 2026-11-16: rule 1 "drop the dose-related constraint for testing", then
+  // "pause 2 and 3 for now on test").
+  //   1. dose-tagged passages hidden from the model, shown only word for word (ADR-0005);
+  //   2. the guard blocks dose advice in what the model writes;
+  //   3. a dose question gets the fixed refusal card and no answer model.
   const hidden = (p: KbPassage) => (input.hideDosePassages ?? true) && isDose(p)
+  const enforceDose = input.enforceDoseRules ?? true
   const cards: Card[] = []
 
   // 1. Emergency: no model call, 911 first, approved "while you wait" passage.
@@ -214,7 +219,7 @@ export async function runTurn(input: TurnInput): Promise<TurnOutcome> {
   })
 
   // 3. Dose question: fixed card, no answer model.
-  if (triage.doseIntent) {
+  if (triage.doseIntent && enforceDose) {
     cards.push({ kind: 'dose_refusal' })
     return done()
   }
@@ -291,7 +296,7 @@ export async function runTurn(input: TurnInput): Promise<TurnOutcome> {
   })
 
   // 7. Guard.
-  const verdict = checkAnswer(draft, [...shown.values()], message)
+  const verdict = checkAnswer(draft, [...shown.values()], message, { doseAdvice: enforceDose })
   const fallback = (): void => {
     if (hasPassage()) return // an urgent passage is already the reply's body
     if (dosePassage) return void cards.push({ kind: 'passage', passage: dosePassage, why: 'dose' })

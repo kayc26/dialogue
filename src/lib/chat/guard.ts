@@ -39,13 +39,23 @@ function numbersIn(text: string): string[] {
  * (70–140 mg/dL, under 30 g of carbohydrate per meal) differ from ADA's for older
  * adults, and an answer citing both would otherwise pass with the book's number.
  */
+/** Rule 2's patterns: the reason an answer would be blocked as dose advice, or null.
+ *  Exported so a test run with rule 2 paused can still mark what it would have blocked. */
+export function doseAdviceIn(answer: string): string | null {
+  for (const re of DOSE_ADVICE) if (re.test(answer)) return `dose_advice:${re.source.slice(0, 40)}`
+  return null
+}
+
 export function checkAnswer(
   answer: string,
   shown: { id: string; body: string; source_label?: string }[],
   userMessage: string,
+  /** Rule 2. Only test runs turn it off (ADR-0013, Kay 2026-11-16); the live app never does. */
+  opts: { doseAdvice?: boolean } = {},
 ): GuardResult {
   if (!answer.trim()) return { ok: false, reason: 'empty_answer' }
-  for (const re of DOSE_ADVICE) if (re.test(answer)) return { ok: false, reason: `dose_advice:${re.source.slice(0, 40)}` }
+  const dose = doseAdviceIn(answer)
+  if (dose && (opts.doseAdvice ?? true)) return { ok: false, reason: dose }
 
   const citations = citationsIn(answer)
   if (citations.length === 0) return { ok: false, reason: 'no_citation' }

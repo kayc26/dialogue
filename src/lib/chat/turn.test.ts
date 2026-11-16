@@ -9,6 +9,7 @@ import type { CompleteFn } from '../agent'
 import type { ChatMessage } from '../types'
 import { buildIndex, type KbPassage } from './retrieve'
 import { runTurn, type TurnModels } from './turn'
+import { doseAdviceIn } from './guard'
 import { buildCardIndex, CARD_FALLBACK_SCORE, CARD_MIN_SCORE, loadApprovedCards, parsePick, type CardIndex, type TopicCard } from './cards'
 import { DataError, type DataClient } from '../neon/data'
 import type { Profile } from './triage'
@@ -144,6 +145,21 @@ describe('turn orchestration', () => {
     expect(prompt).toContain('correction insulin if you have not taken insulin') // the model saw it
     expect(o.guard).toMatch(/^dose_advice/) // and its dose advice never reached the patient
     expect(o.cards.some((c) => c.kind === 'answer')).toBe(false)
+  })
+
+  it('with rules 2 and 3 paused (test runs only), a dose question reaches the model and its answer is not blocked', async () => {
+    // ADR-0013 (Kay, 2026-11-16): "pause 2 and 3 for now on test". The default (the
+    // live app) is covered above: the refusal card, and the guard blocking "4 units".
+    const reply = 'Increase your insulin a little before dinner. [kb:corr]' // rule 2 catches this; no number, so the separate number check doesn't
+    const { m, calls } = models({ classify: cls('none', true, true), answers: [reply] })
+    const o = await runTurn({
+      message: 'How many units of insulin should I take for dinner with fruit?', history: [], profile: NONE, index, doseSession: false,
+      models: m, timeoutMs: 50, monitorEnabled: false, enforceDoseRules: false, hideDosePassages: false, // as kb:eval-faq runs
+    })
+    expect(o.triage.doseIntent).toBe(true) // still detected, so a test run can report it
+    expect(calls.complete).toBe(1)
+    expect(o.cards).toEqual([{ kind: 'answer', text: 'Increase your insulin a little before dinner.', sources: [expect.objectContaining({ id: 'corr' })] }])
+    expect(doseAdviceIn(reply)).toMatch(/^dose_advice/) // so the test run would mark it
   })
 
   it('in a dose-flagged session the monitor must approve first, and its veto replaces the answer', async () => {
