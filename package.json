@@ -18,7 +18,7 @@
     "kb:cards:load": "node --env-file=.env.local kb/cards-load.ts",
     "kb:cards:approve": "node --env-file=.env.local kb/cards-approve.ts",
     "kb:faq-compare": "node kb/faq-compare.ts",
-    "kb:eval-faq": "jiti kb/eval-faq.ts",
+    "kb:eval-faq": "node --env-file=.env.local node_modules/jiti/lib/jiti-cli.mjs kb/eval-faq.ts",
     "patients:load": "node --env-file=.env.local patients/load.ts"
   },
   "dependencies": {

@@ -2,8 +2,9 @@
 // iteration 10; QST-KB-FAQ-EVAL.) The FAQ is held out of the knowledge base, so its
 // 13 questions are an independent test and its answers are the clinical reference.
 //
-//   OPENROUTER_API_KEY=... npx jiti kb/eval-faq.ts [cards file] [--yes]
-//   (jiti runs the app's own TypeScript modules unchanged; default cards file:
+//   npm run kb:eval-faq -- [cards file] [--yes]
+//   (reads OPENROUTER_API_KEY from git-ignored .env.local, like the other kb: scripts;
+//    jiti runs the app's own TypeScript modules unchanged; default cards file:
 //    kb/out/cards-blind.json)
 //
 // Each FAQ question goes through the real turn (src/lib/chat/turn.ts) with the real
