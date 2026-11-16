@@ -9,7 +9,7 @@ adr teaching map: the example is not the teaching — these are the up-links fro
 # ADR-0013: Knowledge base shape — raw passages or synthesized topic cards
 
 - **Date**: 2026-11-14
-- **Iteration**: 13
+- **Iteration**: 14
 - **Status**: Accepted
 - **Deciders**: Kay, Nibble (Claude Opus 5.5)
 
@@ -258,7 +258,7 @@ a
 ---
 
 ### QST-KB-EVAL-NEXT: The baseline found four fixable failures. Which do we fix before the sponsor review?
-- Status: deferred — waits on QST-KB-RAG-FIRST; its C reappears in QST-KB-RAG-FIXES, its A and B wait until cards come back, its D stands either way
+- Status: answered
 - Why asking: the baseline run (Supporting Materials, "baseline: the FAQ questions through the real assistant") had no safety failures. But 4 of 13 answers were wrong or poor, for four separate reasons, and each has a different fix. 3 were honest declines where the sources lack the content.
 - Need: pick any letters (or override — any shape answers)
 
@@ -272,12 +272,12 @@ Options:
 **A, B, C (narrowest form), and D.** *Rationale*: A and B are small code changes with tests, and a second run (about $0.005) shows whether they work. C's narrow form keeps the book in runtime search, as Kay chose, but stops it being the *only* basis for an answer. That is exactly how both bad answers happened (sources: 4 book passages; 1 book passage). D is the only fix for the largest group of misses, and it's the sponsor's material to give. *Confidence*: 0.65 — because 13 questions is a small sample, and C's "book alone → decline" may also stop some good answers on mindset and sleep. *If wrong*: if C costs good mindset and sleep answers in the rerun, limit it to food questions (the book's food chapter), or drop it and rely on cards for those topics.
 
 **ANS:** (by Kay)
-[Fill this in]
+d
 
 ---
 
 ### QST-KB-RAG-FIRST: "I thought we'd use these before the FAQ": the order of the work, or the order at answer time?
-- Status: unanswered
+- Status: answered
 - Why asking: Kay (2026-11-16), after seeing the cards: "why do we have to use the card approach instead of rag? i thought we'd use these before faq", pointing at the first three parts of the pasted approach (source metadata, dedupe with conflict signals, answer format). Cards came first because QST-KB-SHAPE: C (2026-11-14) put them in front of RAG, and the pasted approach's own FAQ layer does the same ("use the canonical answer when a question matches; otherwise fall back to regular RAG"). RAG is not replaced: it is running, and it wrote answers #1 and #10 in the baseline. "Before" can mean two different things, and they lead to different builds.
 - Need: pick a letter (or override — any shape answers)
 
@@ -290,12 +290,12 @@ Options:
 **A — work order.** *Rationale*: the baseline supports it. Even with good cards, every question no card covers depends on RAG, and RAG produced the two worst answers (book-only sources). Fixing RAG first raises the floor for every question. The cards' value is approved wording on the common questions, and A keeps that for later. B would show AI-written text first even where approved wording exists. C gives that value up, and the Design History File evidence Kay's approach mentions with it. *Confidence*: 0.7 — because I'm inferring what "before" meant from the sentence alone. *If wrong*: if Kay meant that the FAQ layer should only fill gaps RAG can't answer, the answer is **B**.
 
 **ANS:** (by Kay)
-[Fill this in]
+try c first
 
 ---
 
 ### QST-KB-RAG-FIXES: Which RAG fixes go in before the RAG-only re-run?
-- Status: unanswered
+- Status: answered
 - Why asking: checked against the first three parts of Kay's pasted approach, the RAG path today has: source tags ✅; year and diabetes type stored but **not used in search** ◐; ADA wins on numbers ✅ (code-enforced); **no dedupe or conflict flags** ✗; reading level **asked in the prompt, never measured** ◐; numbers verbatim ✅; steps verbatim only for urgent passages ◐; at least one citation per answer, **not one per claim** ◐; book never shown word for word ✅. The baseline also found a failure the approach doesn't name: an answer built from book passages alone passes the author's habits on as advice. This relates to QST-KB-RAG-FIRST (only needed under A or B) and QST-KB-EVAL-NEXT (its C is E here).
 - Need: pick any letters (or override — any shape answers)
 
@@ -311,11 +311,17 @@ Options:
 **A, B, C, E, F; D later.** *Rationale*: A, B, and E are build- or code-level and testable offline. C costs nothing and shows whether 6th–8th grade is a real problem before anything blocks on it. E addresses the cause of both poor RAG answers in the baseline. F tells us whether the fixes worked. D comes later: per-sentence citation would block many answers that are fine, and the evaluation should first show whether uncited sentences are actually wrong. *Confidence*: 0.65 — because A's near-duplicate threshold needs tuning on the real passages, and E may cost some good mindset and sleep answers. *If wrong*: if the re-run shows E blocking good mindset or sleep answers, narrow it to the book's food chapter. If unsupported claims appear in sentences without a citation, add **D**.
 
 **ANS:** (by Kay)
-[Fill this in]
+b
 
 ---
 
 ## Supporting Materials
+
+### NOT: diabetes type in search (QST-KB-RAG-FIXES: B, measured 2026-11-16)
+- `scripts/ephemeral/2026-11-16-diabetes-type-ranking.ts`, $0. 133 patient-style questions (the FAQ's questions plus the blind cards' phrasings); top passage with no patient type vs. with one.
+- First try: **demote** the other type's passages to 70%. For a type 2 patient, the top passage from the type 1 guide fell 53 → 9, but the top passage from the book **rose 59 → 80**. The type 1 guide's first places went to the book, which feeds the book-only answers the baseline showed.
+- Shipped instead: **boost** the patient's own type by 1/0.7. Type 2 patient: type 1 guide 53 → 24, book 59 → 40, type 2 guide 21 → 69. Type 1 patient: type 2 guide 21 → 6, book 59 → 24. The two ADA guides end up in the same order either way; boosting also keeps ADA ahead of the book. The book stays in search (QST-KB-BOOK-RECHECK: A); it just no longer wins ties with the patient's own guide.
+- Until migration 0003 is applied, production passages have no diabetes type and search doesn't use it. The app falls back to loading passages without the column (`src/lib/chat/kb-load.ts`), so a deploy before the migration can't break the patient view.
 
 ### NOT: baseline: the FAQ questions through the real assistant (2026-11-16)
 - `npm run kb:eval-faq -- --yes`: 13 questions, 35 model calls, $0.0044. The blind cards counted as approved for the test only; passages from the ADA guides and the book; the FAQ held out. Output: `kb/out/eval-faq.md` (git-ignored), scored by Nibble against the FAQ answers.
@@ -397,7 +403,7 @@ Cost: drafting about 25 cards with Haiku 5.5 over about 60k source tokens is aro
    - Card text is ADA-derived, so it stays out of the public repo, like `kb/out/`.
 2. **Drafting is offline, and numbers are checked mechanically.** `kb:synthesize` drafts one card per topic from that topic's passages, then rejects any card with a number that doesn't appear in its sources (the answer guard's rule, applied at build time).
 3. **Review is a document the sponsor reads.** `kb:review` writes each card beside its source passages, and approvals are recorded per card.
-4. **Retrieval goes cards first, and a matched card is shown as written** (QST-KB-CARD-USE: A).
+4. **Retrieval goes cards first, and a matched card is shown as written** (QST-KB-CARD-USE: A). *Iteration 14 (QST-KB-RAG-FIRST, Kay: "try c first")*: **paused for a RAG-only trial.** The card code stays, switched off by `CARDS_PAUSED` in `src/lib/chat/prompts.ts`; the app doesn't even load cards while paused.
    - Search shortlists about 3 approved cards.
    - The AI returns only a card id or "none", and code checks that the id is on the shortlist.
    - The patient sees that card word for word, with its sources.
@@ -439,6 +445,8 @@ Cost: drafting about 25 cards with Haiku 5.5 over about 60k source tokens is aro
 - [ ] (Iteration 5) Re-check approved cards on every load: a card goes back to draft when its source passages change, so a future knowledge-base update can't leave approved text citing different passages. Owner: Nibble
 - [ ] (Iteration 5) Add a reading-level measure (6th–8th grade) and a book-vs-ADA number-conflict report to the card check. Owner: Nibble
 - [ ] (Iteration 5) After the blind draft: compare cards with the clinical FAQ (coverage, agreement on facts and numbers) and give the sponsor the differences. Owner: Nibble, then Kay's clinical sponsor
+- [ ] (Iteration 14, QST-KB-EVAL-NEXT: D) Ask the clinical sponsor for nutrition material: 7 of the 13 FAQ questions are nutrition, and the sponsor's set answers them thinly or not at all (protein shakes, supplements, bedtime snack, affordable food, fruit portions, snacks, hunger between meals). Owner: Kay
+- [ ] (Iteration 14) Apply migration 0003 so passages carry their diabetes type in production (until then the app loads passages without it and search doesn't rank by type). Owner: Nibble, after Kay's OK and the rls-dev test credentials
 
 ---
 
@@ -537,6 +545,18 @@ Cost: drafting about 25 cards with Haiku 5.5 over about 60k source tokens is aro
   - QST-KB-EVAL-NEXT deferred behind them.
   - Why the cards read poorly (Nibble's count of the 30 blind cards): topics came from the sources' subjects, not patients' questions. Only 1 of 30 is phrased as a question, 13 combine two or more subjects, 20 end by deferring to a professional, and 13 contain any number.
 - Outcome: Accepted (two questions open, one deferred)
+
+### Iteration 14 (2026-11-16)
+- Trigger: Kay answered QST-KB-RAG-FIRST: "try c first" (RAG only), QST-KB-RAG-FIXES: B (diabetes type in search; no re-run chosen), and QST-KB-EVAL-NEXT: D (ask the sponsor for nutrition material).
+- Contributors: Kay, Nibble (Claude Opus 5.5)
+- Changes:
+  - Cards paused (`CARDS_PAUSED`), not deleted, as a trial. Decision item 4 notes it.
+  - Diabetes type in search, as a boost to the patient's own type rather than a demotion of the other: the demotion was measured to hand first places to the book (Supporting Materials).
+  - Passage loading survives the deploy-before-migration window.
+  - `kb:eval-faq` follows the card switch and takes `--type`.
+  - Two action items: the sponsor's nutrition material (Kay), and applying migration 0003 (Nibble, after Kay's OK).
+  - No re-run: F wasn't chosen. The next run needs Kay's OK.
+- Outcome: Accepted (no questions open)
 
 ---
 
