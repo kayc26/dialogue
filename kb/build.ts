@@ -14,10 +14,16 @@ import { execFileSync } from 'node:child_process'
 import { mkdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
-import { chunkDoc, type Passage } from '../src/lib/kb/chunk.ts'
+import { chunkDoc, type Passage, type SourceLabel } from '../src/lib/kb/chunk.ts'
 
-interface ManifestDoc { id: string; file: string; dir: 'kb' | 'local'; title: string; sourceLabel: 'ADA' | 'care_team' }
+interface ManifestDoc {
+  id: string; file: string; dir: 'kb' | 'local'; title: string; sourceLabel: SourceLabel
+  year: number; diabetesType: 'type1' | 'type2' | 'any'
+  startAt?: string; endAt?: string
+}
 interface Manifest { snapshotDate: string; documents: ManifestDoc[] }
+/** What kb/load.ts loads: a passage plus its document's metadata (ADR-0013 iteration 6). */
+export type BuiltPassage = Passage & { year: number; diabetesType: ManifestDoc['diabetesType'] }
 
 const here = dirname(fileURLToPath(import.meta.url))
 const argIdx = process.argv.indexOf('--kb-dir')
@@ -32,17 +38,35 @@ const manifest = JSON.parse(readFileSync(join(here, 'manifest.json'), 'utf8')) a
 
 function readSource(d: ManifestDoc): string {
   const path = join(d.dir === 'kb' ? kbDir! : localDir, d.file)
-  if (d.file.endsWith('.pdf')) return execFileSync('pdftotext', [path, '-'], { encoding: 'utf8', maxBuffer: 64 * 1024 * 1024 })
-  return readFileSync(path, 'utf8')
+  const text = d.file.endsWith('.pdf')
+    ? execFileSync('pdftotext', [path, '-'], { encoding: 'utf8', maxBuffer: 64 * 1024 * 1024 })
+    : readFileSync(path, 'utf8')
+  return slice(d, text)
 }
 
-const kept: Passage[] = []
-const skipped: Passage[] = []
+/** The part of a document between `startAt` and `endAt` (front matter and back matter out). */
+function slice(d: ManifestDoc, text: string): string {
+  let out = text
+  if (d.startAt) {
+    const m = new RegExp(d.startAt, 'm').exec(out)
+    if (!m) throw new Error(`${d.id}: startAt /${d.startAt}/ not found; the document changed`)
+    out = out.slice(m.index)
+  }
+  if (d.endAt) {
+    const m = new RegExp(d.endAt, 'm').exec(out)
+    if (!m) throw new Error(`${d.id}: endAt /${d.endAt}/ not found; the document changed`)
+    out = out.slice(0, m.index)
+  }
+  return out
+}
+
+const kept: BuiltPassage[] = []
+const skipped: BuiltPassage[] = []
 for (const d of manifest.documents) {
   const passages = chunkDoc({ id: d.id, title: d.title, sourceLabel: d.sourceLabel, text: readSource(d) })
   // Kay, 2026-11-14: "you can skip infographic". Out-of-order graphics, and table scraps that lose their meaning, are dropped,
   // not repaired.
-  for (const p of passages) (p.needsReview ? skipped : kept).push(p)
+  for (const p of passages) (p.needsReview ? skipped : kept).push({ ...p, year: d.year, diabetesType: d.diabetesType })
   console.log(`${d.id.padEnd(20)} ${String(passages.length).padStart(4)} passages`)
 }
 

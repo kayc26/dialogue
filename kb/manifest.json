@@ -1,18 +1,20 @@
 {
-  "$comment": "Knowledge-base sources (ADR-0005 iteration 6). File names and titles only; the content lives in the team's Drive folder and never in git. `dir`: 'kb' = the Drive knowledgebase folder (--kb-dir), 'local' = kb/local-sources/ (git-ignored).",
-  "snapshotDate": "2026-11-14",
+  "$comment": "Knowledge-base sources (ADR-0005 iteration 6; ADR-0013 iterations 5–6). File names and titles only; the content lives in the team's Drive folder and never in git. `dir`: 'kb' = the Drive knowledgebase folder (--kb-dir), 'local' = kb/local-sources/ (git-ignored). `sourceLabel` ranks authority: 'ADA' is the authority on numbers; 'book' is for explanations and examples, never shown word for word and never the sole source of a number (ADR-0013, QST-KB-BOOK-ROLE: A). `startAt` / `endAt` (optional): regexes on the extracted text; only the text from the first startAt match up to the first endAt match is used.",
+  "snapshotDate": "2026-11-16",
   "documents": [
-    { "id": "ada-t1-guide", "file": "guide-for-people-with-type_1-diabetes.pdf", "dir": "kb", "title": "Your Rights and Care Standards: A Guide for People with Type 1 Diabetes", "sourceLabel": "ADA" },
-    { "id": "ada-t2-guide", "file": "guide_for_people_with_type_2_diabetes.pdf", "dir": "kb", "title": "Your Rights and Care Standards: A Guide for People with Type 2 Diabetes", "sourceLabel": "ADA" },
-    { "id": "ada-plate", "file": "PE25-Plan-Your-Plate-FINAL-5-22-25.pdf", "dir": "kb", "title": "Plan Your Diabetes Plate", "sourceLabel": "ADA" },
-    { "id": "ada-liver", "file": "041526-healthy-eating-for-liver-health-digital-final.pdf", "dir": "kb", "title": "Healthy Eating for Liver Health", "sourceLabel": "ADA" },
-    { "id": "ada-sweeteners", "file": "ada26-nutrition-sugar-substitutes-02-19-26.pdf", "dir": "kb", "title": "Understanding Sugar Substitutes", "sourceLabel": "ADA" },
-    { "id": "ada-portions", "file": "portions-vs-serving-sizes-onepager-8-6-25.pdf", "dir": "kb", "title": "Portion Size vs. Serving Size", "sourceLabel": "ADA" },
-    { "id": "ada-nutrition-faqs", "file": "nutrition-faqs-new-v5-final-1-21-26.pdf", "dir": "kb", "title": "Food & Nutrition FAQs", "sourceLabel": "ADA" },
-    { "id": "ada-exercise", "file": "exercise_and_nutrition.pdf", "dir": "kb", "title": "Exercise and Nutrition", "sourceLabel": "ADA" },
-    { "id": "team-faqs", "file": "FAQs.md", "dir": "local", "title": "Care team FAQs", "sourceLabel": "care_team", "$comment": "Export of the team's FAQs Google Doc (clinician-approved, QST-DIAB-FAQ-SOURCE: A); the author's internal note about brands is left out." }
+    { "id": "ada-t1-guide", "file": "guide-for-people-with-type_1-diabetes.pdf", "dir": "kb", "title": "Your Rights and Care Standards: A Guide for People with Type 1 Diabetes", "sourceLabel": "ADA", "year": 2026, "diabetesType": "type1" },
+    { "id": "ada-t2-guide", "file": "guide_for_people_with_type_2_diabetes.pdf", "dir": "kb", "title": "Your Rights and Care Standards: A Guide for People with Type 2 Diabetes", "sourceLabel": "ADA", "year": 2026, "diabetesType": "type2" },
+    {
+      "id": "bright-spots", "file": "Bright_Spots_and_Landmines_by_Adam_Brown.pdf", "dir": "kb", "title": "Bright Spots & Landmines (Adam Brown, diaTribe Foundation)", "sourceLabel": "book", "year": 2017, "diabetesType": "any",
+      "startAt": "^\\f?MY S T O ?RY", "endAt": "^\\f?Tying It All\\s*$",
+      "$comment": "Provided by the clinical sponsor (Kay, 2026-11-16). Written for all types; the author's own experience is type 1 on insulin. Starts at 'My Story' (skips endorsements with outcome claims, the copyright page, and the foreword); ends before the reader worksheets, book summary, and references."
+    }
+  ],
+  "heldOut": [
+    { "id": "team-faqs", "file": "FAQs.md", "dir": "local", "title": "Care team FAQs", "sourceLabel": "care_team", "reason": "Held out of the knowledge base and card drafting for the first pass; the clinical reference the blind cards are compared against (ADR-0013, QST-KB-HOLDOUT-SCOPE: A, QST-KB-REDRAFT: A)." }
   ],
   "excluded": [
-    { "file": "Workflow PRDC triage calls 3.4.26.docx", "reason": "Triage criteria source only (ADR-0006 iteration 5); internal clinic workflow, not answer content." }
+    { "file": "Workflow PRDC triage calls 3.4.26.docx", "reason": "Triage criteria source only (ADR-0006 iteration 5); internal clinic workflow, not answer content." },
+    { "file": "PE25-Plan-Your-Plate-FINAL-5-22-25.pdf, 041526-healthy-eating-for-liver-health-digital-final.pdf, ada26-nutrition-sugar-substitutes-02-19-26.pdf, portions-vs-serving-sizes-onepager-8-6-25.pdf, nutrition-faqs-new-v5-final-1-21-26.pdf, exercise_and_nutrition.pdf", "reason": "ADA handouts in the 2026-11-14 snapshot; not part of the clinical sponsor's set (Kay, 2026-11-16)." }
   ]
 }

@@ -41,6 +41,17 @@ describe('splitting extracted PDF text', () => {
     expect(lines).toEqual(['Some text', 'More text'])
   })
 
+  it("drops the book's running page header, so it can't become every page's section heading (TD-5's failure)", () => {
+    // Shaped like Bright Spots & Landmines as pdftotext extracts it: page number, a
+    // lone "|", then the chapter name in capitals, between two halves of one sentence.
+    // (The first half-sentence itself still reads as a heading: TD-6, page-break headings.)
+    const text = 'Writing about it has taught me a lot, and I still have hard days with my blood sugar.\n\n214\n\n|\n\nTYING IT ALL TOGETHER\n\nThe default attitude is usually negative, anxious, and self-blaming.'
+    const doc = chunkDoc({ id: 'book', title: 'Book', sourceLabel: 'book', text })
+    expect(doc.map((p) => p.section)).not.toContain('TYING IT ALL TOGETHER')
+    expect(doc.map((p) => p.body).join(' ')).not.toMatch(/TYING IT ALL TOGETHER|\|/)
+    expect(doc).toHaveLength(1) // one passage: the header no longer splits it
+  })
+
   it('attaches each passage to the heading above it and joins wrapped lines', () => {
     const doc = chunkDoc({
       id: 'demo',

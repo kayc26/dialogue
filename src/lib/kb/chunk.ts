@@ -9,17 +9,22 @@
 
 import { tagPassage, type KbTag } from './tags.ts'
 
+/** Authority rank (ADR-0013, QST-KB-BOOK-ROLE: A): 'ADA' is the authority on numbers;
+ *  'book' explains and gives examples, is never shown word for word, and never stands
+ *  alone behind a number; 'care_team' is the clinic's own FAQ (held out for now). */
+export type SourceLabel = 'ADA' | 'care_team' | 'book'
+
 export interface SourceDoc {
   id: string // stable slug, e.g. "ada-t2-guide"
   title: string
-  sourceLabel: 'ADA' | 'care_team'
+  sourceLabel: SourceLabel
   text: string
 }
 
 export interface Passage {
   id: string
   docTitle: string
-  sourceLabel: 'ADA' | 'care_team'
+  sourceLabel: SourceLabel
   section: string | null
   body: string
   tags: KbTag[]
@@ -33,15 +38,34 @@ const PAGE_NUMBER = /^\d{1,3}$/
 const BULLET = /^(?:[•▪›‣◦·\-–]|\d+[.)])\s*/
 const INFOGRAPHIC_LABEL = /\bcircle-\d+\b/i
 
-/** Remove layout noise that carries no meaning: invisible marks, footers, page numbers. */
+/** A page's running header, as the book extracts: a lone "|" line, then the chapter
+ *  name in capitals ("TYING IT ALL TOGETHER"). Kept, it would read as a new section
+ *  heading on every page: the stale-heading failure of TD-5. */
+const RUNNING_HEADER = /^[A-Z][A-Z0-9 &’',:-]{1,60}$/
+const PIPE = /^\|$/
+
+/** Remove layout noise that carries no meaning: invisible marks, footers, page numbers,
+ *  and running page headers. */
 export function cleanLines(text: string): string[] {
-  return text
+  const lines = text
     .replace(/\f/g, '\n')
     .replace(/\t/g, ' ')
     .replace(INVISIBLE, '')
     .split('\n')
     .map((l) => l.replace(/ {2,}/g, ' ').trim())
     .filter((l) => !FOOTER.test(l) && !PAGE_NUMBER.test(l))
+  const out: string[] = []
+  for (let i = 0; i < lines.length; i++) {
+    if (!PIPE.test(lines[i])) {
+      out.push(lines[i])
+      continue
+    }
+    // Drop the pipe and the header line after it (skipping blank lines between).
+    let j = i + 1
+    while (j < lines.length && lines[j] === '') j++
+    if (j < lines.length && RUNNING_HEADER.test(lines[j])) i = j
+  }
+  return out
 }
 
 interface Para {

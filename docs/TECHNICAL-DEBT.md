@@ -50,3 +50,13 @@ Workarounds and compromises, each with where it lives and how to retire it (CLAU
 - **Impact**: Retrieval ranks wrong passages first for after-meal questions, and the patient sees a misleading source label. Partly offset in `src/lib/chat/retrieve.ts`: a passage about the opposite direction keeps only half its score.
 - **Fix**: In the chunker, accept a heading only from real heading lines (not list items, table cells, or numbered steps). Then rebuild with `kb:build`, check `kb/out/review.md`, and reload production with `kb:load` (a write to production: Kay's OK first).
 - **Priority**: Medium. This is the first thing to fix if testers report off-topic answers.
+
+## TD-6: The book chunks poorly: page-break half-sentences and pull quotes read as headings
+
+- **Discovered**: 2026-11-16, first build of *Bright Spots & Landmines* (ADR-0013 iteration 6)
+- **Location**: `src/lib/kb/chunk.ts` (`isHeading`), output in `kb/out/passages.json`
+- **Issue**: The heading test accepts any one-line paragraph that starts with a capital and has no closing punctuation. In the book that matches a sentence cut at a page break ("Even after many years, I still"), drop-cap letters ("A", "R"), and pull-quote words ("SMALLER", "EXPECT"). So 120 distinct "sections" for 340 kept passages, many starting mid-sentence; 388 more were skipped as layout fragments. The running page header (`|` then the chapter name) was a fourth case, fixed in the same change that found this.
+- **Impact**: Book passages rank on fake headings, and a passage can begin or end mid-thought. Under QST-KB-BOOK-ROLE: A no book passage is shown word for word, so the harm is to retrieval and to the answer model's context, not to what a patient reads directly.
+- **Workaround**: none yet; the build is used as is for card drafting, where the drafter reads neighbouring passages.
+- **Fix**: Treat a one-line paragraph as a heading only if the next paragraph doesn't continue its sentence (starts lowercase), and reject one-letter and single-word all-caps lines in book sources. Or extract the book with `pdftotext -layout` and use its column structure. Rebuild and compare section counts.
+- **Priority**: Medium if the book stays in runtime search (QST-KB-BOOK-ROLE: A); low if it moves to card drafting only.
