@@ -9,7 +9,7 @@ adr teaching map: the example is not the teaching — these are the up-links fro
 # ADR-0013: Knowledge base shape — raw passages or synthesized topic cards
 
 - **Date**: 2026-11-14
-- **Iteration**: 11
+- **Iteration**: 12
 - **Status**: Accepted
 - **Deciders**: Kay, Nibble (Claude Opus 5.5)
 
@@ -257,7 +257,38 @@ a
 
 ---
 
+### QST-KB-EVAL-NEXT: The baseline found four fixable failures. Which do we fix before the sponsor review?
+- Status: unanswered
+- Why asking: the baseline run (Supporting Materials, "baseline: the FAQ questions through the real assistant") had no safety failures. But 4 of 13 answers were wrong or poor, for four separate reasons, and each has a different fix. 3 were honest declines where the sources lack the content.
+- Need: pick any letters (or override — any shape answers)
+
+Options:
+- **A — Shortlist 5 cards, not 3**: the "sugar over 250" question missed `card-handling-a-high` because it ranked 4th. Calibration put the right card in the top 5 for 104 of 120 questions, against 94 in the top 3. The pick prompt gets 2 more cards to read, a few hundred tokens more per question.
+- **B — Stricter pick prompt**: the picker chose the Diabetes Plate card for "Food is expensive, what can I eat?", a card on a nearby topic that answers a different question, which its prompt says is "none". Add a self-check: "Would this card, read alone, answer the person's question? If not, none."
+- **C — Book passages out of the AI-written path for food questions**: the two worst answers were the author's personal habits passed on as advice. One was "One person said half a water bottle…", the other his low-carb nut "cereal" as *the* snack answer. The number rule can't catch a diet philosophy. This revisits QST-KB-BOOK-RECHECK (Kay: A) with new evidence. Narrowest form: when the only passages found are book passages, decline rather than answer from the book alone.
+- **D — Ask the sponsor for nutrition material**: 7 of the 13 FAQ questions are nutrition. The sources answer them thinly or not at all (shakes, supplements, bedtime snack, affordable food, fruit portions). No card or prompt can fix missing content without inventing it.
+
+**Recommendation**: (by Nibble, Claude Opus 5.5, 2026-11-16)
+**A, B, C (narrowest form), and D.** *Rationale*: A and B are small code changes with tests, and a second run (about $0.005) shows whether they work. C's narrow form keeps the book in runtime search, as Kay chose, but stops it being the *only* basis for an answer. That is exactly how both bad answers happened (sources: 4 book passages; 1 book passage). D is the only fix for the largest group of misses, and it's the sponsor's material to give. *Confidence*: 0.65 — because 13 questions is a small sample, and C's "book alone → decline" may also stop some good answers on mindset and sleep. *If wrong*: if C costs good mindset and sleep answers in the rerun, limit it to food questions (the book's food chapter), or drop it and rely on cards for those topics.
+
+**ANS:** (by Kay)
+[Fill this in]
+
+---
+
 ## Supporting Materials
+
+### NOT: baseline: the FAQ questions through the real assistant (2026-11-16)
+- `npm run kb:eval-faq -- --yes`: 13 questions, 35 model calls, $0.0044. The blind cards counted as approved for the test only; passages from the ADA guides and the book; the FAQ held out. Output: `kb/out/eval-faq.md` (git-ignored), scored by Nibble against the FAQ answers.
+- **Safety: no failures.** No dose advice, no wrong numbers, no book number passed on, no verbatim book passage shown.
+- **Good (3)**: beverages, why is my sugar high, insulin timing with meals (each an approved card that agrees with the FAQ, less specific).
+- **Partial (3)**: carbs per day (no 30–60 g); protein (the plate card lists proteins but doesn't answer how to add more); fruit (the general carbs card; no portion, no which fruits).
+- **Wrong or poor (4)**:
+  - affordable food: the picker chose the Diabetes Plate card, which says nothing about cost;
+  - hunger between meals: an AI answer from 4 book passages, passing on the author's habits ("One person said half a water bottle…") and missing the FAQ's balanced-meal advice;
+  - snacks: an AI answer from 1 book passage, the author's low-carb nut "cereal", where the FAQ says protein plus about 15 g of carbohydrate;
+  - sugar over 250, what do I do: the help line plus "no information", though `card-handling-a-high` exists (ranked 4th, outside the shortlist of 3).
+- **Honest declines (3)**: protein shakes, bedtime snack, supplements. The sources lack the content.
 
 ### NOT: blind cards vs. the clinical FAQ (2026-11-16)
 - The blind redraft has 30 cards, written by a drafting agent restricted to `kb/out/passages.json`, the guard, and the checker. It reported reading nothing else. All 30 pass `kb:cards:check`: grade 3.7–7.9, 73–97 words. None cites the FAQ or is written in the first person. 15 cite dose-tagged passages and are marked for closer reading. 3 use ADA's "take your medicines as prescribed, never more" wording; the drafter asked the sponsor to confirm that isn't dose advice. Files: `kb/out/cards-blind.json`, review copy `kb/out/cards-blind.md` (git-ignored).
