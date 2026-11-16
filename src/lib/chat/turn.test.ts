@@ -224,6 +224,27 @@ describe('Regression tests', () => {
     expect(blocked.cards[1]).toMatchObject({ why: 'dose', passage: { id: 'meal-dose' } })
   })
 
+  it('a "no information" reply with citations attached is shown as no information, not as a sourced answer (RAG-only FAQ run, 2026-11-16)', async () => {
+    // Bug: the guard only recognised the no-information wording when it carried no
+    // citation. Two real replies cited a passage anyway, so the patient saw "I don't
+    // have information on that." credited to ADA, and "The passages don't list which
+    // fruits are best for you." (system talk) credited to the book.
+    // Fixed: a reply made only of decline/referral sentences becomes the no_info card,
+    // and the prompt forbids mentioning "passages".
+    for (const reply of [
+      "I don't have information on that. Your care team can help. [kb:fruit]",
+      "The passages don't list which fruits are best for you. Your care team can help with that. [kb:fruit]",
+    ]) {
+      const o = await turn('What fruit can I eat?', models({ answers: [reply] }).m, { monitorEnabled: false })
+      expect(o.cards.map((c) => c.kind), reply).toEqual(['no_info'])
+      expect(o.guard).toBe('decline_with_citation')
+      expect(o.blockedDraft).toBe(reply)
+    }
+    // A partial answer that opens with a decline but then says something useful stays an answer.
+    const partial = await turn('What fruit can I eat?', models({ answers: ["I don't have information on a daily number. Berries and apples raise glucose less than bananas. [kb:fruit]"] }).m, { monitorEnabled: false })
+    expect(partial.cards.map((c) => c.kind)).toEqual(['answer'])
+  })
+
   it('an empty model reply is its own guard reason, not "no citation"', async () => {
     // All three of Kay's answers on 2026-11-14 were logged as no_citation with no
     // draft kept, so an empty reply and an uncited one looked the same.

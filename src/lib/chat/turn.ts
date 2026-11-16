@@ -101,6 +101,20 @@ export interface TurnOutcome {
 const MIN_SCORE = 2.0
 /** The model's "nothing in the passages" reply (ANSWER_SYSTEM asks for this wording). */
 const NO_INFO = /\bI don[’']?t have (?:any )?information (?:on|about) (?:that|this)\b/i
+
+/**
+ * A reply that says nothing but "no information", however the model words it, even
+ * with citations attached. Every sentence is a decline ("I don't have information…",
+ * "The passages don't list…"), a referral ("Your care team can help."), or the help
+ * reminder. Shown as an answer, it credited a source for a non-answer (baseline FAQ
+ * run, 2026-11-16).
+ */
+const DECLINE_SENTENCE =
+  /^(?:I don[’']?t have (?:any )?information\b|I can[’']?t (?:tell|say|answer)\b|The (?:passages|sources|material)s? (?:don[’']?t|do not|doesn[’']?t)\b|(?:Your|The) care team (?:can|will) help\b|If you feel (?:very )?unwell\b)/i
+export function isOnlyDecline(text: string): boolean {
+  const sentences = stripCitations(text).split(/(?<=[.!?])\s+/).map((s) => s.trim()).filter(Boolean)
+  return sentences.length > 0 && sentences.every((s) => DECLINE_SENTENCE.test(s))
+}
 const MEDICAL_TOPIC = /\b(sugar|glucose|insulin|ketone|medic|dose|pump|shot|injection|metformin|pill|high|low|a1c|dka)\w*/i
 const isDose = (p: KbPassage) => p.tags.includes('dose_related')
 /** Only ADA (and care-team) passages are ever shown word for word. A book passage is
@@ -284,6 +298,10 @@ export async function runTurn(input: TurnInput): Promise<TurnOutcome> {
     if (verdict.reason === 'no_citation' && NO_INFO.test(draft)) cards.push({ kind: 'no_info' })
     else fallback()
     return done({ guard: verdict.reason, blockedDraft: draft })
+  }
+  if (isOnlyDecline(draft)) {
+    cards.push({ kind: 'no_info' })
+    return done({ guard: 'decline_with_citation', blockedDraft: draft })
   }
   const answer: Card = { kind: 'answer', text: stripCitations(draft), sources: verdict.citations.map((id) => shown.get(id)!).filter(Boolean) }
 

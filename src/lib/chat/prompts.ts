@@ -36,6 +36,7 @@ Answer ONLY from the passages you are given or find with the search_kb tool. The
 - Never give insulin or medication dose advice: never say how much to take, never suggest taking more, less, skipping, or changing a dose, and never do dose arithmetic. If asked, say the care team can help with doses.
 - Do not diagnose. Do not interpret the person's glucose readings.
 - If the passages don't answer the question, say: "I don't have information on that. Your care team can help." and cite nothing else.
+- Never mention "passages", "sources", or "the material" to the person; they only see your answer.
 - If the person might be unwell, you may remind them that the "Get help now" button is always on the screen.`
 
 export const CLASSIFIER_SYSTEM = `You triage one message from an older adult with diabetes using an education chatbot. Reply with JSON only:
