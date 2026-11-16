@@ -9,11 +9,11 @@ adr teaching map: the example is not the teaching — these are the up-links fro
 # ADR-0014: Shared OpenRouter account with a $1 cap per tester
 
 - **Date**: 2026-11-16
-- **Iteration**: 1
+- **Iteration**: 2
 - **Status**: Draft
 - **Deciders**: Kay, Nibble (Claude Opus 5.5)
 
-**TL;DR**: Kay wants testers on the shared OpenRouter account, capped at $1 each, with the chat showing a percentage of the allowance used instead of dollars. A static site can't hold a shared key secretly, so the question is how to share the account safely. Recommendation: one $1-limited key per tester, made from the shared account and stored with the tester's sign-in, so testers paste nothing.
+**TL;DR**: Kay wants testers on the shared OpenRouter account, capped at $1 each, with the chat showing a percentage of the allowance used instead of dollars. A static site can't hold a shared key secretly, so the question is how to share the account safely. Recommendation (iteration 2): keep the one shared key in a Neon Function inside the existing Neon project, which checks sign-in, tracks each tester's spending in the database, and stops at $1.
 
 ---
 
@@ -52,11 +52,19 @@ adr teaching map: the example is not the teaching — these are the up-links fro
 Options:
 - **A — A $1 key per tester, pasted once**: Kay creates one key per tester on the shared account (OpenRouter keys page, credit limit $1) and sends it to them. They paste it once, as now. OpenRouter enforces the $1, and the chat reads that key's usage to show the percentage. No server; almost no code beyond the percentage.
 - **B — A $1 key per tester, stored with their account**: same keys as A, but Kay stores each against the tester's sign-in with a small admin script. The app fetches it after sign-in, and only that tester can read it (database access rules, as for their own sessions). Testers paste nothing. OpenRouter still enforces the $1, and the percentage works as in A.
-- **C — The shared key behind a small server function**: the shared key stays on a server function (for example a Neon Function), never in the browser. The function checks the tester's sign-in, records each tester's spending in the database, refuses past $1, and forwards the request to OpenRouter. One key for everyone, and the cap is ours. It is a new deployed piece, though, and it has to pass streamed replies through.
+- **C — The shared key in a Neon Function, in the existing Neon project**: the shared key is set as the function's secret environment variable and never reaches the browser. The function checks the tester's Neon sign-in token (the one the app already uses), records each tester's spending in the existing database, refuses past $1, and forwards the call to OpenRouter, streaming the reply back. The chat shows spending ÷ $1 as the percentage. One shared key, nothing for testers or Kay to set up per person, and no server of our own: Neon hosts the function next to the database, free on this plan for a demo. More to build than A or B: the function, a spending table, and pointing the app's model calls at it.
 - **D — The shared key built into the site**: the simplest to build, and not safe. The key is public, the $1 cap can only be enforced in the browser and is bypassed by anyone who copies the key, and a leaked key is easy to find and drain. It also breaks ADR-0001.
 
-**Recommendation**: (by Nibble, Claude Opus 5.5, 2026-11-16)
-**B — a $1 key per tester, stored with their account.** *Rationale*: B gives Kay's three wants with no server. Testers do nothing; it's all one shared account; OpenRouter enforces the $1, so no tester can get around it, even by copying their key; and the percentage comes straight from OpenRouter's own count for that key. It reuses what exists: sign-in, members, and access rules (ADR-0011). Kay's step is creating one key per tester, a minute each for a handful of testers. C is the right shape if there were dozens of testers, but it adds a server this project has avoided (ADR-0010). D is ruled out above. *Confidence*: 0.75 — because I haven't confirmed in this project that OpenRouter's per-key limit and its `GET /api/v1/key` usage reading work as documented. That's the first check before building. *If wrong*: if per-key limits or the usage reading aren't available, or creating keys by hand is too much, choose **C**.
+**Recommendation**: (by Nibble, Claude Opus 5.5, 2026-11-16; revised in iteration 2)
+**C — the shared key in a Neon Function, in the existing Neon project.** *Rationale*: this is a walk-back from my first recommendation, B, stated openly. B was the best option *without a server*. Kay then asked whether C could run on the existing database instead of a server. The database can't call OpenRouter itself: this Neon project has no `http`, `pg_net`, or `plv8` extension, only `pg_cron` (checked on rls-dev). But Neon Functions run inside the same project. Neon's docs say they:
+  - hold secrets as environment variables;
+  - can verify the same Neon Auth sign-in token the app already sends to the Data API;
+  - can be called from the browser, and stream replies;
+  - are on every plan, including Free (1 million invocations and 10 active compute-hours per project).
+
+That matches Kay's actual ask: *one* shared key, with nothing to set up per tester. The $1 cap and the percentage both come from a spending table we control, and the access rules extend to it (ADR-0011). B remains the fallback: less to build, but a key per tester for Kay to create. D is ruled out above.
+
+*Confidence*: 0.7 — because Neon Functions are new to this project (nothing deployed yet), and the deploy step (Neon CLI, secrets) hasn't been tried. *If wrong*: if deploying a function or verifying the sign-in token there doesn't work, choose **B**.
 
 **ANS:** (by Kay)
 [Fill this in]
@@ -72,7 +80,7 @@ Pending QST-KEY-SHARING. Whatever is chosen, the chat stops showing dollars and 
 ## Action Items
 
 - [ ] Kay answers QST-KEY-SHARING. Owner: Kay
-- [ ] Check that a $1-limited key reports its usage and limit (`GET /api/v1/key`) before building on it. Owner: Nibble
+- [ ] If C: deploy a first Neon Function to rls-dev that verifies the sign-in token, before building the rest. If B: check that a $1-limited key reports its usage and limit (`GET /api/v1/key`). Owner: Nibble
 - [ ] Replace the dollar amount in the chat with "N% of your allowance used". Owner: Nibble
 
 ---
@@ -83,6 +91,15 @@ Pending QST-KEY-SHARING. Whatever is chosen, the chat stops showing dollars and 
 - Trigger: Kay asked for a $1 cap per tester with a percentage instead of dollars, using the shared key.
 - Contributors: Kay, Nibble (Claude Opus 5.5)
 - Changes: Options A–D written up; recommendation B.
+- Outcome: Draft (one question open)
+
+### Iteration 2 (2026-11-16)
+- Trigger: Kay: "can c be used without a server but existing database".
+- Contributors: Kay, Nibble (Claude Opus 5.5)
+- Changes:
+  - Checked: the database can't make web requests (rls-dev has no `http`, `pg_net`, or `plv8`; only `pg_cron`).
+  - Neon Functions (same project) can: secrets, sign-in verification, browser calls, streaming, free-plan allowance (Neon docs: runtime limits, authentication, plans).
+  - Option C rewritten as a Neon Function. Recommendation walked back from B to C, stated in the Recommendation.
 - Outcome: Draft (one question open)
 
 ---
