@@ -1,5 +1,5 @@
 {
-  "$comment": "Knowledge-base sources (ADR-0005 iteration 6; ADR-0013 iterations 5–6, 21). File names and titles only; the content lives in the team's Drive folder and never in git. `dir`: 'kb' = the Drive knowledgebase folder (--kb-dir), 'local' = kb/local-sources/ (git-ignored). `sourceLabel` sets priority, highest first (Kay, 2026-11-16: 'faq -> ada -> book'): 'care_team' (the clinician FAQ), then 'ADA', then 'book'. Search ranks them in that order on an equal match; 'care_team' and 'ADA' numbers count, 'book' numbers never do, and book text is never shown word for word (QST-KB-BOOK-ROLE: A). `startAt` / `endAt` (optional): regexes on the extracted text; only the text from the first startAt match up to the first endAt match is used.",
+  "$comment": "Knowledge-base sources (ADR-0005 iteration 6; ADR-0013 iterations 5–6, 21). File names and titles only; the content lives in the team's Drive folder and never in git. `dir`: 'kb' = the Drive knowledgebase folder (--kb-dir), 'local' = kb/local-sources/ (git-ignored). `sourceLabel` sets priority, highest first (Kay, 2026-11-16: 'faq -> ada -> book'): 'care_team' (the clinician FAQ), then 'ADA' (the two guides and the five handouts), then 'book'. Search ranks them in that order on an equal match; 'care_team' and 'ADA' numbers count, 'book' numbers never do, and book text is never shown word for word (QST-KB-BOOK-ROLE: A). `startAt` / `endAt` (optional): regexes on the extracted text; only the text from the first startAt match up to the first endAt match is used.",
   "snapshotDate": "2026-11-16",
   "documents": [
     { "id": "ada-t1-guide", "file": "guide-for-people-with-type_1-diabetes.pdf", "dir": "kb", "title": "Your Rights and Care Standards: A Guide for People with Type 1 Diabetes", "sourceLabel": "ADA", "year": 2026, "diabetesType": "type1" },
@@ -9,6 +9,11 @@
       "startAt": "^\\f?MY S T O ?RY", "endAt": "^\\f?Tying It All\\s*$",
       "$comment": "Provided by the clinical sponsor (Kay, 2026-11-16). Written for all types; the author's own experience is type 1 on insulin. Starts at 'My Story' (skips endorsements with outcome claims, the copyright page, and the foreword); ends before the reader worksheets, book summary, and references."
     },
+    { "id": "ada-plate", "file": "PE25-Plan-Your-Plate-FINAL-5-22-25.pdf", "dir": "kb", "title": "Plan Your Diabetes Plate", "sourceLabel": "ADA", "year": 2025, "diabetesType": "any", "$comment": "The five ADA handouts are back in the Drive folder (Kay, 2026-11-16: 'it's fine to include the handout for now'), at ADA priority." },
+    { "id": "ada-sweeteners", "file": "ada26-nutrition-sugar-substitutes-02-19-26.pdf", "dir": "kb", "title": "Understanding Sugar Substitutes", "sourceLabel": "ADA", "year": 2026, "diabetesType": "any" },
+    { "id": "ada-portions", "file": "portions-vs-serving-sizes-onepager-8-6-25.pdf", "dir": "kb", "title": "Portion Size vs. Serving Size", "sourceLabel": "ADA", "year": 2025, "diabetesType": "any" },
+    { "id": "ada-nutrition-faqs", "file": "nutrition-faqs-new-v5-final-1-21-26.pdf", "dir": "kb", "title": "Food & Nutrition FAQs", "sourceLabel": "ADA", "year": 2026, "diabetesType": "any" },
+    { "id": "ada-exercise", "file": "exercise_and_nutrition.pdf", "dir": "kb", "title": "Exercise and Nutrition", "sourceLabel": "ADA", "year": 2023, "diabetesType": "any" },
     {
       "id": "team-faqs", "file": "FAQs.md", "dir": "local", "title": "Care team FAQs", "sourceLabel": "care_team", "year": 2026, "diabetesType": "any",
       "$comment": "Export of the team's clinician-approved FAQs Google Doc (QST-DIAB-FAQ-SOURCE: A). Back in the knowledge base everywhere, test runs included (Kay, 2026-11-16: 'for now let's add the clinician faq's to the data we can retrieve from'; 'we will have other testing questions'), top priority."
@@ -16,6 +21,6 @@
   ],
   "excluded": [
     { "file": "Workflow PRDC triage calls 3.4.26.docx", "reason": "Triage criteria source only (ADR-0006 iteration 5); internal clinic workflow, not answer content." },
-    { "file": "PE25-Plan-Your-Plate-FINAL-5-22-25.pdf, 041526-healthy-eating-for-liver-health-digital-final.pdf, ada26-nutrition-sugar-substitutes-02-19-26.pdf, portions-vs-serving-sizes-onepager-8-6-25.pdf, nutrition-faqs-new-v5-final-1-21-26.pdf, exercise_and_nutrition.pdf", "reason": "ADA handouts in the 2026-11-14 snapshot; not part of the clinical sponsor's set (Kay, 2026-11-16). Being asked about in the email to the sponsor." }
+    { "file": "041526-healthy-eating-for-liver-health-digital-final.pdf", "reason": "ADA handout in the 2026-11-14 snapshot; not returned to the Drive folder with the other five, and not in Kay's list to the sponsor (2026-11-16)." }
   ]
 }
