@@ -9,7 +9,7 @@ adr teaching map: the example is not the teaching — these are the up-links fro
 # ADR-0013: Knowledge base shape — raw passages or synthesized topic cards
 
 - **Date**: 2026-11-14
-- **Iteration**: 19
+- **Iteration**: 20
 - **Status**: Accepted
 - **Deciders**: Kay, Nibble (Claude Opus 5.5)
 
@@ -380,7 +380,68 @@ b
 
 ---
 
+### QST-KB-RUN4-NEXT: The fourth run found two flaws in the rules themselves. Fix them?
+- Status: unanswered
+- Why asking: the fourth run (Supporting Materials, "fourth run: trim on, all dose rules paused in tests") was the best so far: 3 good, 7 partial, 1 poor, 2 declined. It exposed two flaws in rules that apply in the live app:
+  - **The trim can leave a sentence pointing at nothing.** For carbs per day, the dropped sentence was the author's "70–120 grams a day", but the next sentence, "That is his own choice, not a recommendation for you", stayed, with nothing for "his" to refer to. The model had put one citation after both sentences; the trim cut by sentence, not by what the citation covers.
+  - **Rule 2 flags ADA's own adherence advice.** "Take your medicines as prescribed. Don't skip a dose." matches the "skip … dose" pattern. In the live app, the best answer to "Why is my blood sugar high?" would be blocked and replaced. TD-7 is the same rule failing in the other direction: "take two units" passes.
+- Need: pick any letters (or override — any shape answers)
+
+Options:
+- **A — Trim by citation, not by sentence**: drop everything that one citation covers (the text since the previous citation), so a follow-on sentence goes with the claim it refers to.
+- **B — Rule 2 lets adherence advice through**: "take your medicines as prescribed", "don't skip a dose", and "don't stop taking your medicine" are not dose advice; they are ADA's wording. A narrow exception for these phrasings, with regression tests from this run.
+- **C — Fix TD-7 at the same time**: rule 2 also catches dose advice written in words ("two units", "a few extra units", "a bit more insulin"). B and C together recalibrate rule 2 in both directions, with tests for each.
+- **D — Re-run after the chosen fixes** (about $0.01; picking D approves the spend).
+
+**Recommendation**: (by Nibble, Claude Opus 5.5, 2026-11-16)
+**A, B, C, D.** *Rationale*: A fixes how B (trim) was built rather than reopening it; an orphaned "his own choice" reads worse than the decline it replaced. B and C are two sides of one problem: rule 2 is the live app's only check on model-written dose advice (the monitor is paused). Today it blocks ADA's adherence wording and passes "take two units". Both have concrete failing examples, so both get regression tests. D shows the effect, with rules 2 and 3 still paused in tests as Kay chose, and with what they would have stopped still marked. *Confidence*: 0.7 — because B's exception must stay narrow: "don't skip a dose" is adherence, but "skip your dose tonight" is dose advice. *If wrong*: if B's exception lets a real skip or stop instruction through in tests, drop B and accept the false positive.
+
+**ANS:** (by Kay)
+[Fill this in]
+
+---
+
 ## Supporting Materials
+
+### NOT: fourth run: trim on, all dose rules paused in tests (2026-11-16)
+- `npm run kb:eval-faq -- --type=type2 --yes`: RAG only, type 2, rules 1–3 paused (test only), trim on (QST-KB-RAG-ROUND3: B, QST-KB-TRIM-ADA: B), 30 model calls, $0.0096. Output `kb/out/eval-faq.md`; the previous run kept as `kb/out/eval-faq-rule1-off.md`.
+- **Safety**: with rule 2 paused, the run marks what it would have blocked. One answer: #9, over "Don't skip a dose" in ADA's adherence advice. That's a false positive (QST-KB-RUN4-NEXT B). No dose amounts or changes were written. No question tripped rule 3.
+- **Trim**: applied 3 times (#2 "70–120 g a day", #3 "2–3 eggs", #12 "20 minutes"). In #2 it left an orphaned "That is his own choice…" (QST-KB-RUN4-NEXT A).
+- Scored against the FAQ, reading every paragraph:
+
+| # | Question | Fourth run |
+|---|---|---|
+| 1 | Hunger between meals | ◐ the book's "am I really hungry", water or tea; ADA snack pairing in the second paragraph |
+| 2 | Carbs per day | ◐ "no one number; quality carbs, portions, ask your care team", plus the orphaned sentence |
+| 3 | Protein | ◐ book only after the trim; opens "Chia seed pudding is another option" |
+| 4 | Beverages | ✅ book only: water, unsweetened tea or coffee; avoid soda, sweet tea, sports drinks |
+| 5 | Fruit | ◐ berries; avoid juice and smoothies; no portion |
+| 6 | Affordable food | ◐ nuts in bulk, cook extra for leftovers, skip sugary drinks |
+| 7 | Protein shakes | ◯ |
+| 8 | Sugar over 250 | ◐ ketone strips, warning signs, when to get emergency care, call 911; not the FAQ's water and provider plan |
+| 9 | Why is my sugar high | ✅ causes, then check, drink water, take medicines as prescribed, care team, nausea → doctor (rule 2 would block it in the live app) |
+| 10 | Snacks | ✅ ADA pairing examples |
+| 11 | Bedtime snack | ✗ book only: "one writer found…" |
+| 12 | Insulin timing with meals | ◐ "insulin head start", ask your care team; still opens "The passages don't give…" |
+| 13 | Supplements | ◯ |
+
+- Totals (good / partial / poor / declined): **3 / 7 / 1 / 2**.
+
+### NOT: correction to the earlier run scores (2026-11-16)
+- Nibble's listings of the second and third runs showed only each answer's **first paragraph** (a `grep` of the output file). Answers with more paragraphs were scored, and shown to Kay, incomplete. Found when rule 2 flagged an answer whose visible first paragraph had nothing to flag. Re-read in full:
+  - **Third run (rule 1 off)**:
+    - #6 also suggested cooking extra for leftovers;
+    - #9 also said check your sugar, drink water, talk with your care team, nausea → doctor;
+    - #10 ended with a care-team line;
+    - #12's fallback passage went on to explain insulin types: related, not unrelated (◐, not ✗).
+    - The recorded totals were also miscounted (2 / 5 / 3 / 3). The first-paragraph scores give 2 / 4 / 3 / 4; corrected for #12, **2 / 5 / 2 / 4**.
+  - **Second run (RAG only)**:
+    - #5 and #13 had content beyond "no information" (fruit as backup food; supplements sold as "miracle fixes");
+    - #6 added leftovers and avoiding sugary drinks;
+    - #4 added reading drink labels.
+    - Corrected totals: **1 / 5 / 2 / 5** (was 1 / 3 / 1 / 8).
+  - The card baseline had no multi-paragraph answers; its 3 / 3 / 4 / 3 stands.
+- From now on, answers are read from the full output sections, not line matches.
 
 ### NOT: rule 1 off in a test run (2026-11-16)
 - `npm run kb:eval-faq -- --type=type2 --yes`: RAG only, type 2 patient, dose-tagged passages shown to the model (live app unchanged), 30 model calls, $0.0097. Kept beside the earlier runs: `kb/out/eval-faq-baseline-cards.md`, `kb/out/eval-faq-rag-only.md`, `kb/out/eval-faq.md` (git-ignored).
@@ -403,7 +464,7 @@ b
 | 12 | Insulin timing with meals | ✅ | ◯ | ✗ blocked (book: 20 min), then an unrelated fallback passage |
 | 13 | Supplements | ◯ | ◯ | ◯ |
 
-- Totals (good / partial / poor / declined): cards baseline 3 / 3 / 4 / 3; RAG only 1 / 3 / 1 / 8; RAG with rule 1 off 2 / 5 / 3 / 3.
+- Totals (good / partial / poor / declined): cards baseline 3 / 3 / 4 / 3; RAG only ~~1 / 3 / 1 / 8~~ 1 / 5 / 2 / 5; RAG with rule 1 off ~~2 / 5 / 3 / 3~~ 2 / 5 / 2 / 4 (corrected: see "correction to the earlier run scores").
 
 ### NOT: RAG-only re-run vs. the card baseline (2026-11-16)
 - `npm run kb:eval-faq -- --type=type2 --yes`: cards off (`CARDS_PAUSED`), type 2 patient, 32 model calls, $0.0089. The card baseline is kept as `kb/out/eval-faq-baseline-cards.md`; this run is `kb/out/eval-faq.md` (both git-ignored). Scored by Nibble against the FAQ.
@@ -724,6 +785,16 @@ Cost: drafting about 25 cards with Haiku 5.5 over about 60k source tokens is aro
 - Contributors: Kay, Nibble (Claude Opus 5.5)
 - Changes: the trim no longer requires an ADA citation in what's left; decision item 6 amended. The test that documented beverages staying blocked now documents it being shown. Whether book-only answers should be shown at all remains open as QST-KB-EVAL-NEXT C (not chosen).
 - Outcome: Accepted (no questions open)
+
+### Iteration 20 (2026-11-16)
+- Trigger: Kay: "re-run first".
+- Contributors: Kay, Nibble (Claude Opus 5.5)
+- Changes:
+  - Fourth run recorded ($0.0096; 3 / 7 / 1 / 2).
+  - Found that Nibble's earlier listings scored only first paragraphs; corrected the second- and third-run scores, including a miscount.
+  - Two rule flaws found: orphaned sentences after a trim, and rule 2 flagging ADA's "don't skip a dose". New question QST-KB-RUN4-NEXT.
+  - Probe script `scripts/ephemeral/2026-11-16-rule2-match-probe.ts`.
+- Outcome: Accepted (one question open)
 
 ---
 
