@@ -362,6 +362,24 @@ b
 
 ---
 
+### QST-KB-TRIM-ADA: Must a trimmed answer still cite ADA?
+- Status: unanswered
+- Why asking: QST-KB-RAG-ROUND3 B, as written and as built, shows a trimmed answer only if what's left still cites an ADA passage. Nibble said beforehand that B would save the third run's beverages answer ("plain or sparkling water, unsweetened tea or coffee; avoid soda, sweet tea, juice…", blocked over "decaf after 2 pm"). It won't: every citation in that draft is to the book, so it stays blocked. That was a misstatement, corrected here. It also exposes an inconsistency. A book-only answer **with no numbers** is shown today (affordable food: nuts in bulk), but a book-only answer that **had** a book number is blocked even after the number is trimmed. This relates to QST-KB-RAG-ROUND3 and QST-KB-EVAL-NEXT (its C, "book alone → decline", was not chosen).
+- Need: pick a letter (or override — any shape answers)
+
+Options:
+- **A — Keep as built: the rest must cite ADA**: trimming never produces a book-only answer. Beverages stays blocked. The inconsistency stays: number-free book-only answers are still shown.
+- **B — Any remaining citation is enough**: a trimmed answer is shown if it passes every check, whatever it cites. Beverages would be shown. Consistent with how number-free book-only answers are treated now.
+- **C — The same rule for every answer**: no answer of any kind is shown when it cites only the book (QST-KB-EVAL-NEXT C). Consistent in the other direction: beverages blocked, but also the affordable-food and bedtime-snack answers (book-only, the latter with "one writer found…").
+
+**Recommendation**: (by Nibble, Claude Opus 5.5, 2026-11-16)
+**B — any remaining citation is enough.** *Rationale*: B makes trimming do what it was chosen for, and makes the rule consistent with how the app already treats book-only answers. Whether book-only answers should be shown at all is a separate question; C is where it can be answered on its own terms, for every answer. The trimmed text has passed every check again, including the ADA-numbers rule, so it carries no book number. *Confidence*: 0.6 — because B shows more book-only text, and the worst answers in the baseline were book-only. *If wrong*: if book-only answers keep reading as one person's habits, choose **C**: it fixes the cause rather than the trim.
+
+**ANS:** (by Kay)
+[Fill this in]
+
+---
+
 ## Supporting Materials
 
 ### NOT: rule 1 off in a test run (2026-11-16)
