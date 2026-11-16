@@ -9,11 +9,11 @@ adr teaching map: the example is not the teaching — these are the up-links fro
 # ADR-0013: Knowledge base shape — raw passages or synthesized topic cards
 
 - **Date**: 2026-11-14
-- **Iteration**: 4
+- **Iteration**: 5
 - **Status**: Accepted
 - **Deciders**: Kay, Nibble (Claude Opus 5.5)
 
-**TL;DR**: Decided (Kay: C, A). An offline step drafts plain-language topic cards from the ADA library for the 20–30 common topics, and Kay's clinical sponsor approves every card before it can be searched. The assistant searches approved cards first and falls back to the raw passages for anything else.
+**TL;DR**: Decided (Kay: C, A). An offline step drafts plain-language topic cards for the 20–30 common topics, and Kay's clinical sponsor approves every card before it can be searched. The assistant searches approved cards first and falls back to the raw passages for anything else. Iteration 5: the source set is now the sponsor's (two ADA guides plus *Bright Spots & Landmines*); the care-team FAQ is held out, cards are drafted without it, and then compared against it. Four questions are open on how that works.
 
 ---
 
@@ -134,7 +134,94 @@ a
 
 ---
 
+### QST-KB-BOOK-ROLE: How does *Bright Spots & Landmines* enter the knowledge base?
+- Status: unanswered
+- Why asking: The sponsor provided the book (Kay, 2026-11-16). It is one person's type 1 experience, written in the first person, and it says itself that it is not medical advice. It carries dose arithmetic (percentage cuts to correction and meal insulin around exercise), a personal 70–140 mg/dL target, and a carbohydrate limit of under 30 g per meal; ADA sets looser targets for older adults. The answer guard can't see a conflict: it checks only that each number appears in *some* cited passage, and the book's numbers would. Kay's proposed approach (Supporting Materials, iteration 5) says ADA wins on conflicts and the book is for explanations and examples, not numbers. This question is how to make that rule mechanical rather than a prompt instruction.
+- Need: pick a letter (or override — any shape answers)
+
+Options:
+- **A — Full source, never the authority on numbers**: the book is chunked and searched like the ADA guides, labelled with its own source, year 2017, and type 1. Code enforces the rule: a number in an answer must appear in a cited **ADA** passage, a book citation alone doesn't count. Book passages are never shown word for word as a fallback (first-person voice, and copyright allows only brief quotes). Dose-tagged book passages never reach the model, as with ADA today.
+- **B — Cards only**: the book is used only when drafting topic cards, which the sponsor approves; the runtime search never sees it. The safest option, but the book's strengths (mindset, sleep, practical tips) reach patients only through the 20–30 cards.
+- **C — Full source, no special rules**: the book is treated like ADA material. Simplest, and the conflicts above reach patients.
+
+**Recommendation**: (by Nibble, Claude Opus 5.5, 2026-11-16)
+**A — full source, never the authority on numbers.** *Rationale*: this is Kay's proposed rule ("use the book for explanations and examples, not as the authority on numbers") made into code. The current guard already checks numbers against cited passages (`src/lib/chat/guard.ts`), so restricting which citations count is a small change that tests can cover. The sponsor chose the book, so keeping it out of runtime search (B) overrides a clinical choice that isn't mine to override. C lets 70–140 and under-30-g reach a 75-year-old with nothing stopping it. *Confidence*: 0.65 — because I haven't seen how the book chunks yet (the layout has pull quotes and two-column comparison tables), and its first-person passages may make poor answer material even with the number rule in place. *If wrong*: if the rebuilt passages show most book chunks are first-person story rather than general guidance, flip to **B**.
+
+**ANS:** (by Kay)
+[Fill this in]
+
+---
+
+### QST-KB-HOLDOUT-SCOPE: Is the care-team FAQ held out of the live assistant too, or only out of card drafting?
+- Status: unanswered
+- Why asking: Kay (2026-11-16): "the team FAQ is held out at first pass, we create a FAQ layer based on the material on hand, and compare with the clinical version." The FAQ is clinical ground truth, which makes it the natural test set: its questions as test inputs, its answers as the reference. If the running assistant can still search the FAQ's 13 passages, a test on the FAQ's own questions finds its own answers and measures nothing.
+- Need: pick a letter (or override — any shape answers)
+
+Options:
+- **A — Held out everywhere during the first pass**: the FAQ leaves `kb_chunks` and card drafting. It is used only to evaluate: coverage (is there a card for each FAQ question?) and agreement (do card and FAQ agree on facts and numbers?). It comes back as a source after the comparison.
+- **B — Held out of drafting only**: cards are drafted blind, but the live assistant keeps the FAQ in its raw passages. Testers keep the FAQ's good answers now; the evaluation can only judge the cards, not the whole assistant.
+
+**Recommendation**: (by Nibble, Claude Opus 5.5, 2026-11-16)
+**A — held out everywhere during the first pass.** *Rationale*: the comparison is worth the most when nothing the assistant sees came from the FAQ, and the FAQ is the only clinician-written reference we have. The live site already serves the FAQ today; taking it out costs testers its 13 passages for the length of the first pass. *Confidence*: 0.7 — because I'm reading "held out at first pass" as covering the live assistant, and Kay may have meant only the drafting. *If wrong*: if testers need the FAQ answers during the first pass, flip to **B** and evaluate the cards on their own.
+
+**ANS:** (by Kay)
+[Fill this in]
+
+---
+
+### QST-KB-REDRAFT: The 30 draft cards were written with the FAQ in view. Redraft them blind?
+- Status: unanswered
+- Why asking: Holding the FAQ out only works if the cards were written without it. The 2026-11-14 drafts weren't: 10 of 30 cite FAQ passages, the topic list was drawn from the FAQ questions (Action Items), and 6 cards lean on the ADA handouts that are no longer in the source set. Comparing those drafts with the FAQ would partly measure the FAQ against itself.
+- Need: pick a letter (or override — any shape answers)
+
+Options:
+- **A — Redraft all 30 blind**: a fresh drafting agent that has never seen the FAQ (no FAQ file, no FAQ-derived topic list, no old drafts) writes the cards from the new source set. The topic list comes from Kay's predictable topics (lows, carb counting, sick days, foot care, exercise, medication timing) plus the ADA guides' own sections. $0 if hand-drafted by the agent; about $0.05 as a live model run (ADR-0012: needs Kay's OK).
+- **B — Keep the 20 that don't cite the FAQ, redraft 10**: faster. But the topic list and the wording of the 20 were still shaped by having read the FAQ.
+
+**Recommendation**: (by Nibble, Claude Opus 5.5, 2026-11-16)
+**A — redraft all 30 blind.** *Rationale*: the source set changed anyway (6 handouts out, the book in), so most cards need rework, and only a blind draft makes the FAQ comparison mean something. The old drafts stay in git-ignored `kb/out/` for reference after the comparison. *Confidence*: 0.8 — because contamination is clear from the Action Items record; the only cost is drafting time. *If wrong*: if the comparison is meant only as a sanity check rather than an evaluation, **B** is enough.
+
+**ANS:** (by Kay)
+[Fill this in]
+
+---
+
+### QST-KB-DOSE-CARDS: Do topics whose sources are mostly dose-tagged get a card?
+- Status: unanswered
+- Why asking: Decision item 5 says such a topic gets no card. In the 2026-11-14 drafts, 7 of 30 break that rule, including ketones/DKA, what to do when sugar is high, sick days, and checking glucose. Those are topics older adults ask about most, and the tagger marks any passage that mentions insulin, so "mostly dose-tagged" is broader than "mostly dose instructions". The blind redraft (QST-KB-REDRAFT) will meet the same question.
+- Need: pick a letter (or override — any shape answers)
+
+Options:
+- **A — Keep the rule**: no card when more than half its sources are dose-tagged. Those topics stay on the raw-passage path, where dose-tagged passages are shown word for word and never paraphrased.
+- **B — The sponsor decides card by card**: a card may cite dose-tagged passages if it gives no dose instruction (the guard checks this), and the review document marks those cards for closer reading. Approval is the gate, not the tag count.
+
+**Recommendation**: (by Nibble, Claude Opus 5.5, 2026-11-16)
+**B — the sponsor decides card by card.** *Rationale*: the rule was a proxy for "this topic is about doses", and the tag is too broad to carry that. Every card already passes the dose-advice guard (`scripts/ephemeral/2026-11-14-cards-check.ts`), and a clinician reads each one. Under A, the most urgent everyday topics get the least readable path. *Confidence*: 0.6 — because a card that calmly explains ketones sits close to "so what should I take?", and the monitor that would catch a dose build-up across turns is paused (ADR-0007). *If wrong*: if the sponsor would rather not approve text in dose territory at all, flip to **A**.
+
+**ANS:** (by Kay)
+[Fill this in]
+
+---
+
 ## Supporting Materials
+
+### NOT: the knowledge base update (checked 2026-11-16)
+- The shared Drive `knowledgebase/` folder now holds the two ADA "Your Rights and Care Standards" guides (©2026, unchanged since 2026-11-06 and 2026-11-10), the team FAQ document, and *Bright Spots & Landmines* by Adam Brown (diaTribe Foundation, ©2017 all rights reserved, 241 pages, about 50,000 words, added 2026-11-16 14:54). Kay: "the current materials are provided by our clinical sponsor."
+- The six ADA handouts (Plan Your Plate, Liver Health, Sugar Substitutes, Portions, Nutrition FAQs, Exercise and Nutrition) are no longer in the folder. They made up 24 of the 136 passages. Production `kb_chunks` still holds all 136 (snapshot 2026-11-14).
+- Passage ids are numbered within each document, so ids from the two ADA guides and the FAQ stay the same across a rebuild.
+- About the book (counted from its text, not shown here: copyright): insulin mentioned about 200 times and bolus about 50; specific dose-reduction percentages for exercise; a personal 70–140 mg/dL target used throughout; under 30 g of carbohydrate per meal. It covers food, mindset, exercise, and sleep.
+- Topic coverage across the new set: foot care is thin everywhere (3, 3, and 2 mentions). "Carb counting" appears only in the book, so under QST-KB-BOOK-ROLE A, a carb-counting card would have no ADA source for its numbers. That gap goes to the sponsor.
+
+### NOT: Kay's proposed approach (pasted 2026-11-16), and how it maps onto this design
+- *Rank sources with metadata (source, year, audience); ADA wins on conflicts; the book for explanations, not numbers*: QST-KB-BOOK-ROLE. A diabetes-type tag (type 1 or 2) may be more useful than audience, since all three sources are patient-facing and the demo patients have a type.
+- *Dedupe but keep conflict signals*: the two ADA guides overlap the most. Book-vs-ADA conflicts are better caught at build time, as a report for the sponsor, than resolved by the model at runtime.
+- *Answer format (6th–8th grade, numbers and steps verbatim, cite every claim, quote the book only briefly)*: the guard already checks numbers and citations. Reading level can be measured mechanically in the card check. A verbatim book passage as fallback breaks "quote briefly", hence QST-KB-BOOK-ROLE A.
+- *Curated FAQ layer for the top 20–30 topics, linked to source chunks, used when a question matches*: this ADR's decision (C, A, and QST-KB-CARD-USE A). Kay's note that the cards "double as verification evidence for your Design History File" fits the approval record: approver and date on each card, text that can't change without going back to draft, and a log of which card answered each turn.
+- *Safety boundaries in the system prompt*: already stronger here. The prompt asks; code enforces (triage rules first, the dose refusal card, the answer guard), so a model that ignores its prompt still can't give dose advice (ADR-0005, ADR-0006).
+- *Evaluation: 30–50 patient-style questions with conflicts and out-of-scope cases; numbers, citations, and declines checked separately*: the held-out FAQ supplies the core of it (QST-KB-HOLDOUT-SCOPE). ADR-0005's dose-bait set and ADR-0006's must-catch set join it. A live run costs about $0.10 for 50 questions and needs Kay's OK (ADR-0012).
+
+### NOT: card matching measured on the draft cards (2026-11-16)
+- `scripts/ephemeral/2026-11-16-card-match-calibration.ts`, $0. Each test question was held out of its own card. Search alone ranked the right card first for 45 of 79 questions, in the top 3 for 62, and in the top 5 for 67. Off-topic questions scored at most 2.8; the highest-scoring wrong first place was 7.1. So search shortlists and the model picks (QST-KB-CARD-USE A), and the score alone decides only when the pick call fails, at 8 or above. To be re-run on the blind redraft.
 
 ### NOT: what the knowledge base holds today (from `kb/out/passages.json`, 2026-11-14)
 - 136 passages in total: 72 from the type 1 "Your Rights and Care Standards" guide, 27 from the type 2 guide, 7 from Plan Your Diabetes Plate, and 4 each from Liver Health, Sugar Substitutes, Portion vs. Serving, and Food & Nutrition FAQs. There's 1 from Exercise and Nutrition, and 13 care-team FAQs.
@@ -206,6 +293,10 @@ Cost: drafting about 25 cards with Haiku 5.5 over about 60k source tokens is aro
 - [ ] Live drafting run (about $0.05, Haiku 5.5): needs Kay's OK first (ADR-0012). Owner: Kay to approve, then Nibble
 - [ ] Sponsor reviews and approves cards. Owner: Kay's clinical sponsor
 - [ ] Fix TD-5 (stale chunk headings): the raw passages remain the fallback. Owner: Nibble
+- [ ] (Iteration 5) Update `kb/manifest.json` to the sponsor's set: the six handouts out, the book in with its own source label, year and diabetes-type tags; the FAQ held out per QST-KB-HOLDOUT-SCOPE. Rebuild locally ($0), compare old and new passages, and check how the book chunks. Owner: Nibble, after Kay's answers
+- [ ] (Iteration 5) Re-check approved cards on every load: a card goes back to draft when its source passages change, so a future knowledge-base update can't leave approved text citing different passages. Owner: Nibble
+- [ ] (Iteration 5) Add a reading-level measure (6th–8th grade) and a book-vs-ADA number-conflict report to the card check. Owner: Nibble
+- [ ] (Iteration 5) After the blind draft: compare cards with the clinical FAQ (coverage, agreement on facts and numbers) and give the sponsor the differences. Owner: Nibble, then Kay's clinical sponsor
 
 ---
 
@@ -240,6 +331,15 @@ Cost: drafting about 25 cards with Haiku 5.5 over about 60k source tokens is aro
 - Contributors: Kay, Nibble (Claude Opus 5.5)
 - Changes: Decision item 4 now reads: a matched card is shown as written; the AI only picks the card id; raw passages and AI-written answers remain for questions no card covers.
 - Outcome: Accepted (no questions open)
+
+### Iteration 5 (2026-11-16)
+- Trigger: Kay: "connect the topic cards", then "the knowledge base is updated". Checking the Drive folder found the six ADA handouts gone and *Bright Spots & Landmines* added. Kay: the current materials come from the clinical sponsor; the team FAQ is held out at first pass, a FAQ layer is built from the material on hand and compared with the clinical version. Kay also pasted a proposed approach (Supporting Materials).
+- Contributors: Kay, Nibble (Claude Opus 5.5)
+- Changes:
+  - Card wiring paused before any database change. Code for the card step exists, uncommitted (`src/lib/chat/cards.ts`, the card step in `turn.ts`). It's mechanism only: inert with no approved cards, and independent of which sources the cards come from.
+  - Recorded the update, the mapping of Kay's approach, and the card-matching measurement.
+  - Four new questions: QST-KB-BOOK-ROLE, QST-KB-HOLDOUT-SCOPE, QST-KB-REDRAFT, QST-KB-DOSE-CARDS.
+- Outcome: Accepted (four questions open)
 
 ---
 
