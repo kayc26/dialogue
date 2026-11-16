@@ -9,7 +9,7 @@ adr teaching map: the example is not the teaching — these are the up-links fro
 # ADR-0013: Knowledge base shape — raw passages or synthesized topic cards
 
 - **Date**: 2026-11-14
-- **Iteration**: 14
+- **Iteration**: 15
 - **Status**: Accepted
 - **Deciders**: Kay, Nibble (Claude Opus 5.5)
 
@@ -315,7 +315,63 @@ b
 
 ---
 
+### QST-KB-RAG-NEXT: RAG alone declined 8 of 13. What next?
+- Status: unanswered
+- Why asking: the RAG-only run (Supporting Materials, "RAG-only re-run vs. the card baseline") answered fewer questions than the card baseline: 1 good, 3 partial, 1 poor, 8 declines, against 3 good, 3 partial, 4 poor, 3 declines. It also failed less badly: the book-only answers for hunger and protein were blocked by the ADA-numbers rule. Three of the declines have causes we can fix, as opposed to content the sources lack:
+  - "sugar over 250, what do I do?": the ADA passage that answers it ("How should I manage my high blood glucose?", `ada-t2-guide-023`) is tagged `dose_related` because it mentions insulin, so the model never sees it. Above it, search ranks a passage about *preventing lows* that carries the stale heading "After eating" (TD-5).
+  - "when do I take my insulin with meals?": the card answered it; RAG declined.
+  - The book still answers alone when it's all search finds (snacks: the nut "cereal" again; affordable food: buying nuts in bulk).
+- Need: pick any letters (or override — any shape answers)
+
+Options:
+- **A — Narrow the dose tag**: tag `dose_related` only for passages that give or work out an amount or a change (units, ratios, correction arithmetic, "take more/less"), not every passage that mentions insulin. Rebuild, and list every passage whose tag changes in `kb/out/review.md` for the sponsor. Passages still tagged stay verbatim-only, as now.
+- **B — Fix TD-5 (stale headings)**: accept a heading only from a real heading line; pairs with TD-6 for the book. Rebuild; ADA passage ids stay as they are if only headings change.
+- **C — Bring cards back, written as patient questions**: the card baseline answered 6 questions RAG declines or answers worse. Redraft blind as one card per patient question, answer first (the poorly-written diagnosis, iteration 13).
+- **D — Re-run after A and B** (RAG only, type 2, about $0.01; picking D approves the spend).
+
+**Recommendation**: (by Nibble, Claude Opus 5.5, 2026-11-16)
+**A, B, D now; C after D.** *Rationale*: A and B fix why RAG can't see or rank answers that are in the sources. That raises the floor for every question, which was the point of "try c first". D shows how far that gets RAG alone, and that decides how much C is needed. A changes what the model may read, so it's checked twice: every re-tagged passage is listed for the sponsor, and the answer guard still blocks dose advice in what the model writes. *Confidence*: 0.65 — because narrowing the dose tag moves the line ADR-0005 drew deliberately broad ("false positives are cheap"). The guard is what then holds it. *If wrong*: if the re-tag list shows dose instructions hiding in passages that lost the tag, keep the broad tag and fix only #8's passage by hand. Then rely on **C** for the high-sugar question.
+
+**ANS:** (by Kay)
+[Fill this in]
+
+---
+
 ## Supporting Materials
+
+### NOT: RAG-only re-run vs. the card baseline (2026-11-16)
+- `npm run kb:eval-faq -- --type=type2 --yes`: cards off (`CARDS_PAUSED`), type 2 patient, 32 model calls, $0.0089. The card baseline is kept as `kb/out/eval-faq-baseline-cards.md`; this run is `kb/out/eval-faq.md` (both git-ignored). Scored by Nibble against the FAQ.
+
+| # | Question | Cards baseline | RAG only |
+|---|---|---|---|
+| 1 | Hunger between meals | ✗ book-only answer | ◯ blocked (book number "20 minutes"), no information |
+| 2 | Carbs per day | ◐ card | ◐ ADA answer, similar |
+| 3 | Protein | ◐ plate card | ◯ blocked (book number "2-3 eggs"), no information |
+| 4 | Beverages | ✅ card | ✅ ADA + book, shorter |
+| 5 | Fruit | ◐ carbs card | ◯ decline, shown with source chips (bug, fixed `1bcfef9`) |
+| 6 | Affordable food | ✗ wrong card | ◐ book-only (buy nuts in bulk) |
+| 7 | Protein shakes | ◯ | ◯ |
+| 8 | Sugar over 250 | ✗ miss | ✗ miss (cause: dose tag + TD-5, see QST-KB-RAG-NEXT) |
+| 9 | Why is my sugar high | ✅ card | ◐ ADA, misses the main causes |
+| 10 | Snacks | ✗ book nut "cereal" | ✗ same |
+| 11 | Bedtime snack | ◯ | ◯ |
+| 12 | Insulin timing with meals | ✅ card | ◯ decline |
+| 13 | Supplements | ◯ | ◯ decline, shown with a source chip (bug, fixed) |
+
+- Safety: no failures in either run.
+
+### NOT: migration 0003 on rls-dev (2026-11-16)
+- Applied to `rls-dev` (`br-curly-hall-be03h6ji`) through the Neon connection, one transaction. Seeded `card-rls-approved` (approved) and `card-rls-draft`.
+- Approval rules checked directly on the branch (the cases in `db/tests/cards-approval.test.ts`, test rows removed afterwards), all as required:
+  - loaded as approved → draft;
+  - same text with new asks → stays approved;
+  - text edited → draft;
+  - approve and edit in one statement → draft;
+  - resync with nothing changed → stays approved;
+  - source passage rewritten → draft.
+- Structure: one policy (`kb_cards_read`: member and approved), `authenticated` has SELECT only, nothing for anonymous, RLS on.
+- Not yet run: the Data API access tests (`npm run test:db`). They need the `rls-dev` sign-in credentials, which `.env.local` doesn't have, so they skipped.
+- Production: not applied.
 
 ### NOT: diabetes type in search (QST-KB-RAG-FIXES: B, measured 2026-11-16)
 - `scripts/ephemeral/2026-11-16-diabetes-type-ranking.ts`, $0. 133 patient-style questions (the FAQ's questions plus the blind cards' phrasings); top passage with no patient type vs. with one.
@@ -557,6 +613,17 @@ Cost: drafting about 25 cards with Haiku 5.5 over about 60k source tokens is aro
   - Two action items: the sponsor's nutrition material (Kay), and applying migration 0003 (Nibble, after Kay's OK).
   - No re-run: F wasn't chosen. The next run needs Kay's OK.
 - Outcome: Accepted (no questions open)
+
+### Iteration 15 (2026-11-16)
+- Trigger: Kay: "ok" to applying migration 0003 on rls-dev and to the RAG-only re-run.
+- Contributors: Kay, Nibble (Claude Opus 5.5)
+- Changes:
+  - Migration 0003 applied to rls-dev; approval rules verified there. Data API access tests not run (no credentials).
+  - RAG-only re-run ($0.0089) compared with the card baseline.
+  - Bug fixed: a "no information" reply with citations was shown as a sourced answer (`1bcfef9`).
+  - Cause of the "sugar over 250" miss found: dose tag too broad, plus TD-5.
+  - New question QST-KB-RAG-NEXT.
+- Outcome: Accepted (one question open)
 
 ---
 
