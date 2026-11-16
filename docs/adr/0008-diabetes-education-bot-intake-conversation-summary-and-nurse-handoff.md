@@ -79,7 +79,7 @@ The flowchart item "Non-clinic provider requesting urgent visit" doesn't apply t
 ## Questions
 
 ### QST-HANDOFF-STORAGE: Where does the data live, so a nurse can read the summary?
-- Status: superseded — by ADR-0010 QST-TEST-ACCESS: E (Kay chose Neon so the sponsor gets one shared care-team inbox; Kay's original answer A is kept below)
+- Status: answered — superseded by ADR-0010 QST-TEST-ACCESS: E (Kay chose Neon so the sponsor gets one shared care-team inbox; Kay's original answer A is kept below) (status set to answered 2026-11-16: the ADR tools do not treat superseded as closed)
 - Why asking: Kay asked where the database will be. Today the answer is the patient's browser: `localStorage`, and IndexedDB for the knowledge base. ADR-0001 rules out any backend, and the corpus stays local (ADR-0005). The new nurse-handoff summary is the first data that someone *else* must read, so it has to get from the patient to the care team somehow. All data is synthetic.
 - Need: pick a letter (or override — an answer in any shape is complete)
 

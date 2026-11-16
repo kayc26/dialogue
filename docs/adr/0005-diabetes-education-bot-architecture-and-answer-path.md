@@ -96,7 +96,7 @@ voice/text ─▶ input adapter ─▶ SAFETY GATE ─────────�
 ## Questions
 
 ### QST-DIAB-ANSWER-PATH: How should the bot produce answers to education questions?
-- Status: superseded — by QST-WHICH-APPROACH-SHOULD-I (Kay's answer replaced the curated card set with ADA's whole library, so the choice is re-asked there)
+- Status: answered — superseded by QST-WHICH-APPROACH-SHOULD-I (Kay's answer replaced the curated card set with ADA's whole library, so the choice is re-asked there) (status set to answered 2026-11-16: the ADR tools do not treat superseded as closed)
 - Why asking: Kay asked for a comparison of strict verbatim retrieval with RAG constrained to retrieved content, and a recommendation. The users are older adults, the content must be clinician-approved, and the bot must never give insulin dose adjustment advice. This choice decides whether "approved text only" is guaranteed by the design or measured by tests.
 - Need: pick a letter (or override — an answer in any shape is complete)
 
