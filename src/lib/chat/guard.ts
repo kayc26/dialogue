@@ -86,9 +86,9 @@ function sentencesOf(text: string): string[] {
  * Trim, don't block, on a book number (ADR-0013, QST-KB-RAG-ROUND3: B, Kay 2026-11-16).
  * When every number the guard rejected appears in a cited book passage, the sentences
  * carrying those numbers are dropped and the rest is checked again from scratch. The
- * trimmed answer is returned only if it passes every check and still cites an ADA
- * passage. Anything else (an invented number, dose advice, a reply left citing only
- * the book) returns null, and the whole answer stays blocked.
+ * trimmed answer is returned if it passes every check, whatever it cites (QST-KB-TRIM-ADA:
+ * B, Kay 2026-11-16: the same as a number-free answer, which may cite only the book).
+ * An invented number or dose advice returns null, and the whole answer stays blocked.
  */
 export function trimBookNumbers(
   answer: string,
@@ -107,8 +107,6 @@ export function trimBookNumbers(
   const text = sentences.filter((s) => !dropped.includes(s)).join(' ')
   const again = checkAnswer(text, shown, userMessage, opts)
   if (!again.ok) return null
-  const ada = new Set(shown.filter((p) => p.source_label === 'ADA').map((p) => p.id.toLowerCase()))
-  if (!again.citations.some((c) => ada.has(c))) return null // what's left must still rest on ADA
   return { text, dropped, citations: again.citations }
 }
 

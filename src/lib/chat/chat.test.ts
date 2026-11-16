@@ -165,7 +165,7 @@ describe('answer guard (QST-DIAB-DOSE-GUARD: D, output gate)', () => {
       { id: 'ada-drinks', body: 'Water is the best choice. Unsweetened tea and coffee are fine. Limit soda, sweet tea, and juice.', source_label: 'ADA' },
       { id: 'book-coffee', body: 'I switch to decaf coffee after 2 pm so caffeine does not keep me up.', source_label: 'book' },
     ]
-    it('drops only the sentence with the book number, and shows the rest when it still rests on ADA', () => {
+    it('drops only the sentence with the book number, and shows the rest', () => {
       const a = 'Water is the best choice, and unsweetened tea or coffee is fine. [kb:ada-drinks] One writer switches to decaf after 2 pm. [kb:book-coffee] Limit soda, sweet tea, and juice. [kb:ada-drinks]'
       expect(checkAnswer(a, mixed, 'what can I drink?')).toEqual({ ok: false, reason: 'unsupported_number:2' })
       const t = trimBookNumbers(a, mixed, 'what can I drink?')
@@ -173,10 +173,12 @@ describe('answer guard (QST-DIAB-DOSE-GUARD: D, output gate)', () => {
       expect(t?.text).toBe('Water is the best choice, and unsweetened tea or coffee is fine. [kb:ada-drinks] Limit soda, sweet tea, and juice. [kb:ada-drinks]')
       expect(t?.citations).toEqual(['ada-drinks'])
     })
-    it('keeps blocking when what is left cites only the book (as decided: the rest must rest on ADA)', () => {
-      // The third run's beverages draft cited only book passages, so it stays blocked.
+    it('shows what is left even when it cites only the book (QST-KB-TRIM-ADA: B), like any number-free answer', () => {
+      // The third run's beverages draft cited only book passages and was lost over
+      // "decaf after 2 pm". Number-free book-only answers were already shown, so a
+      // trimmed one is treated the same.
       const a = 'Plain or sparkling water is a good choice. [kb:book-coffee] One writer switches to decaf after 2 pm. [kb:book-coffee]'
-      expect(trimBookNumbers(a, mixed, 'what can I drink?')).toBeNull()
+      expect(trimBookNumbers(a, mixed, 'what can I drink?')?.text).toBe('Plain or sparkling water is a good choice. [kb:book-coffee]')
     })
     it('never trims an invented number or dose advice: those block the whole answer', () => {
       expect(trimBookNumbers('Drink 8 glasses of water a day. [kb:ada-drinks] Decaf after 2 pm helps. [kb:book-coffee]', mixed, 'drinks?')).toBeNull()
