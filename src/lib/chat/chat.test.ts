@@ -108,6 +108,23 @@ describe('answer guard (QST-DIAB-DOSE-GUARD: D, output gate)', () => {
     expect(checkAnswer('Water is best. [kb:secret]', shown, 'drinks')).toEqual({ ok: false, reason: 'unknown_citation:secret' })
   })
 
+  describe('the book is never the authority on numbers (ADR-0013, QST-KB-BOOK-ROLE: A)', () => {
+    // Shaped like the real sources: the book's author aims for a personal 70–140 mg/dL
+    // range; the ADA guide gives the after-meal target older adults are taught.
+    const mixed = [
+      { id: 'ada-target', body: 'For most adults, blood glucose 1–2 hours after a meal should be under 180 mg/dL.', source_label: 'ADA' },
+      { id: 'book-range', body: 'I aim to stay in the range of 70-140 mg/dl within 2-3 hours after eating.', source_label: 'book' },
+    ]
+    it("blocks the book's personal range even when an ADA passage is cited beside it", () => {
+      const r = checkAnswer('Aim for 70 to 140 mg/dL after meals. [kb:ada-target] [kb:book-range]', mixed, 'what should my sugar be after eating?')
+      expect(r).toEqual({ ok: false, reason: 'unsupported_number:70,140' })
+    })
+    it("passes ADA's number, with the book cited for the explanation", () => {
+      const r = checkAnswer('After a meal, aim for under 180 mg/dL [kb:ada-target]. Many people find a walk after eating helps [kb:book-range].', mixed, 'after eating?')
+      expect(r).toEqual({ ok: true, citations: ['ada-target', 'book-range'] })
+    })
+  })
+
   it('removes citation markers from what the patient reads', () => {
     expect(stripCitations('Water is the best choice [kb:drinks].')).toBe('Water is the best choice.')
   })

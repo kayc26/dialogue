@@ -5,7 +5,7 @@
 import type { CompleteFn } from '../agent'
 import { completeChat } from '../openrouter'
 import type { ChatMessage, Usage } from '../types'
-import { CLASSIFIER_SYSTEM, MODELS, MONITOR_SYSTEM } from './prompts'
+import { CLASSIFIER_SYSTEM, MODELS, MONITOR_SYSTEM, PICK_SYSTEM, pickPrompt } from './prompts'
 import type { TurnModels } from './turn'
 
 /** One model call, as the care-team log records it: enough to tell a reply cut off by
@@ -13,7 +13,7 @@ import type { TurnModels } from './turn'
  *  (still "pending" when the turn was saved, i.e. it lost to the turn's timeout) from an
  *  error. Never the prompt, never the key. */
 export interface CallNote {
-  role: 'classify' | 'answer' | 'monitor'
+  role: 'classify' | 'answer' | 'monitor' | 'pick'
   model: string
   status: 'pending' | 'done' | 'error'
   ms?: number
@@ -63,7 +63,7 @@ export function openRouterModels(apiKey: string, meter: CostMeter, signal?: Abor
     meter.calls++
     if (typeof cost === 'number') meter.dollars += cost
   }
-  const json = async (role: 'classify' | 'monitor', model: { id: string; maxTokens: number }, system: string, user: string) => {
+  const json = async (role: 'classify' | 'monitor' | 'pick', model: { id: string; maxTokens: number }, system: string, user: string) => {
     const r = await noted(meter, role, model.id, () =>
       // No JSON mode: with it, gpt-oss-20b replied "{}" (3 tokens) and every turn fell
       // back to a check-in (Kay's test, 2026-11-14). The prompt asks for JSON and
@@ -104,5 +104,7 @@ export function openRouterModels(apiKey: string, meter: CostMeter, signal?: Abor
     complete,
     monitor: (transcript: string, draft: string) =>
       json('monitor', MODELS.monitor, MONITOR_SYSTEM, `Conversation so far:\n${transcript}\n\nDraft reply:\n${draft}`),
+    // Plain text, like the JSON roles: parsePick (cards.ts) takes the id out and checks it.
+    pick: (message, recent, shortlist) => json('pick', MODELS.picker, PICK_SYSTEM, pickPrompt(message, recent, shortlist)),
   }
 }

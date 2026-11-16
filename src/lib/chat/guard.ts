@@ -33,9 +33,15 @@ function numbersIn(text: string): string[] {
   return (text.replace(CITE, ' ').match(/\d+(?:\.\d+)?/g) ?? []).map((n) => String(Number(n)))
 }
 
+/**
+ * Rule 2's authority clause (ADR-0013, QST-KB-BOOK-ROLE: A): a 'book' passage can be
+ * cited for explanation, but its numbers don't count. The book's personal targets
+ * (70–140 mg/dL, under 30 g of carbohydrate per meal) differ from ADA's for older
+ * adults, and an answer citing both would otherwise pass with the book's number.
+ */
 export function checkAnswer(
   answer: string,
-  shown: { id: string; body: string }[],
+  shown: { id: string; body: string; source_label?: string }[],
   userMessage: string,
 ): GuardResult {
   if (!answer.trim()) return { ok: false, reason: 'empty_answer' }
@@ -48,7 +54,9 @@ export function checkAnswer(
   if (unknown.length) return { ok: false, reason: `unknown_citation:${unknown.join(',')}` }
 
   const allowed = new Set([
-    ...shown.filter((p) => citations.includes(p.id.toLowerCase())).flatMap((p) => numbersIn(p.body)),
+    ...shown
+      .filter((p) => citations.includes(p.id.toLowerCase()) && p.source_label !== 'book')
+      .flatMap((p) => numbersIn(p.body)),
     ...numbersIn(userMessage),
   ])
   const unsupported = numbersIn(answer).filter((n) => !allowed.has(n))

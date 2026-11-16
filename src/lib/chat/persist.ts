@@ -22,6 +22,8 @@ export function cardsToText(cards: Card[]): string {
           return "[no information on that in the knowledge base]"
         case 'answer':
           return `${c.text} [sources: ${c.sources.map((s) => s.id).join(', ')}]`
+        case 'topic_card':
+          return `${c.card.body} [approved card ${c.card.id}, shown as written; sources: ${c.card.source_ids.join(', ')}]`
       }
     })
     .join('\n')
@@ -64,6 +66,7 @@ export class ConversationLog {
         monitor: outcome.monitor,
         monitor_verdict: outcome.monitorVerdict,
         model_calls: outcome.modelCalls,
+        card: outcome.card, // ADR-0013: which card answered, or why none did
         calls, // per-call finish reason, tokens, timing (models.ts CallNote)
       },
     })

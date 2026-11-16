@@ -9,6 +9,8 @@ import type { CompleteFn } from '../agent'
 import type { ChatMessage } from '../types'
 import { buildIndex, type KbPassage } from './retrieve'
 import { runTurn, type TurnModels } from './turn'
+import { buildCardIndex, CARD_FALLBACK_SCORE, CARD_MIN_SCORE, loadApprovedCards, parsePick, type CardIndex, type TopicCard } from './cards'
+import { DataError, type DataClient } from '../neon/data'
 import type { Profile } from './triage'
 
 const NONE: Profile = { history_of_dka: false, pregnant: false, uses_pump: false }
@@ -25,8 +27,8 @@ const index = buildIndex([
 const cls = (tier: string, happening_now = true, dose_intent = false) =>
   JSON.stringify({ tier, happening_now, dose_intent, reason: 'test' })
 
-function models(o: { classify?: string | null | Error; answers?: string[]; monitor?: string | null }) {
-  const calls = { classify: 0, complete: 0, monitor: 0 }
+function models(o: { classify?: string | null | Error; answers?: string[]; monitor?: string | null; pick?: string | null | Error }) {
+  const calls = { classify: 0, complete: 0, monitor: 0, pick: 0 }
   const answers = [...(o.answers ?? [])]
   const m: TurnModels = {
     async classify() {
@@ -42,6 +44,11 @@ function models(o: { classify?: string | null | Error; answers?: string[]; monit
     async monitor() {
       calls.monitor++
       return o.monitor === undefined ? JSON.stringify({ veto: false, raise_tier: 'none', reason: 'ok' }) : o.monitor
+    },
+    async pick() {
+      calls.pick++
+      if (o.pick instanceof Error) throw o.pick
+      return o.pick === undefined ? 'none' : o.pick
     },
   }
   return { m, calls }
@@ -61,7 +68,7 @@ describe('turn orchestration', () => {
     expect(o.tier).toBe('emergency')
     expect(o.cards[0]).toMatchObject({ kind: 'escalation', tier: 'emergency' })
     expect(o.cards[1]).toMatchObject({ kind: 'passage', why: 'urgent', passage: { id: 'hypo' } })
-    expect(calls).toEqual({ classify: 0, complete: 0, monitor: 0 })
+    expect(calls).toEqual({ classify: 0, complete: 0, monitor: 0, pick: 0 })
   })
 
   it('a dose question gets the fixed refusal card; the answer model is never called', async () => {
@@ -79,7 +86,7 @@ describe('turn orchestration', () => {
     expect(o.cards[0]).toMatchObject({ kind: 'answer', text: 'Berries and apples raise glucose less than bananas. Keep fruit to one cup.' })
     expect(o.monitor).toBe('background')
     expect(await o.background).toMatchObject({ veto: false })
-    expect(calls).toEqual({ classify: 1, complete: 1, monitor: 1 })
+    expect(calls).toEqual({ classify: 1, complete: 1, monitor: 1, pick: 0 })
   })
 
   it('a red flag puts the escalation card and the approved passage before the answer', async () => {
@@ -224,5 +231,181 @@ describe('Regression tests', () => {
     const o = await turn('What fruit can I eat?', m)
     expect(o.guard).toBe('empty_answer')
     expect(o.cards).toContainEqual({ kind: 'passage', why: 'fallback', passage: expect.objectContaining({ id: 'fruit' }) })
+  })
+})
+
+// ADR-0013 (QST-KB-CARD-USE: A): a matched approved card is shown as written; the model
+// only picks among a shortlist, and code checks its pick. Shaped like the real drafts.
+describe('approved topic cards', () => {
+  const card = (id: string, topic: string, asks: string[], body: string, source_ids: string[], status: TopicCard['status'] = 'approved'): TopicCard =>
+    ({ id, topic, asks, body, source_ids, status })
+  const fruitCard = card('card-fruit', 'Fruit and diabetes', ['What fruit can I eat?', 'Is fruit okay with diabetes?', 'Can I eat bananas?'],
+    'Fruit can be part of your meals. Berries, apples and pears raise blood glucose less than melon or bananas. Keep fruit to one cup at a time.', ['fruit'])
+  const lowCard = card('card-low-treat', 'How to treat a low blood sugar', ['What do I do if my sugar is low?', 'What is the rule of 15?'],
+    'If your blood glucose is below 70 mg/dL, eat 15 grams of fast-acting carbohydrate and check again after 15 minutes.', ['hypo'])
+  const draftCard = card('card-fruit-juice', 'Fruit juice', ['Can I drink fruit juice?', 'What fruit can I eat?'], 'DRAFT TEXT not yet approved.', ['fruit'], 'draft')
+  const passages = [
+    P('fruit', 'What fruit can I eat?', 'Berries, apples and pears tend to raise blood glucose less than melon or bananas. Keep fruit to one cup.'),
+    P('hypo', 'Treating low blood glucose', 'To treat low blood glucose below 70 mg/dL, use the Rule of 15.', ['urgent']),
+  ]
+  // The turn's decisions depend on scores calibrated on the real knowledge base (cards.ts),
+  // which a 4-passage fixture can't reproduce, so the turn tests below search a card
+  // index whose scores are set on purpose; the real index has its own tests further down.
+  const scored = (hits: { card: TopicCard; score: number }[]): CardIndex => ({
+    size: hits.length,
+    search: (_q, k = 3) => hits.slice(0, k).map((h) => ({ ...h, sources: passages.filter((p) => h.card.source_ids.includes(p.id)) })),
+  })
+  const strongFruit = scored([{ card: fruitCard, score: CARD_FALLBACK_SCORE + 2 }, { card: lowCard, score: 3 }])
+  const ask = (message: string, m: TurnModels, cards: CardIndex = strongFruit) =>
+    runTurn({ message, history: [], profile: NONE, index, cards, doseSession: false, models: m, timeoutMs: 50, monitorEnabled: false })
+
+  it('a picked card is shown word for word, with its sources, and the answer model is never called', async () => {
+    const { m, calls } = models({ pick: 'card-fruit' })
+    const o = await ask('What fruit can I eat?', m)
+    expect(o.cards).toEqual([{ kind: 'topic_card', card: fruitCard, sources: [expect.objectContaining({ id: 'fruit' })] }])
+    expect(o.card).toMatchObject({ id: 'card-fruit', how: 'picked', shortlist: ['card-fruit', 'card-low-treat'] })
+    expect(calls).toMatchObject({ classify: 1, pick: 1, complete: 0 })
+  })
+
+  it('a draft card is never shown or even offered, though it matches the question', async () => {
+    // RLS serves members approved cards only; this is the second lock, for a wrong
+    // query or a loosened policy.
+    const real = buildCardIndex([fruitCard, lowCard, draftCard], passages)
+    expect(real.size).toBe(2)
+    expect(real.search('Can I drink fruit juice? What fruit can I eat?', 5).map((h) => h.card.id)).not.toContain('card-fruit-juice')
+    // and a picker that names it anyway gets the raw-passage path, not the draft
+    const { m } = models({ pick: 'card-fruit-juice', answers: ['Berries are a good choice. [kb:fruit]'] })
+    const o = await ask('Can I drink fruit juice?', m, real)
+    expect(o.cards.some((c) => c.kind === 'topic_card')).toBe(false)
+    expect(JSON.stringify(o.cards)).not.toContain('DRAFT TEXT')
+  })
+
+  it('a pick that names a card not on the shortlist is treated as none: the raw-passage answer runs', async () => {
+    const { m, calls } = models({ pick: 'card-snacks', answers: ['Berries are a good choice. [kb:fruit]'] }) // an approved id, but not offered
+    const o = await ask('What fruit can I eat?', m)
+    expect(o.card).toMatchObject({ id: null, how: 'none' })
+    expect(o.cards.map((c) => c.kind)).toEqual(['answer'])
+    expect(calls.complete).toBe(1)
+  })
+
+  it('"none" from the picker means the raw-passage path, as before cards', async () => {
+    const { m } = models({ pick: 'none', answers: ['Berries are a good choice. [kb:fruit]'] })
+    const o = await ask('What fruit can I eat?', m)
+    expect(o.card).toMatchObject({ how: 'none' })
+    expect(o.cards.map((c) => c.kind)).toEqual(['answer'])
+  })
+
+  it('when the pick call fails, the top card is shown only if its score clears CARD_FALLBACK_SCORE', async () => {
+    const confident = await ask('What fruit can I eat?', models({ pick: new Error('timeout') }).m)
+    expect(confident.card).toMatchObject({ id: 'card-fruit', how: 'fallback' })
+    expect(confident.cards.map((c) => c.kind)).toEqual(['topic_card'])
+
+    // just under the bar: the wrong-card first places seen in calibration reached 12.8
+    const unsureIndex = scored([{ card: fruitCard, score: CARD_FALLBACK_SCORE - 0.5 }])
+    const unsure = await ask('What fruit can I eat?', models({ pick: new Error('timeout'), answers: ['Bananas raise blood glucose more than berries. [kb:fruit]'] }).m, unsureIndex)
+    expect(unsure.card).toMatchObject({ id: null, how: 'failed' })
+    expect(unsure.cards.map((c) => c.kind)).toEqual(['answer'])
+  })
+
+  it('no card is close enough: no pick call is made (it would only cost money)', async () => {
+    const { m, calls } = models({})
+    const o = await ask('How do I renew my passport?', m, scored([{ card: fruitCard, score: CARD_MIN_SCORE - 0.1 }]))
+    expect(o.card).toMatchObject({ how: 'no_match', shortlist: [] })
+    expect(calls.pick).toBe(0)
+  })
+
+  it('emergencies and dose questions never reach the cards', async () => {
+    const e = models({ pick: 'card-low-treat' })
+    const emergency = await ask("my husband won't wake up and his sugar was low", e.m)
+    expect(emergency.card).toBeNull()
+    expect(e.calls.pick).toBe(0)
+
+    const d = models({ classify: cls('none', true, true), pick: 'card-low-treat' })
+    const dose = await ask('How much insulin should I take when my sugar is low?', d.m)
+    expect(dose.cards.map((c) => c.kind)).toEqual(['dose_refusal'])
+    expect(d.calls.pick).toBe(0)
+  })
+
+  it('with no approved cards, turns run exactly as before cards (no pick call)', async () => {
+    const { m, calls } = models({ answers: ['Berries are a good choice. [kb:fruit]'] })
+    const o = await runTurn({
+      message: 'What fruit can I eat?', history: [], profile: NONE, index, cards: buildCardIndex([draftCard]), doseSession: false, models: m, timeoutMs: 50, monitorEnabled: false,
+    })
+    expect(o.card).toBeNull()
+    expect(calls.pick).toBe(0)
+    expect(o.cards.map((c) => c.kind)).toEqual(['answer'])
+  })
+
+  it('reads the picker reply the ways models write it, and trusts only shortlisted ids', () => {
+    const list = ['card-fruit', 'card-snacks']
+    expect(parsePick('card-fruit', list)).toEqual({ id: 'card-fruit' })
+    expect(parsePick(' "card-fruit". ', list)).toEqual({ id: 'card-fruit' })
+    expect(parsePick('The best match is card-snacks.', list)).toEqual({ id: 'card-snacks' })
+    expect(parsePick('None', list)).toEqual({ none: true })
+    expect(parsePick('card-fruit or card-snacks', list)).toEqual({ none: true }) // ambiguous
+    expect(parsePick('card-low-treat', list)).toEqual({ none: true }) // not offered
+    expect(parsePick('card-fruit-juice', list)).toEqual({ none: true }) // a longer id is not card-fruit
+    expect(parsePick(null, list)).toBeNull() // failure, not "none"
+  })
+
+  it('loading cards never takes the patient view down: a missing table or a failed read gives no cards', async () => {
+    // The site deploys on every push, before the database migration that creates
+    // kb_cards; the Data API then answers 404 for the table.
+    const missing: DataClient = { get: () => Promise.reject(new DataError(404, 'Data API 404')) }
+    expect(await loadApprovedCards(missing)).toEqual([])
+    const served: DataClient = { get: <T,>() => Promise.resolve([lowCard, draftCard] as T) }
+    expect((await loadApprovedCards(served)).map((c) => c.id)).toEqual(['card-low-treat'])
+  })
+
+  describe('Regression tests', () => {
+    it("a card's score doesn't depend on how many cards are approved (found 2026-11-16)", () => {
+      // Bug: card search took word rarity from the approved cards alone. With 2 cards
+      // instead of 30, "What fruit can I eat?" scored under CARD_MIN_SCORE, so no pick
+      // call was made and the card never showed, though it was approved and matched.
+      // The sponsor may approve cards in batches, so this would have hidden cards
+      // exactly while few were live. Fixed: rarity comes from the cards plus the whole
+      // knowledge base (buildIndex's `background`), as in calibration.
+      const kb = [
+        ...passages,
+        P('plate', 'Plan your plate', 'Fill half the plate with non-starchy vegetables.'),
+        P('drinks', 'Beverages', 'Water is the best choice. Limit soda and juice.'),
+        P('walk', 'Activity', 'A short walk most days helps your heart and mood.'),
+        P('feet', 'Foot care', 'Check your feet every day for cuts and blisters.'),
+      ]
+      const q = 'What fruit can I eat?'
+      const alone = buildCardIndex([fruitCard], kb).search(q)[0].score
+      const among = buildCardIndex([fruitCard, lowCard], kb).search(q)[0].score
+      expect(alone / among).toBeGreaterThan(0.85)
+      expect(alone / among).toBeLessThan(1.15)
+    })
+  })
+})
+
+// ADR-0013 (QST-KB-BOOK-ROLE: A): the book informs written answers but is never shown
+// word for word (first-person voice; copyright allows brief quotes only).
+describe('the book is never shown word for word', () => {
+  const B = (id: string, section: string, body: string, tags: string[] = []): KbPassage => ({ ...P(id, section, body, tags), source_label: 'book', doc_title: 'Bright Spots & Landmines' })
+  const withBook = buildIndex([
+    B('book-walk', 'Walking after meals', 'I walk for 15 minutes after dinner and my blood sugar after meals is much steadier. Walking after meals is one of my favorite habits.'),
+    B('book-low', 'Low blood sugar', 'When my blood sugar is low I treat it with glucose tabs, then check again.', ['urgent']),
+    P('ada-walk', 'Physical activity', 'Regular physical activity such as walking helps manage blood glucose after meals.'),
+    P('ada-low', 'Treating low blood glucose', 'To treat low blood glucose below 70 mg/dL, use the Rule of 15.', ['urgent']),
+    P('plate', 'Plan your plate', 'Fill half the plate with non-starchy vegetables.'),
+    P('drinks', 'Beverages', 'Water is the best choice. Limit soda and juice.'),
+  ])
+  const go = (message: string, m: TurnModels) =>
+    runTurn({ message, history: [], profile: NONE, index: withBook, doseSession: false, models: m, timeoutMs: 50, monitorEnabled: false })
+
+  it("a blocked answer falls back to an ADA passage, not the book's, even when the book ranks first", async () => {
+    expect(withBook.search('walking after meals blood sugar')[0].passage.id).toBe('book-walk') // precondition
+    const o = await go('Does walking after meals help my blood sugar?', models({ answers: ['Walk for 15 minutes after dinner. [kb:book-walk]'] }).m)
+    expect(o.guard).toBe('unsupported_number:15') // the book's number doesn't count
+    expect(o.cards).toEqual([{ kind: 'passage', why: 'fallback', passage: expect.objectContaining({ id: 'ada-walk' }) }])
+  })
+
+  it('the urgent "what to do" passage is always ADA', async () => {
+    const o = await go('my sugar is 45 and I feel shaky', models({ classify: cls('urgent'), answers: ['Use the Rule of 15. [kb:ada-low]'] }).m)
+    const shown = o.cards.filter((c) => c.kind === 'passage')
+    expect(shown).toEqual([{ kind: 'passage', why: 'urgent', passage: expect.objectContaining({ id: 'ada-low' }) }])
   })
 })

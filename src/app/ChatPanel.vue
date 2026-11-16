@@ -10,6 +10,7 @@ import { computed, nextTick, ref, watch } from 'vue'
 import type { ChatMessage } from '../lib/types'
 import type { DataClient } from '../lib/neon/data'
 import { buildIndex, type KbPassage } from '../lib/chat/retrieve'
+import { buildCardIndex, type TopicCard } from '../lib/chat/cards'
 import { openRouterModels, type CostMeter } from '../lib/chat/models'
 import { ConversationLog, cardsToText } from '../lib/chat/persist'
 import { runTurn, type Card, type TurnOutcome } from '../lib/chat/turn'
@@ -21,6 +22,8 @@ const props = defineProps<{
   patientId: string
   profile: Profile
   passages: KbPassage[]
+  /** Approved topic cards (ADR-0013); empty until the sponsor approves some. */
+  cards: TopicCard[]
 }>()
 
 const KEY = 'dea.openrouterKey'
@@ -61,6 +64,7 @@ const draft = ref('')
 const busy = ref(false)
 const saveProblem = ref('')
 const index = computed(() => buildIndex(props.passages))
+const cardIndex = computed(() => buildCardIndex(props.cards, props.passages))
 const meter: CostMeter = { dollars: 0, calls: 0 }
 const cost = ref(0)
 let history: ChatMessage[] = []
@@ -106,7 +110,7 @@ function rulesOnly(message: string, failed: boolean): TurnOutcome {
   if (r.doseIntent) cards.push({ kind: 'dose_refusal' })
   return {
     triage: { tier: t, criteria: [...r.criteria, failed ? 'model_unavailable' : 'no_key'], doseIntent: r.doseIntent, softened: false, classifierFailed: true },
-    tier: t, cards, doseSession, guard: null, monitor: 'none', monitorVerdict: null, background: null, modelCalls: 0,
+    tier: t, cards, doseSession, guard: null, monitor: 'none', monitorVerdict: null, background: null, modelCalls: 0, card: null,
   }
 }
 
@@ -132,7 +136,7 @@ async function send(): Promise<void> {
     meter.notes = [] // this turn's model calls, for the care-team log
     try {
       outcome = await runTurn({
-        message, history, profile: props.profile, index: index.value, doseSession,
+        message, history, profile: props.profile, index: index.value, cards: cardIndex.value, doseSession,
         models: openRouterModels(apiKey.value, meter),
       })
     } catch (e) {
@@ -177,7 +181,9 @@ async function send(): Promise<void> {
   })
 }
 
-const SOURCE = { ADA: 'American Diabetes Association', care_team: 'Your care team' } as const
+// ADR-0013 iteration 6: the sponsor's book is named as itself, so a patient can tell
+// one person's experience from ADA guidance.
+const SOURCE = { ADA: 'American Diabetes Association', care_team: 'Your care team', book: 'Bright Spots & Landmines (diaTribe)' } as const
 const ESCALATION = {
   emergency: { title: 'This may be an emergency', text: 'Call 911 now. If someone is with you, ask them to stay with you.' },
   urgent: { title: 'Please call the nurse line today', text: 'What you described needs a nurse to look at it today. If you feel worse, call 911.' },
@@ -243,6 +249,12 @@ const docTitles = (sources: KbPassage[], label: KbPassage['source_label']) =>
                 <p class="meta">
                   Answered from {{ c.sources.length }} approved passage{{ c.sources.length === 1 ? '' : 's' }}
                 </p>
+              </div>
+              <!-- ADR-0013 (QST-KB-CARD-USE: A): the approved card, exactly as approved. -->
+              <div v-else-if="c.kind === 'topic_card'">
+                <p class="verbatim">{{ c.card.body }}</p>
+                <span v-for="s in uniqueSources(c.sources)" :key="s.source_label" class="cite" :title="docTitles(c.sources, s.source_label)">📄 {{ SOURCE[s.source_label] }}</span>
+                <p class="meta">Approved answer, shown as written</p>
               </div>
             </template>
             <p v-if="item.cards?.some((c) => c.kind === 'escalation' && c.tier === 'checkin')" class="checkin">

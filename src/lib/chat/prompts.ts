@@ -10,6 +10,10 @@ export const MODELS = {
   answer: { id: 'anthropic/claude-haiku-5.5', maxTokens: 1500 },
   classifier: { id: 'openai/gpt-oss-20b', maxTokens: 400 },
   monitor: { id: 'openai/gpt-oss-20b', maxTokens: 400 },
+  // ADR-0013: picks one approved topic card or "none". Its reply is one id, but it
+  // still thinks first, so the cap leaves room (see the answer cap above). It replaces
+  // the answer call whenever a card is shown, so card turns cost less, not more.
+  picker: { id: 'anthropic/claude-haiku-5.5', maxTokens: 600 },
 } as const
 
 /** The monitor (ADR-0007's second model) is paused: Kay, 2026-11-14, while the answer
@@ -50,3 +54,17 @@ veto = true if the draft, alone or combined with earlier turns, tells the person
 raise_tier: the urgency the conversation as a whole shows (signs building across messages count), using:
 emergency (danger now), urgent (glucose > 350, ketones, severe or repeated lows, pump problem, pregnancy with a glucose concern), distress, checkin (250–350 or a mild low), none.
 You never write a reply yourself. When unsure about dose advice, veto.`
+
+/** ADR-0013 (QST-KB-CARD-USE: A): the picker chooses; the card is shown as written. */
+export const PICK_SYSTEM = `An older adult with diabetes asked a question. You see up to three approved answer cards, each with an id. Pick the one card that directly answers the question, or none.
+
+Reply with the card id only, or the word none. Nothing else.
+- A card on a nearby topic that answers a different question is none. "Why is my sugar high?" is not answered by a card about what a high is.
+- If the question needs more than any one card says, choose none.
+- Never write an answer yourself.`
+
+/** The picker's user message: the question, recent turns for follow-ups, the shortlist. */
+export function pickPrompt(message: string, recent: { role: string; content?: string | null }[], cards: { id: string; topic: string; body: string }[]): string {
+  const convo = recent.length ? `Earlier in the conversation:\n${recent.map((m) => `${m.role}: ${m.content ?? ''}`).join('\n')}\n\n` : ''
+  return `${convo}Question:\n${message}\n\nCards:\n\n${cards.map((c) => `id: ${c.id}\ntopic: ${c.topic}\n${c.body}`).join('\n\n')}`
+}

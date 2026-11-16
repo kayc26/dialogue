@@ -6,7 +6,7 @@
 export interface KbPassage {
   id: string
   doc_title: string
-  source_label: 'ADA' | 'care_team'
+  source_label: 'ADA' | 'care_team' | 'book' // ADR-0013: 'book' is never the authority on numbers
   section: string | null
   body: string
   tags: string[]
@@ -104,18 +104,27 @@ export interface Index {
   search(query: string, k?: number): Hit[]
 }
 
-export function buildIndex(passages: KbPassage[], k1 = 1.2, b = 0.75): Index {
-  const docs = passages.map((p) => tokenize(`${p.section ?? ''} ${p.section ?? ''} ${p.body}`))
+/**
+ * BM25 over `passages`. `background` texts are never returned; they only count toward
+ * word rarity (IDF) and average length, so scores don't swing with how many passages
+ * are searchable. The card index needs this: with 2 approved cards instead of 30, a
+ * good match scored under the shortlist floor and cards silently stopped matching.
+ */
+export function buildIndex(passages: KbPassage[], k1 = 1.2, b = 0.75, background: string[] = []): Index {
+  const docOf = (p: KbPassage) => tokenize(`${p.section ?? ''} ${p.section ?? ''} ${p.body}`)
+  const docs = passages.map(docOf)
+  const bg = background.map(tokenize)
   const leans = passages.map((p) => lean(`${p.section ?? ''} ${p.body}`))
-  const avgLen = docs.reduce((n, d) => n + d.length, 0) / Math.max(docs.length, 1)
+  const all = [...docs, ...bg]
+  const avgLen = all.reduce((n, d) => n + d.length, 0) / Math.max(all.length, 1)
   const df = new Map<string, number>()
-  for (const d of docs) for (const t of new Set(d)) df.set(t, (df.get(t) ?? 0) + 1)
+  for (const d of all) for (const t of new Set(d)) df.set(t, (df.get(t) ?? 0) + 1)
   const tf = docs.map((d) => {
     const m = new Map<string, number>()
     for (const t of d) m.set(t, (m.get(t) ?? 0) + 1)
     return m
   })
-  const N = docs.length
+  const N = all.length
   const idf = (t: string) => {
     const n = df.get(t) ?? 0
     return Math.log(1 + (N - n + 0.5) / (n + 0.5))

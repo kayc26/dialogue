@@ -5,6 +5,9 @@
 //   3. a dose question gets the fixed refusal card, and the answer model is never called;
 //   4. dose-tagged passages are never given to the model; one is shown verbatim only if
 //      it's the best match and the question is about glucose/insulin/medicine;
+//   3b. approved topic cards (ADR-0013): search shortlists up to 3, a model picks one
+//      id or "none", code checks the pick is on the shortlist, and a picked card is
+//      shown word for word; no model writes text on that path;
 //   5. nothing relevant in the knowledge base -> "no information" with no model call;
 //   6. the agent loop writes an answer from shown passages (search_kb tool, few rounds);
 //   7. the guard checks it; a blocked answer falls back to the best passage verbatim;
@@ -13,6 +16,7 @@
 
 import { runAgent, type CompleteFn } from '../agent'
 import type { ChatMessage, ToolSpec } from '../types'
+import { CARD_FALLBACK_SCORE, CARD_MIN_SCORE, CARD_SHORTLIST, parsePick, type CardHit, type CardIndex, type TopicCard } from './cards'
 import { combineTriage, parseClassifier, type CombinedTriage } from './combine'
 import { checkAnswer, stripCitations } from './guard'
 import { ANSWER_SYSTEM, ANSWER_TOOL_ROUNDS, MONITOR_PAUSED } from './prompts'
@@ -25,6 +29,21 @@ export type Card =
   | { kind: 'dose_refusal' }
   | { kind: 'no_info' }
   | { kind: 'answer'; text: string; sources: KbPassage[] }
+  | { kind: 'topic_card'; card: TopicCard; sources: KbPassage[] }
+
+/** What the card step did, for the care-team log (ADR-0013's falsifier: which card or
+ *  passage answered each turn). */
+export interface CardStep {
+  /** The card shown, if one was. */
+  id: string | null
+  how:
+    | 'picked' // the model picked a shortlisted card
+    | 'fallback' // the pick call failed; the top card scored high enough on its own
+    | 'none' // the model said none, or named a card that wasn't offered
+    | 'failed' // the pick call failed and no card scored high enough
+    | 'no_match' // no card scored high enough to shortlist; no pick call
+  shortlist: string[]
+}
 
 export interface MonitorVerdict {
   veto: boolean
@@ -39,6 +58,8 @@ export interface TurnModels {
   complete: CompleteFn
   /** Raw monitor reply (JSON text) for the conversation plus the draft. */
   monitor(transcript: string, draft: string): Promise<string | null>
+  /** Raw pick reply: one shortlisted card id, or "none". */
+  pick(message: string, recent: ChatMessage[], shortlist: TopicCard[]): Promise<string | null>
 }
 
 export interface TurnInput {
@@ -46,6 +67,8 @@ export interface TurnInput {
   history: ChatMessage[] // earlier user/assistant turns, plain text
   profile: Profile
   index: Index
+  /** Approved topic cards (ADR-0013). Absent or empty: the raw-passage path, as before cards. */
+  cards?: CardIndex
   doseSession: boolean // sticky once a dose/medication topic has come up (ADR-0007)
   models: TurnModels
   timeoutMs?: number
@@ -67,6 +90,8 @@ export interface TurnOutcome {
   /** For background review: resolves after display; may raise the tier next screen. */
   background: Promise<MonitorVerdict | null> | null
   modelCalls: number
+  /** Null when the card step didn't run (emergency, dose question, no approved cards). */
+  card: CardStep | null
 }
 
 const MIN_SCORE = 2.0
@@ -74,6 +99,10 @@ const MIN_SCORE = 2.0
 const NO_INFO = /\bI don[’']?t have (?:any )?information (?:on|about) (?:that|this)\b/i
 const MEDICAL_TOPIC = /\b(sugar|glucose|insulin|ketone|medic|dose|pump|shot|injection|metformin|pill|high|low|a1c|dka)\w*/i
 const isDose = (p: KbPassage) => p.tags.includes('dose_related')
+/** Only ADA (and care-team) passages are ever shown word for word. A book passage is
+ *  first-person and copyrighted, so it can inform a written answer but is never shown
+ *  as the urgent, dose, or fallback passage (ADR-0013, QST-KB-BOOK-ROLE: A). */
+const showable = (p: KbPassage) => p.source_label !== 'book'
 
 export function withTimeout<T>(p: Promise<T>, ms: number): Promise<T | null> {
   return Promise.race([p.catch(() => null), new Promise<null>((r) => setTimeout(() => r(null), ms))])
@@ -104,7 +133,7 @@ function urgentPassage(index: Index, message: string, glucose: number | null): K
   const dir = glucose !== null ? (glucose > 180 ? 'high' : glucose < 70 ? 'low' : null) : direction(message)
   if (!dir) return null
   const q = dir === 'high' ? `${message} high blood sugar ketones` : `${message} low blood glucose treat`
-  return index.search(q, 12).map((h) => h.passage).find((p) => p.tags.includes('urgent')) ?? null
+  return index.search(q, 12).map((h) => h.passage).find((p) => p.tags.includes('urgent') && showable(p)) ?? null
 }
 
 const SEARCH_TOOL: ToolSpec = {
@@ -131,7 +160,7 @@ export async function runTurn(input: TurnInput): Promise<TurnOutcome> {
     cards.push({ kind: 'escalation', tier: 'emergency', criteria: rules.criteria })
     if (p) cards.push({ kind: 'passage', passage: p, why: 'urgent' })
     const triage: CombinedTriage = { tier: 'emergency', criteria: rules.criteria, doseIntent: rules.doseIntent, softened: false, classifierFailed: false }
-    return { triage, tier: 'emergency', cards, doseSession: input.doseSession, guard: null, monitor: 'none', monitorVerdict: null, background: null, modelCalls }
+    return { triage, tier: 'emergency', cards, doseSession: input.doseSession, guard: null, monitor: 'none', monitorVerdict: null, background: null, modelCalls, card: null }
   }
 
   // 2. Classifier.
@@ -153,8 +182,9 @@ export async function runTurn(input: TurnInput): Promise<TurnOutcome> {
   }
   const hasPassage = () => cards.some((c) => c.kind === 'passage')
 
+  let cardStep: CardStep | null = null
   const done = (extra: Partial<TurnOutcome> = {}): TurnOutcome => ({
-    triage, tier, cards, doseSession, guard: null, monitor: 'none', monitorVerdict: null, background: null, modelCalls, ...extra,
+    triage, tier, cards, doseSession, guard: null, monitor: 'none', monitorVerdict: null, background: null, modelCalls, card: cardStep, ...extra,
   })
 
   // 3. Dose question: fixed card, no answer model.
@@ -163,12 +193,40 @@ export async function runTurn(input: TurnInput): Promise<TurnOutcome> {
     return done()
   }
 
+  // 3b. Approved topic cards. A picked card is the reply's body, shown as approved, so
+  // the answer guard and the monitor have nothing to check: no model wrote it, and the
+  // sponsor approved it as dose-free (ADR-0013, decision item 5).
+  if (input.cards && input.cards.size > 0) {
+    const shortlist = input.cards.search(message, CARD_SHORTLIST).filter((h) => h.score >= CARD_MIN_SCORE)
+    const ids = shortlist.map((h) => h.card.id)
+    let shown: CardHit | undefined
+    let how: CardStep['how'] = 'no_match'
+    if (shortlist.length > 0) {
+      modelCalls++
+      const pick = parsePick(await withTimeout(models.pick(message, input.history.slice(-4), shortlist.map((h) => h.card)), timeoutMs), ids)
+      if (pick === null) {
+        shown = shortlist[0].score >= CARD_FALLBACK_SCORE ? shortlist[0] : undefined
+        how = shown ? 'fallback' : 'failed'
+      } else if ('id' in pick) {
+        shown = shortlist.find((h) => h.card.id === pick.id)
+        how = 'picked'
+      } else {
+        how = 'none'
+      }
+    }
+    cardStep = { id: shown?.card.id ?? null, how, shortlist: ids }
+    if (shown) {
+      cards.push({ kind: 'topic_card', card: shown.card, sources: shown.sources })
+      return done()
+    }
+  }
+
   // 4–5. Retrieval.
   const hits: Hit[] = index.search(message, 8)
   const top = hits[0]
   // A dose-tagged best match is never given to the model; it is shown word for word,
   // but only when no answer is shown (as the one passage in place of an answer).
-  const dosePassage = top && isDose(top.passage) && MEDICAL_TOPIC.test(message) ? top.passage : null
+  const dosePassage = top && isDose(top.passage) && showable(top.passage) && MEDICAL_TOPIC.test(message) ? top.passage : null
   const context = hits.filter((h) => !isDose(h.passage) && h.score >= MIN_SCORE).slice(0, 4).map((h) => h.passage)
   if (context.length === 0) {
     if (dosePassage && !hasPassage()) cards.push({ kind: 'passage', passage: dosePassage, why: 'dose' })
@@ -208,7 +266,9 @@ export async function runTurn(input: TurnInput): Promise<TurnOutcome> {
   const verdict = checkAnswer(draft, [...shown.values()], message)
   const fallback = (): void => {
     if (hasPassage()) return // an urgent passage is already the reply's body
-    cards.push(dosePassage ? { kind: 'passage', passage: dosePassage, why: 'dose' } : { kind: 'passage', passage: context[0], why: 'fallback' })
+    if (dosePassage) return void cards.push({ kind: 'passage', passage: dosePassage, why: 'dose' })
+    const best = context.find(showable)
+    cards.push(best ? { kind: 'passage', passage: best, why: 'fallback' } : { kind: 'no_info' })
   }
   if (!verdict.ok) {
     // The prompt tells the model to say "I don't have information on that" when the
