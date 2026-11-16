@@ -9,7 +9,7 @@ adr teaching map: the example is not the teaching — these are the up-links fro
 # ADR-0013: Knowledge base shape — raw passages or synthesized topic cards
 
 - **Date**: 2026-11-14
-- **Iteration**: 17
+- **Iteration**: 18
 - **Status**: Accepted
 - **Deciders**: Kay, Nibble (Claude Opus 5.5)
 
@@ -338,7 +338,7 @@ Override of A: "can we drop the dose-related constraint for testing? tbh it was 
 ---
 
 ### QST-KB-RAG-ROUND3: With rule 1 off, RAG answered more and wrote no dose advice. What next?
-- Status: unanswered
+- Status: answered
 - Why asking: the third run (Supporting Materials, "rule 1 off in a test run") is the best so far on the RAG path, with no safety failures. The model read dose-tagged passages for all 13 questions and never wrote dose advice: the guard's dose-advice block didn't fire once. It also exposed four fixable problems:
   - **One book number sinks a whole answer.** The beverages answer was right ("plain or sparkling water, unsweetened tea or coffee; avoid soda, sweet tea, juice…") but one sentence had a book-only number, so the patient got "no information".
   - **The fallback passage can be unrelated.** For "when do I take my insulin with meals?" the blocked answer was replaced by an ADA passage titled "Daily Tools for Managing Type 1 Diabetes" that doesn't answer it.
@@ -358,7 +358,7 @@ Options:
 **B, C, D, E, F now; A after F.** *Rationale*: B, C, and D fix the three ways a good or harmless answer turned into a bad reply in this run, and each is a small, testable code change. E removes a ranking error found twice. A should follow a run that includes those fixes, because it changes what real testers see. *Confidence*: 0.65 — because B loosens the number rule's effect. It still never shows a book-only number, but it shows answers it used to withhold, and 13 questions is a small sample. *If wrong*: if B lets through answers that read as incomplete or misleading once the sentence is cut, revert to blocking and rely on **C** for a better fallback.
 
 **ANS:** (by Kay)
-[Fill this in]
+b
 
 ---
 
@@ -516,6 +516,7 @@ Cost: drafting about 25 cards with Haiku 5.5 over about 60k source tokens is aro
 5. **Dose content keeps its rules.** No card gives dose instructions (the answer guard checks every card). Dose-tagged passages stay verbatim-only (ADR-0005). ~~A topic whose sources are mostly dose-tagged gets no card.~~ *Iteration 6 (QST-KB-DOSE-CARDS: B)*: the tag count doesn't decide; the sponsor decides card by card, and the review document marks cards that cite dose-tagged passages for closer reading.
 6. **Iteration 6: the sponsor's source set, with the book under a numbers rule** (QST-KB-BOOK-ROLE: A). Sources are the two ADA guides and *Bright Spots & Landmines*, each tagged with source, year, and diabetes type. *Iteration 9 (QST-KB-BOOK-RECHECK: A)*: the book stays in runtime search even though its passages are mostly first-person; the code holds the safety line, and TD-6 (book chunk quality) is medium priority.
    - The book is searched like the ADA guides, but it is never the authority on numbers. Code enforces this: a number in an answer must appear in a cited ADA passage (or the patient's own message), and citing the book alone doesn't count.
+   - *Iteration 18 (QST-KB-RAG-ROUND3: B)*: a book-only number costs its sentence, not the whole answer. The sentence is dropped, and the rest is shown if it passes every check again and still cites an ADA passage (`trimBookNumbers` in `src/lib/chat/guard.ts`; applies in the live app too). An invented number or dose advice still blocks the whole answer.
    - A book passage is never shown word for word: not as a fallback, not as an urgent passage, not as a dose passage. Its voice is first-person, and copyright allows only brief quotes.
    - Dose-tagged book passages never reach the model, as with ADA.
 7. **Iteration 6: the care-team FAQ is held out everywhere for the first pass** (QST-KB-HOLDOUT-SCOPE: A). It leaves `kb_chunks` and card drafting, and is used only to evaluate: coverage (does a card exist for each FAQ question?) and agreement (do card and FAQ agree on facts and numbers?). ~~It returns as a source after the comparison.~~ *Iteration 10 (QST-KB-FAQ-RETURN, Kay: "my idea is to see whether we can answer the faqs well without the current FAQ")*: the FAQ stays held out. The question is no longer only card coverage but whether the whole assistant (cards, then AI-written answers from the ADA guides and the book) answers the FAQ questions well from the sponsor material alone. The FAQ answers are the clinical reference for judging that. *Iteration 11 (QST-KB-FAQ-EVAL: A)*: test as is, one baseline run of the 13 questions through the real turn (`kb:eval-faq`), no gap cards first.
@@ -691,6 +692,14 @@ Cost: drafting about 25 cards with Haiku 5.5 over about 60k source tokens is aro
   - Test output marks every answer a paused rule would have stopped, so pausing hides nothing.
   - Found while explaining: rule 2 only sees digits ("take two units", "a few extra units", "a bit more insulin" all pass). Recorded as TD-7 (high for the live app). The fix was offered and not chosen; rule 2 is paused in tests by Kay's choice.
 - Outcome: Accepted (one question open: QST-KB-RAG-ROUND3)
+
+### Iteration 18 (2026-11-16)
+- Trigger: Kay answered QST-KB-RAG-ROUND3: B (trim, don't block, on a book number). A, C, D, E, and F not chosen: no re-run.
+- Contributors: Kay, Nibble (Claude Opus 5.5)
+- Changes:
+  - Decision item 6 notes the trim rule. `trimBookNumbers` in the guard, applied in the turn; the dropped sentence's draft is kept for the log (guard note `trimmed_book_number:…`). It applies in the live app as well as in tests.
+  - A misstatement corrected: as written, B does not save the beverages answer (book-only citations). New question QST-KB-TRIM-ADA.
+- Outcome: Accepted (one question open)
 
 ---
 
