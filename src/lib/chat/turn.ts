@@ -167,7 +167,13 @@ const SEARCH_TOOL: ToolSpec = {
   },
 }
 
-const fmt = (p: KbPassage) => `[kb:${p.id}] ${p.doc_title}${p.section ? ` (${p.section})` : ''}\n${p.body}`
+/** What the model is told about each passage, including its source, so it can follow
+ *  the priority (ANSWER_SYSTEM): the care-team FAQ, then ADA, then the book. */
+const SOURCE_NAME: Record<KbPassage['source_label'], string> = { care_team: 'care-team FAQ', ADA: 'ADA', book: 'book' }
+const fmt = (p: KbPassage) => `[kb:${p.id}] (${SOURCE_NAME[p.source_label]}) ${p.doc_title}${p.section ? ` (${p.section})` : ''}\n${p.body}`
+/** Source priority among passages already relevant (Kay, 2026-11-16: "faq -> ada -> book"); stable, so score order holds within a source. */
+const PRIORITY: Record<KbPassage['source_label'], number> = { care_team: 0, ADA: 1, book: 2 }
+const byPriority = (ps: KbPassage[]) => [...ps].sort((a, b) => PRIORITY[a.source_label] - PRIORITY[b.source_label])
 
 export async function runTurn(input: TurnInput): Promise<TurnOutcome> {
   const { message, profile, index, models } = input
@@ -274,7 +280,7 @@ export async function runTurn(input: TurnInput): Promise<TurnOutcome> {
   const messages: ChatMessage[] = [
     { role: 'system', content: ANSWER_SYSTEM },
     ...input.history.slice(-6),
-    { role: 'user', content: `${message}\n\nPassages:\n\n${context.map(fmt).join('\n\n')}` },
+    { role: 'user', content: `${message}\n\nPassages:\n\n${byPriority(context).map(fmt).join('\n\n')}` },
   ]
   let draft = ''
   const complete: CompleteFn = async (...args) => {
@@ -290,7 +296,7 @@ export async function runTurn(input: TurnInput): Promise<TurnOutcome> {
       const q = String((JSON.parse(call.function.arguments || '{}') as { query?: string }).query ?? '')
       const found = index.search(q, 4, byType).filter((h) => !hidden(h.passage)).map((h) => h.passage)
       for (const p of found) shown.set(p.id, p)
-      return found.length ? found.map(fmt).join('\n\n') : 'No matching passages.'
+      return found.length ? byPriority(found).map(fmt).join('\n\n') : 'No matching passages.'
     },
     emit: (e) => {
       if (e.type === 'assistant_message' && !e.message.tool_calls?.length) draft = e.message.content ?? ''
@@ -305,7 +311,7 @@ export async function runTurn(input: TurnInput): Promise<TurnOutcome> {
   const fallback = (): void => {
     if (hasPassage()) return // an urgent passage is already the reply's body
     if (dosePassage) return void cards.push({ kind: 'passage', passage: dosePassage, why: 'dose' })
-    const best = context.find(showable)
+    const best = context.find(showable) // by relevance, not priority: a less relevant FAQ passage must not stand in for an answer
     cards.push(best ? { kind: 'passage', passage: best, why: 'fallback' } : { kind: 'no_info' })
   }
   if (!verdict.ok && !trimmed) {

@@ -100,6 +100,21 @@ describe('retrieval', () => {
       ])
       expect(tie.search('walk after meals', 1, { diabetesType: 'type2' })[0].passage.id).toBe('t2-walk')
     })
+    it('the book loses a near-equal match to ADA, and the FAQ is not boosted (Kay: "faq -> ada -> book")', () => {
+      // Boosting the FAQ ranked its nutrition answers first for questions they don't
+      // answer (2026-11-16-source-priority-weights.ts), so FAQ-first is applied only
+      // among relevant passages, in the turn. In search only the book is weighted down.
+      const same = 'A short walk after meals helps blood glucose.'
+      const tie = buildIndex([
+        { ...P('book-walk', 'Activity', same), source_label: 'book' },
+        P('ada-walk', 'Activity', same),
+        { ...P('faq-walk', 'Activity', same), source_label: 'care_team' },
+        P('t1-other', 'Ketones', 'Check for ketones when sick.'),
+      ])
+      const hits = tie.search('walk after meals', 3)
+      expect(hits[2].passage.id).toBe('book-walk')
+      expect(hits[0].score).toBe(hits[1].score) // FAQ and ADA tie: no boost
+    })
     it("passages for any type, and searches with no patient type, aren't changed", () => {
       const walk = (o?: { diabetesType: 'type1' | 'type2' }) => typed.search('walk after meals', 1, o)[0].score
       expect(walk({ diabetesType: 'type2' })).toBe(walk())

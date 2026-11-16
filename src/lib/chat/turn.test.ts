@@ -459,14 +459,28 @@ describe('approved topic cards', () => {
 // ADR-0013 (QST-KB-BOOK-ROLE: A): the book informs written answers but is never shown
 // word for word (first-person voice; copyright allows brief quotes only).
 describe('the book is never shown word for word', () => {
+  // Unrelated passages, so word rarity behaves as in the real knowledge base (in a
+  // 5-passage index every shared word looks common and relevant passages score low).
+  const FILLER = [
+    P('f-feet', 'Foot care', 'Check your feet every day for cuts, blisters, and swelling.'),
+    P('f-eyes', 'Eye exams', 'Get a dilated eye exam every year to look for retinopathy.'),
+    P('f-kidney', 'Kidney health', 'A urine test checks how well your kidneys filter waste.'),
+    P('f-sleep', 'Sleep', 'Most adults need seven or more hours of sleep each night.'),
+    P('f-stress', 'Stress', 'Deep breathing and talking with friends can ease stress.'),
+    P('f-teeth', 'Dental care', 'Brush twice a day and see the dentist twice a year.'),
+    P('f-flu', 'Vaccines', 'A yearly flu shot is recommended for people with diabetes.'),
+    P('f-smoke', 'Smoking', 'Quitting smoking lowers the risk of heart disease.'),
+  ]
   const B = (id: string, section: string, body: string, tags: string[] = []): KbPassage => ({ ...P(id, section, body, tags), source_label: 'book', doc_title: 'Bright Spots & Landmines' })
   const withBook = buildIndex([
-    B('book-walk', 'Walking after meals', 'I walk for 15 minutes after dinner and my blood sugar after meals is much steadier. Walking after meals is one of my favorite habits.'),
+    // Strong enough to rank first even with the book weighted at 0.8 (SOURCE_WEIGHT).
+    B('book-walk', 'Walking after meals', 'I walk for 15 minutes after dinner and my blood sugar after meals is much steadier. Walking after meals is one of my favorite habits. Walking after meals helps blood sugar after meals.'),
     B('book-low', 'Low blood sugar', 'When my blood sugar is low I treat it with glucose tabs, then check again.', ['urgent']),
-    P('ada-walk', 'Physical activity', 'Regular physical activity such as walking helps manage blood glucose after meals.'),
+    P('ada-walk', 'Physical activity', 'Regular physical activity helps manage blood glucose.'), // relevant, but a weaker match than the book's
     P('ada-low', 'Treating low blood glucose', 'To treat low blood glucose below 70 mg/dL, use the Rule of 15.', ['urgent']),
     P('plate', 'Plan your plate', 'Fill half the plate with non-starchy vegetables.'),
     P('drinks', 'Beverages', 'Water is the best choice. Limit soda and juice.'),
+    ...FILLER,
   ])
   const go = (message: string, m: TurnModels) =>
     runTurn({ message, history: [], profile: NONE, index: withBook, doseSession: false, models: m, timeoutMs: 50, monitorEnabled: false })
@@ -484,6 +498,36 @@ describe('the book is never shown word for word', () => {
     expect(o.cards).toEqual([{ kind: 'answer', text: 'Regular walking helps manage blood glucose after meals.', sources: [expect.objectContaining({ id: 'ada-walk' })] }])
     expect(o.guard).toBe('trimmed_book_number:15')
     expect(o.blockedDraft).toBe(draft)
+  })
+
+  describe('source priority: care-team FAQ, then ADA, then the book (Kay, 2026-11-16)', () => {
+    const F = (id: string, section: string, body: string): KbPassage => ({ ...P(id, section, body), source_label: 'care_team', doc_title: 'Care team FAQs' })
+    const three = buildIndex([
+      B('book-fruit', 'What fruit can I eat?', 'I love berries as fruit; they barely raise my blood sugar compared with melon or bananas.'),
+      P('ada-fruit', 'What fruit can I eat?', 'Whole fruit like berries and apples can be part of a healthy eating plan for blood sugar.'),
+      F('faq-fruit', 'What fruit can I eat?', 'Keep fruit to 1 cup or 1 small fruit. Berries raise blood sugar less than melon or bananas.'),
+      P('plate', 'Plan your plate', 'Fill half the plate with non-starchy vegetables.'),
+      P('walk', 'Activity', 'A short walk most days helps your heart and mood.'),
+      ...FILLER,
+    ])
+    it('the model reads relevant passages in priority order, labelled by source', async () => {
+      let prompt = ''
+      const { m } = models({})
+      m.complete = (async (msgs: ChatMessage[]) => {
+        prompt = msgs.map((x) => x.content).join('\n')
+        return { message: { role: 'assistant', content: 'Keep fruit to 1 cup. [kb:faq-fruit]' } as ChatMessage }
+      }) as CompleteFn
+      await runTurn({ message: 'What fruit can I eat?', history: [], profile: NONE, index: three, doseSession: false, models: m, timeoutMs: 50, monitorEnabled: false })
+      const order = [...prompt.matchAll(/\[kb:([a-z-]+)\] \(([^)]+)\)/g)].map((x) => `${x[1]}:${x[2]}`)
+      expect(order.slice(0, 3)).toEqual(['faq-fruit:care-team FAQ', 'ada-fruit:ADA', 'book-fruit:book'])
+    })
+    it("the FAQ's numbers count, like ADA's (only the book's don't)", async () => {
+      const o = await runTurn({
+        message: 'What fruit can I eat?', history: [], profile: NONE, index: three, doseSession: false, timeoutMs: 50, monitorEnabled: false,
+        models: models({ answers: ['Keep fruit to 1 cup or 1 small fruit. [kb:faq-fruit]'] }).m,
+      })
+      expect(o.cards).toEqual([{ kind: 'answer', text: 'Keep fruit to 1 cup or 1 small fruit.', sources: [expect.objectContaining({ id: 'faq-fruit' })] }])
+    })
   })
 
   it('the urgent "what to do" passage is always ADA', async () => {

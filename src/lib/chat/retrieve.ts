@@ -116,6 +116,16 @@ const OPPOSITE_DIRECTION = 0.5
 export const OTHER_TYPE = 0.7
 const OWN_TYPE = 1 / OTHER_TYPE
 
+/** Source priority in search (Kay, 2026-11-16: "faq -> ada -> book"). Only the book is
+ *  weighted down, so ADA wins a near-equal match with it. The FAQ is not boosted: its
+ *  13 short nutrition answers share everyday words ("sugar", "juice") with many
+ *  questions, and a boost of even 1.25 ranked them first for questions they don't
+ *  answer ("How much juice should I drink if I'm going low?" → the beverages answer).
+ *  FAQ-first is applied among relevant passages instead (turn.ts, byPriority).
+ *  scripts/ephemeral/2026-11-16-source-priority-weights.ts: book top passages 30 → 14
+ *  of 120 questions, ADA 88 → 103, FAQ pulled up off-topic 1. */
+export const SOURCE_WEIGHT: Record<KbPassage['source_label'], number> = { care_team: 1, ADA: 1, book: 0.8 }
+
 export interface SearchOptions {
   /** The patient's diabetes type; passages for the other type rank lower, never vanish. */
   diabetesType?: DiabetesType
@@ -164,6 +174,7 @@ export function buildIndex(passages: KbPassage[], k1 = 1.2, b = 0.75, background
         }
         if (dir && leans[i] && leans[i] !== dir) score *= OPPOSITE_DIRECTION
         if (own(passages[i])) score *= OWN_TYPE
+        score *= SOURCE_WEIGHT[passages[i].source_label] ?? 1
         if (score > 0) hits.push({ passage: passages[i], score })
       })
       return hits.sort((a, b2) => b2.score - a.score).slice(0, k)

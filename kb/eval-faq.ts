@@ -1,8 +1,11 @@
-// Can the assistant answer the care-team FAQ well without the FAQ? (ADR-0013,
-// iteration 10; QST-KB-FAQ-EVAL.) The FAQ is held out of the knowledge base, so its
-// 13 questions are an independent test and its answers are the clinical reference.
+// Run test questions through the real assistant and put each answer beside a reference
+// answer (ADR-0013, iterations 10 and 21). Written for the care-team FAQ while it was
+// held out of the knowledge base. Since iteration 21 the FAQ is back in the knowledge
+// base (Kay: "we will have other testing questions"), so FAQ questions now mostly find
+// their own answers; give other questions with --questions=<file>, in the same format
+// ("# Question" lines, each followed by its reference answer, which may be empty).
 //
-//   npm run kb:eval-faq -- [cards file] [--cards] [--type=type1|type2] [--hide-dose] [--dose-rules] [--yes]
+//   npm run kb:eval-faq -- [cards file] [--questions=file] [--cards] [--type=type1|type2] [--hide-dose] [--dose-rules] [--yes]
 //   (reads OPENROUTER_API_KEY from git-ignored .env.local, like the other kb: scripts;
 //    jiti runs the app's own TypeScript modules unchanged; default cards file:
 //    kb/out/cards-blind.json)
@@ -43,14 +46,19 @@ const enforceDoseRules = args.includes('--dose-rules')
 const cardsFile = args.find((a) => !a.startsWith('--')) ?? 'kb/out/cards-blind.json'
 const key = process.env.OPENROUTER_API_KEY ?? ''
 
-type Built = { id: string; docTitle: string; sourceLabel: KbPassage['source_label']; section: string | null; body: string; tags: string[] }
+type Built = { id: string; docTitle: string; sourceLabel: KbPassage['source_label']; section: string | null; body: string; tags: string[]; diabetesType: KbPassage['diabetes_type'] }
+// Regression (2026-11-16): diabetes_type was left out here, so --type had no effect in
+// the second to fourth runs; the type ranking was never exercised by them.
 const passages: KbPassage[] = (JSON.parse(readFileSync('kb/out/passages.json', 'utf8')) as { passages: Built[] }).passages.map((p) => ({
-  id: p.id, doc_title: p.docTitle, source_label: p.sourceLabel, section: p.section, body: p.body, tags: p.tags,
+  id: p.id, doc_title: p.docTitle, source_label: p.sourceLabel, section: p.section, body: p.body, tags: p.tags, diabetes_type: p.diabetesType,
 }))
-if (passages.some((p) => p.source_label === 'care_team')) throw new Error('the FAQ is in passages.json; it must be held out for this test')
+const questionsFile = args.find((a) => a.startsWith('--questions='))?.slice(12) ?? 'kb/local-sources/FAQs.md'
+if (questionsFile.endsWith('FAQs.md') && passages.some((p) => p.source_label === 'care_team')) {
+  console.log('note: these are the FAQ\'s own questions and the FAQ is in the knowledge base, so they mostly find their own answers')
+}
 const drafts = (JSON.parse(readFileSync(cardsFile, 'utf8')) as { cards: DraftCard[] }).cards
 const cards: TopicCard[] = drafts.map((d) => ({ id: d.id, topic: d.topic, asks: d.asks, body: d.answer, source_ids: d.sources, status: 'approved' }))
-const faq = readFileSync('kb/local-sources/FAQs.md', 'utf8')
+const faq = readFileSync(questionsFile, 'utf8')
   .split(/^# /m)
   .map((s) => s.trim())
   .filter(Boolean)
@@ -59,7 +67,7 @@ const faq = readFileSync('kb/local-sources/FAQs.md', 'utf8')
     return { q: q.trim(), a: rest.join('\n').trim() }
   })
 
-console.log(`FAQ questions: ${faq.length} · passages: ${passages.length} (no FAQ) · cards: ${useCards ? `${cards.length} from ${cardsFile}` : "off (CARDS_PAUSED; --cards to include)"} · patient type: ${diabetesType ?? "none"} · rule 1 (dose passages hidden): ${hideDosePassages ? "on" : "paused"} · rules 2–3 (dose advice block, dose refusal): ${enforceDoseRules ? "on" : "paused"}`)
+console.log(`questions: ${faq.length} from ${questionsFile} · passages: ${passages.length} · cards: ${useCards ? `${cards.length} from ${cardsFile}` : "off (CARDS_PAUSED; --cards to include)"} · patient type: ${diabetesType ?? "none"} · rule 1 (dose passages hidden): ${hideDosePassages ? "on" : "paused"} · rules 2–3 (dose advice block, dose refusal): ${enforceDoseRules ? "on" : "paused"}`)
 console.log(`OpenRouter key: ${key ? 'set' : 'NOT SET (OPENROUTER_API_KEY)'} · stop above $${MAX_DOLLARS}`)
 if (!args.includes('--yes') || !key) {
   console.log('\nDry run: no model calls. Estimated cost about $0.05 (about 3 calls per question). Re-run with --yes.')
@@ -109,7 +117,7 @@ for (const [i, f] of faq.entries()) {
   md.push(
     `## ${i + 1}. ${f.q}`,
     '',
-    `**Clinical FAQ**: ${f.a}`,
+    `**Reference answer**: ${f.a || "(none given)"}`,
     '',
     `**Assistant** (tier ${o.tier}; card step: ${o.card ? `${o.card.how}${o.card.id ? ` \`${o.card.id}\`` : ''}, shortlist ${o.card.shortlist.join(', ') || 'none'}` : 'not run'}${o.guard ? `; guard blocked: ${o.guard}` : ''}):`,
     '',
