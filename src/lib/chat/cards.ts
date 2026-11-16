@@ -35,27 +35,30 @@ export interface CardIndex {
   readonly size: number
 }
 
-// Cutoffs calibrated on the 30 draft cards, with each test question held out of its
-// own card and word rarity taken from the 2026-11-16 knowledge base (439 passages)
+// Cutoffs calibrated on two card sets, each test question held out of its own card,
+// word rarity from the 2026-11-16 knowledge base (439 passages)
 // (scripts/ephemeral/2026-11-16-card-match-calibration.ts, 2026-11-16):
-//   - the right card scored 2.2 at the least, 4.1 at the 10th percentile, 7.2 median;
-//   - off-topic questions ("Who won the game last night?") scored up to 2.6;
-//   - the highest-scoring WRONG first place was 12.8 ("Why is my blood sugar high?"
-//     ranked the what-is-a-high card above the why-is-it-high card);
-//   - a card's score alone vs. among all 30 differed by 0.97–1.11×, so the cutoffs
+//   - blind redraft (30 cards, 120 questions): right card scored 1.8 at the least,
+//     4.9 at the 10th percentile, 7.9 median; off-topic up to 3.3; the highest WRONG
+//     first place 14.9 ("When should someone call 911 for a low?" ranked the
+//     when-to-get-help card above the severe-low card; "How much juice should I drink
+//     if I'm going low?" ranked the drinks card first at 14.4);
+//   - first drafts: wrong first places up to 12.8;
+//   - a card's score alone vs. among all 30 differed by 0.97–1.19×, so the cutoffs
 //     hold while the sponsor approves cards in batches.
-// BM25 alone puts the right card first only 46 times in 79, so it shortlists and the
-// pick decides; the score alone decides only when the pick call fails, and then only
-// above every wrong first place seen. Re-run after the blind redraft (ADR-0013 it. 6).
+// Right and wrong overlap across the whole range, so the score alone can't choose a
+// card: search shortlists and the pick decides.
 
 /** Shortlist floor. It saves a pick call on questions no card could answer; the pick
  *  and the shortlist check, not this number, keep a wrong card away. */
 export const CARD_MIN_SCORE = 2.5
 /** When the pick call fails, the top card is shown only at or above this score;
- *  otherwise the turn takes the raw-passage path (ADR-0013, decision item 4). */
-export const CARD_FALLBACK_SCORE = 13
-/** ADR-0013: "about 3". The right card was in the top 3 for 60 of 79 held-out
- *  questions (top 5: 65); a miss takes the raw-passage path, as before cards. */
+ *  otherwise the turn takes the raw-passage path (ADR-0013, decision item 4). Set
+ *  above every wrong first place seen (14.9), so in practice a failed pick almost
+ *  always takes the raw-passage path. */
+export const CARD_FALLBACK_SCORE = 16
+/** ADR-0013: "about 3". The right card was in the top 3 for 94 of 120 held-out
+ *  questions (top 5: 104); a miss takes the raw-passage path, as before cards. */
 export const CARD_SHORTLIST = 3
 
 export function buildCardIndex(cards: TopicCard[], passages: KbPassage[] = []): CardIndex {
