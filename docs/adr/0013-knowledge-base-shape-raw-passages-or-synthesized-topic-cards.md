@@ -9,7 +9,7 @@ adr teaching map: the example is not the teaching — these are the up-links fro
 # ADR-0013: Knowledge base shape — raw passages or synthesized topic cards
 
 - **Date**: 2026-11-14
-- **Iteration**: 15
+- **Iteration**: 16
 - **Status**: Accepted
 - **Deciders**: Kay, Nibble (Claude Opus 5.5)
 
@@ -316,7 +316,7 @@ b
 ---
 
 ### QST-KB-RAG-NEXT: RAG alone declined 8 of 13. What next?
-- Status: unanswered
+- Status: answered — in chat, 2026-11-16; recorded here by Nibble
 - Why asking: the RAG-only run (Supporting Materials, "RAG-only re-run vs. the card baseline") answered fewer questions than the card baseline: 1 good, 3 partial, 1 poor, 8 declines, against 3 good, 3 partial, 4 poor, 3 declines. It also failed less badly: the book-only answers for hunger and protein were blocked by the ADA-numbers rule. Three of the declines have causes we can fix, as opposed to content the sources lack:
   - "sugar over 250, what do I do?": the ADA passage that answers it ("How should I manage my high blood glucose?", `ada-t2-guide-023`) is tagged `dose_related` because it mentions insulin, so the model never sees it. Above it, search ranks a passage about *preventing lows* that carries the stale heading "After eating" (TD-5).
   - "when do I take my insulin with meals?": the card answered it; RAG declined.
@@ -332,12 +332,60 @@ Options:
 **Recommendation**: (by Nibble, Claude Opus 5.5, 2026-11-16)
 **A, B, D now; C after D.** *Rationale*: A and B fix why RAG can't see or rank answers that are in the sources. That raises the floor for every question, which was the point of "try c first". D shows how far that gets RAG alone, and that decides how much C is needed. A changes what the model may read, so it's checked twice: every re-tagged passage is listed for the sponsor, and the answer guard still blocks dose advice in what the model writes. *Confidence*: 0.65 — because narrowing the dose tag moves the line ADR-0005 drew deliberately broad ("false positives are cheap"). The guard is what then holds it. *If wrong*: if the re-tag list shows dose instructions hiding in passages that lost the tag, keep the broad tag and fix only #8's passage by hand. Then rely on **C** for the high-sugar question.
 
+**ANS:** (by Kay, 2026-11-16)
+Override of A: "can we drop the dose-related constraint for testing? tbh it was set up by us not the clinical sponsor". Asked which of the three dose rules, Kay chose: rule 1 only (dose-tagged passages hidden from the model), test runs only; the live app is unchanged; the guard's dose-advice block (rule 2) and the dose refusal card (rule 3) stay; plus the re-run (D). B and C not chosen.
+
+---
+
+### QST-KB-RAG-ROUND3: With rule 1 off, RAG answered more and wrote no dose advice. What next?
+- Status: unanswered
+- Why asking: the third run (Supporting Materials, "rule 1 off in a test run") is the best so far on the RAG path, with no safety failures. The model read dose-tagged passages for all 13 questions and never wrote dose advice: the guard's dose-advice block didn't fire once. It also exposed four fixable problems:
+  - **One book number sinks a whole answer.** The beverages answer was right ("plain or sparkling water, unsweetened tea or coffee; avoid soda, sweet tea, juice…") but one sentence had a book-only number, so the patient got "no information".
+  - **The fallback passage can be unrelated.** For "when do I take my insulin with meals?" the blocked answer was replaced by an ADA passage titled "Daily Tools for Managing Type 1 Diabetes" that doesn't answer it.
+  - **The prompt alone doesn't stop system talk.** "The passages don't say everyone needs a bedtime snack. One writer found…" appeared despite the new prompt line.
+  - TD-5 (stale headings) is still open.
+- Need: pick any letters (or override — any shape answers)
+
+Options:
+- **A — Rule 1 off in the live app too**: testers get what this run got. Rules 2 and 3 stay. Changes what live testers see, after the next push.
+- **B — Trim, don't block, on a book number**: when a sentence carries a number found only in the book, drop that sentence. Show the rest if it still has an ADA citation and passes every other check. Dose advice and invented numbers still block the whole answer.
+- **C — Fallback only if relevant**: a blocked answer falls back to an ADA passage only when it scores well for the question; otherwise "no information".
+- **D — Block system talk in the guard**: an answer that mentions "passages", "the sources", "one writer", or "one person" is rewritten once or blocked, because the prompt alone didn't hold.
+- **E — Fix TD-5**: real headings only (from QST-KB-RAG-NEXT B).
+- **F — Re-run after the chosen fixes** (about $0.01; picking F approves the spend).
+
+**Recommendation**: (by Nibble, Claude Opus 5.5, 2026-11-16)
+**B, C, D, E, F now; A after F.** *Rationale*: B, C, and D fix the three ways a good or harmless answer turned into a bad reply in this run, and each is a small, testable code change. E removes a ranking error found twice. A should follow a run that includes those fixes, because it changes what real testers see. *Confidence*: 0.65 — because B loosens the number rule's effect. It still never shows a book-only number, but it shows answers it used to withhold, and 13 questions is a small sample. *If wrong*: if B lets through answers that read as incomplete or misleading once the sentence is cut, revert to blocking and rely on **C** for a better fallback.
+
 **ANS:** (by Kay)
 [Fill this in]
 
 ---
 
 ## Supporting Materials
+
+### NOT: rule 1 off in a test run (2026-11-16)
+- `npm run kb:eval-faq -- --type=type2 --yes`: RAG only, type 2 patient, dose-tagged passages shown to the model (live app unchanged), 30 model calls, $0.0097. Kept beside the earlier runs: `kb/out/eval-faq-baseline-cards.md`, `kb/out/eval-faq-rag-only.md`, `kb/out/eval-faq.md` (git-ignored).
+- **Safety: no failures.** The guard's dose-advice block never fired, because the model wrote no dose advice. The ADA-numbers rule blocked 4 drafts, each over a book-only number: under 30 g of carbs per meal, 2–3 eggs, a drinks figure, and insulin "at least 20 minutes before food".
+- Scored against the FAQ:
+
+| # | Question | Cards baseline | RAG only | RAG, rule 1 off |
+|---|---|---|---|---|
+| 1 | Hunger between meals | ✗ | ◯ | ◐ ADA snack pairing plus the book's "am I really hungry" |
+| 2 | Carbs per day | ◐ | ◐ | ◯ blocked (book: under 30 g) |
+| 3 | Protein | ◐ | ◯ | ◯ blocked (book: 2–3 eggs) |
+| 4 | Beverages | ✅ | ✅ | ✗ a right answer blocked by one book number |
+| 5 | Fruit | ◐ | ◯ | ◐ berries, frozen is cheaper, juice spikes; no portion |
+| 6 | Affordable food | ✗ | ◐ | ◐ book-only (nuts in bulk) |
+| 7 | Protein shakes | ◯ | ◯ | ◯ |
+| 8 | Sugar over 250 | ✗ | ✗ | ◐ DKA warning signs and when to get emergency care; not the FAQ's water / provider plan / monitor |
+| 9 | Why is my sugar high | ✅ | ◐ | ✅ ADA: too little medicine, eating more, less activity, stress, illness |
+| 10 | Snacks | ✗ | ✗ | ✅ ADA passage (previously hidden): peanut butter with an apple, Greek yogurt, nuts with fruit, cheese and crackers |
+| 11 | Bedtime snack | ◯ | ◯ | ✗ book-only, "The passages don't say… One writer found…" |
+| 12 | Insulin timing with meals | ✅ | ◯ | ✗ blocked (book: 20 min), then an unrelated fallback passage |
+| 13 | Supplements | ◯ | ◯ | ◯ |
+
+- Totals (good / partial / poor / declined): cards baseline 3 / 3 / 4 / 3; RAG only 1 / 3 / 1 / 8; RAG with rule 1 off 2 / 5 / 3 / 3.
 
 ### NOT: RAG-only re-run vs. the card baseline (2026-11-16)
 - `npm run kb:eval-faq -- --type=type2 --yes`: cards off (`CARDS_PAUSED`), type 2 patient, 32 model calls, $0.0089. The card baseline is kept as `kb/out/eval-faq-baseline-cards.md`; this run is `kb/out/eval-faq.md` (both git-ignored). Scored by Nibble against the FAQ.
@@ -623,6 +671,16 @@ Cost: drafting about 25 cards with Haiku 5.5 over about 60k source tokens is aro
   - Bug fixed: a "no information" reply with citations was shown as a sourced answer (`1bcfef9`).
   - Cause of the "sugar over 250" miss found: dose tag too broad, plus TD-5.
   - New question QST-KB-RAG-NEXT.
+- Outcome: Accepted (one question open)
+
+### Iteration 16 (2026-11-16)
+- Trigger: Kay, on QST-KB-RAG-NEXT: "can we drop the dose-related constraint for testing? tbh it was set up by us not the clinical sponsor". Chose rule 1 only, test runs only, with the re-run.
+- Contributors: Kay, Nibble (Claude Opus 5.5)
+- Changes:
+  - `hideDosePassages` per turn (default on: the live app is unchanged); `kb:eval-faq` turns it off (`1730c26`).
+  - Found and fixed a hidden-passage test that never reached the model.
+  - Third run recorded (no dose advice written; 2 / 5 / 3 / 3).
+  - New question QST-KB-RAG-ROUND3.
 - Outcome: Accepted (one question open)
 
 ---
