@@ -9,7 +9,7 @@ adr teaching map: the example is not the teaching — these are the up-links fro
 # ADR-0013: Knowledge base shape — raw passages or synthesized topic cards
 
 - **Date**: 2026-11-14
-- **Iteration**: 7
+- **Iteration**: 8
 - **Status**: Accepted
 - **Deciders**: Kay, Nibble (Claude Opus 5.5)
 
@@ -204,7 +204,7 @@ b
 ---
 
 ### QST-KB-BOOK-RECHECK: The book's passages came out mostly first-person. Keep it in runtime search (A), or move it to cards only (B)?
-- Status: unanswered
+- Status: answered
 - Why asking: QST-KB-BOOK-ROLE was answered A with this condition: *"if the rebuilt passages show most book chunks are first-person story rather than general guidance, flip to B"*. The first build (2026-11-16, commit `38e7fb6`) shows it: of 340 kept book passages, 85% use first person and 52% heavily (more than 4% of words are I/my/me). Many also start mid-sentence or sit under fake headings ("A", "SMALLER") from drop caps, pull quotes, and page breaks (TD-6), and 388 more were dropped as layout scraps. The book is 340 of 439 passages, so it dominates search. Under A, the code already holds the line: no book passage is shown word for word, and a book number never passes the guard. So the cost of A is answer quality, not safety. This relates to QST-KB-BOOK-ROLE.
 - Need: pick a letter (or override — any shape answers)
 
@@ -217,11 +217,41 @@ Options:
 **B — cards only.** *Rationale*: this is the condition Kay's answer named, and it is met by a wide margin (85% / 52%). B keeps everything Kay's approach wanted from the book ("explanations and examples") and routes it through the one place a clinician reads every sentence. Runtime answers come from ADA alone, which also makes the FAQ comparison and the evaluation easier to interpret. C is a reasonable middle, but it still puts first-person, mid-sentence chunks in front of the answer model. *Confidence*: 0.7 — because the first-person measure is a word count, not a reading. Some first-person passages are good general advice phrased personally. *If wrong*: if the blind cards show the book adds little the ADA guides lack, B costs nothing more. If testers ask many mindset or sleep questions no card covers, revisit **C**.
 
 **ANS:** (by Kay)
+a
+
+---
+
+### QST-KB-FAQ-RETURN: The first-pass comparison is done. In what form does the care-team FAQ come back?
+- Status: unanswered
+- Why asking: Decision item 7 says the FAQ returns as a source after the comparison, but not in what form. The comparison (Supporting Materials, "blind cards vs. the clinical FAQ") found the blind cards cover only 3 of the FAQ's 13 questions fully and 2 partly. The 7 with no card are all nutrition: hunger, protein, affordable food, shakes, snacks, bedtime snack, supplements. That is exactly where the sponsor's set is thin, now that the six ADA handouts are gone. The FAQ is clinician-written, already one question and one answer each, and its numbers (30–60 g of carbs per meal, 1 cup of fruit, 10–15 minutes before eating for rapid-acting insulin) appear in no remaining source. Three of the demo's own suggestion chips ("What fruit can I eat?", "What is a healthy snack?", "Are sugar substitutes safe?") depend on this content.
+- Need: pick a letter (or override — any shape answers)
+
+Options:
+- **A — Back as raw passages, as before**: the 13 FAQ entries return to `kb_chunks` under the `care_team` label. The answer model writes from them, and the guard counts their numbers (only the book's don't count). No new review work.
+- **B — Back as topic cards, word for word**: each FAQ entry becomes a card. Its question goes in `asks`, its answer is the body, unchanged, and it cites itself. The sponsor approves these in the same review as the blind cards, which should be quick since the clinic wrote them. A matching question then gets the clinic's exact wording.
+- **C — Both**: cards for matching questions (B), and the raw passages too (A), so the answer model can draw on the FAQ for nearby questions no card fits.
+
+**Recommendation**: (by Nibble, Claude Opus 5.5, 2026-11-16)
+**C — both.** *Rationale*: the FAQ is the only source that answers the seven nutrition questions, and it is already in the shape a card should have. As cards, the clinic's own wording reaches patients unchanged, which fits QST-KB-CARD-USE: A. As raw passages, it also helps nearby questions ("is a banana okay?"). The guard already treats `care_team` numbers as authoritative. The FAQ has done its job as a held-out reference for the first pass. A later pass can hold out a fresh sample of tester questions instead. *Confidence*: 0.7 — because whether the clinic counts its FAQ as already approved, or wants it reviewed like the other cards, is the sponsor's call. *If wrong*: if the sponsor wants the FAQ kept as an evaluation set for a second blind pass, choose **A** for now. Or hold it out again and source nutrition another way, for example by asking the sponsor about the six ADA handouts.
+
+**ANS:** (by Kay)
 [Fill this in]
 
 ---
 
 ## Supporting Materials
+
+### NOT: blind cards vs. the clinical FAQ (2026-11-16)
+- The blind redraft has 30 cards, written by a drafting agent restricted to `kb/out/passages.json`, the guard, and the checker. It reported reading nothing else. All 30 pass `kb:cards:check`: grade 3.7–7.9, 73–97 words. None cites the FAQ or is written in the first person. 15 cite dose-tagged passages and are marked for closer reading. 3 use ADA's "take your medicines as prescribed, never more" wording; the drafter asked the sponsor to confirm that isn't dose advice. Files: `kb/out/cards-blind.json`, review copy `kb/out/cards-blind.md` (git-ignored).
+- Only 5 of the 30 cards cite the book at all: sleep, stress, walking after meals, carb counting, and one more. This is evidence for QST-KB-BOOK-RECHECK. The drafter found and avoided every book-vs-ADA conflict: targets, carbohydrate limits, sizing a low's treatment to the exact reading, exercise insulin cuts, and when to check after meals.
+- `kb:faq-compare` (search level), then Nibble reading each pair (`kb/out/faq-compare.md`):
+  - **Covered**: drinks (agrees); why is my sugar high (agrees, fewer causes); insulin timing with meals (agrees, without the FAQ's 10–15 minutes).
+  - **Partly covered**: carbs per day (agrees it's personal; no 30–60 g, which isn't in the sources); fruit (only the general carbs card).
+  - **Search miss**: "what do I do when my sugar is >250": the right card (`card-handling-a-high`) exists but didn't make the shortlist.
+  - **No card**: hunger between meals, protein, affordable food, protein shakes, snacks, bedtime snack, supplements.
+  - **No contradictions.** Every number difference is a figure the FAQ has and the sources don't; the cards left it out rather than inventing one.
+- Gaps the drafter reported: foot care is thin (no daily self-care steps); the ADA target table was cut short in extraction, so there's no before-meal target and no A1C goal; no timing guidance for pills; nothing on sleep apnea, a screening schedule, vaccines, or falls from lows in older adults.
+- Recalibrated on the blind cards: right and wrong first places overlap up to 14.9, so `CARD_FALLBACK_SCORE` was raised to 16 (commit `4773e15`). A failed pick now almost always takes the raw-passage path.
 
 ### NOT: the knowledge base update (checked 2026-11-16)
 - The shared Drive `knowledgebase/` folder now holds the two ADA "Your Rights and Care Standards" guides (©2026, unchanged since 2026-11-06 and 2026-11-10), the team FAQ document, and *Bright Spots & Landmines* by Adam Brown (diaTribe Foundation, ©2017 all rights reserved, 241 pages, about 50,000 words, added 2026-11-16 14:54). Kay: "the current materials are provided by our clinical sponsor."
@@ -380,6 +410,12 @@ Cost: drafting about 25 cards with Haiku 5.5 over about 60k source tokens is aro
   - Blind redraft started with a drafting agent restricted to `kb/out/passages.json`, the guard, and the checker.
   - New question QST-KB-BOOK-RECHECK.
 - Outcome: Accepted (one question open)
+
+### Iteration 8 (2026-11-16)
+- Trigger: the blind redraft finished and was compared with the clinical FAQ.
+- Contributors: Nibble (Claude Opus 5.5); the blind drafting agent (Claude Opus 5.5)
+- Changes: recorded the comparison and the recalibration (fallback cutoff 16); new question QST-KB-FAQ-RETURN.
+- Outcome: Accepted (two questions open)
 
 ---
 
