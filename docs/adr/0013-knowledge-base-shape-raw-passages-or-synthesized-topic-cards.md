@@ -9,7 +9,7 @@ adr teaching map: the example is not the teaching — these are the up-links fro
 # ADR-0013: Knowledge base shape — raw passages or synthesized topic cards
 
 - **Date**: 2026-11-14
-- **Iteration**: 18
+- **Iteration**: 19
 - **Status**: Accepted
 - **Deciders**: Kay, Nibble (Claude Opus 5.5)
 
@@ -363,7 +363,7 @@ b
 ---
 
 ### QST-KB-TRIM-ADA: Must a trimmed answer still cite ADA?
-- Status: unanswered
+- Status: answered
 - Why asking: QST-KB-RAG-ROUND3 B, as written and as built, shows a trimmed answer only if what's left still cites an ADA passage. Nibble said beforehand that B would save the third run's beverages answer ("plain or sparkling water, unsweetened tea or coffee; avoid soda, sweet tea, juice…", blocked over "decaf after 2 pm"). It won't: every citation in that draft is to the book, so it stays blocked. That was a misstatement, corrected here. It also exposes an inconsistency. A book-only answer **with no numbers** is shown today (affordable food: nuts in bulk), but a book-only answer that **had** a book number is blocked even after the number is trimmed. This relates to QST-KB-RAG-ROUND3 and QST-KB-EVAL-NEXT (its C, "book alone → decline", was not chosen).
 - Need: pick a letter (or override — any shape answers)
 
@@ -376,7 +376,7 @@ Options:
 **B — any remaining citation is enough.** *Rationale*: B makes trimming do what it was chosen for, and makes the rule consistent with how the app already treats book-only answers. Whether book-only answers should be shown at all is a separate question; C is where it can be answered on its own terms, for every answer. The trimmed text has passed every check again, including the ADA-numbers rule, so it carries no book number. *Confidence*: 0.6 — because B shows more book-only text, and the worst answers in the baseline were book-only. *If wrong*: if book-only answers keep reading as one person's habits, choose **C**: it fixes the cause rather than the trim.
 
 **ANS:** (by Kay)
-[Fill this in]
+b
 
 ---
 
@@ -534,7 +534,7 @@ Cost: drafting about 25 cards with Haiku 5.5 over about 60k source tokens is aro
 5. **Dose content keeps its rules.** No card gives dose instructions (the answer guard checks every card). Dose-tagged passages stay verbatim-only (ADR-0005). ~~A topic whose sources are mostly dose-tagged gets no card.~~ *Iteration 6 (QST-KB-DOSE-CARDS: B)*: the tag count doesn't decide; the sponsor decides card by card, and the review document marks cards that cite dose-tagged passages for closer reading.
 6. **Iteration 6: the sponsor's source set, with the book under a numbers rule** (QST-KB-BOOK-ROLE: A). Sources are the two ADA guides and *Bright Spots & Landmines*, each tagged with source, year, and diabetes type. *Iteration 9 (QST-KB-BOOK-RECHECK: A)*: the book stays in runtime search even though its passages are mostly first-person; the code holds the safety line, and TD-6 (book chunk quality) is medium priority.
    - The book is searched like the ADA guides, but it is never the authority on numbers. Code enforces this: a number in an answer must appear in a cited ADA passage (or the patient's own message), and citing the book alone doesn't count.
-   - *Iteration 18 (QST-KB-RAG-ROUND3: B)*: a book-only number costs its sentence, not the whole answer. The sentence is dropped, and the rest is shown if it passes every check again and still cites an ADA passage (`trimBookNumbers` in `src/lib/chat/guard.ts`; applies in the live app too). An invented number or dose advice still blocks the whole answer.
+   - *Iteration 18 (QST-KB-RAG-ROUND3: B)*: a book-only number costs its sentence, not the whole answer. The sentence is dropped, and the rest is shown if it passes every check again (`trimBookNumbers` in `src/lib/chat/guard.ts`; applies in the live app too). ~~…and still cites an ADA passage~~: *Iteration 19 (QST-KB-TRIM-ADA: B)*: any remaining citation is enough, as for a number-free answer. An invented number or dose advice still blocks the whole answer.
    - A book passage is never shown word for word: not as a fallback, not as an urgent passage, not as a dose passage. Its voice is first-person, and copyright allows only brief quotes.
    - Dose-tagged book passages never reach the model, as with ADA.
 7. **Iteration 6: the care-team FAQ is held out everywhere for the first pass** (QST-KB-HOLDOUT-SCOPE: A). It leaves `kb_chunks` and card drafting, and is used only to evaluate: coverage (does a card exist for each FAQ question?) and agreement (do card and FAQ agree on facts and numbers?). ~~It returns as a source after the comparison.~~ *Iteration 10 (QST-KB-FAQ-RETURN, Kay: "my idea is to see whether we can answer the faqs well without the current FAQ")*: the FAQ stays held out. The question is no longer only card coverage but whether the whole assistant (cards, then AI-written answers from the ADA guides and the book) answers the FAQ questions well from the sponsor material alone. The FAQ answers are the clinical reference for judging that. *Iteration 11 (QST-KB-FAQ-EVAL: A)*: test as is, one baseline run of the 13 questions through the real turn (`kb:eval-faq`), no gap cards first.
@@ -718,6 +718,12 @@ Cost: drafting about 25 cards with Haiku 5.5 over about 60k source tokens is aro
   - Decision item 6 notes the trim rule. `trimBookNumbers` in the guard, applied in the turn; the dropped sentence's draft is kept for the log (guard note `trimmed_book_number:…`). It applies in the live app as well as in tests.
   - A misstatement corrected: as written, B does not save the beverages answer (book-only citations). New question QST-KB-TRIM-ADA.
 - Outcome: Accepted (one question open)
+
+### Iteration 19 (2026-11-16)
+- Trigger: Kay answered QST-KB-TRIM-ADA: B (any remaining citation is enough).
+- Contributors: Kay, Nibble (Claude Opus 5.5)
+- Changes: the trim no longer requires an ADA citation in what's left; decision item 6 amended. The test that documented beverages staying blocked now documents it being shown. Whether book-only answers should be shown at all remains open as QST-KB-EVAL-NEXT C (not chosen).
+- Outcome: Accepted (no questions open)
 
 ---
 
