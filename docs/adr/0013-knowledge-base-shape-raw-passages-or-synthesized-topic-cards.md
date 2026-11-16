@@ -9,7 +9,7 @@ adr teaching map: the example is not the teaching — these are the up-links fro
 # ADR-0013: Knowledge base shape — raw passages or synthesized topic cards
 
 - **Date**: 2026-11-14
-- **Iteration**: 22
+- **Iteration**: 23
 - **Status**: Accepted
 - **Deciders**: Kay, Nibble (Claude Opus 5.5)
 
@@ -615,6 +615,7 @@ Cost: drafting about 25 cards with Haiku 5.5 over about 60k source tokens is aro
 7. **Iteration 6: the care-team FAQ is held out everywhere for the first pass** (QST-KB-HOLDOUT-SCOPE: A). It leaves `kb_chunks` and card drafting, and is used only to evaluate: coverage (does a card exist for each FAQ question?) and agreement (do card and FAQ agree on facts and numbers?). ~~It returns as a source after the comparison.~~ *Iteration 10 (QST-KB-FAQ-RETURN, Kay: "my idea is to see whether we can answer the faqs well without the current FAQ")*: the FAQ stays held out. The question is no longer only card coverage but whether the whole assistant (cards, then AI-written answers from the ADA guides and the book) answers the FAQ questions well from the sponsor material alone. The FAQ answers are the clinical reference for judging that. *Iteration 11 (QST-KB-FAQ-EVAL: A)*: test as is, one baseline run of the 13 questions through the real turn (`kb:eval-faq`), no gap cards first.
    - *Iteration 21 (Kay, 2026-11-16: "for now let's add the clinician faq's to the data we can retrieve from as well, and the priority is faq -> ada -> book"; "we will have other testing questions")*: **the FAQ is back in the knowledge base everywhere, test runs included.** Test questions will come from elsewhere; `kb:eval-faq` takes `--questions=<file>`.
    - **Source priority FAQ → ADA → book**, applied in three places. (1) Search: the book is weighted at 0.8, so ADA wins a near-equal match; the FAQ is **not** boosted, because a boost ranked its short nutrition answers first for questions they don't answer (Supporting Materials, "source priority weights"). (2) The model reads relevant passages in priority order, each labelled with its source, and the prompt says to follow the higher source when they differ. (3) Numbers: the FAQ's count, like ADA's; the book's never do. A blocked answer's fallback passage is still chosen by relevance, not priority.
+   - *Iteration 23 (Kay, 2026-11-16: "it's fine to include the handout for now, and they stay with the ada level, so faq > ada > book right")*: the five ADA handouts are back (Plan Your Plate, Sugar Substitutes, Portions vs. Serving Sizes, Nutrition FAQs, Exercise and Nutrition) at ADA priority. Liver Health stays out: it was not returned to the Drive folder. Knowledge base: FAQ 13, ADA 119 (guides 99, handouts 20), book 340 = 472 passages.
 8. **Iteration 6: all cards are redrafted blind** (QST-KB-REDRAFT: A). A drafting agent that has never seen the FAQ, the old drafts, or the FAQ-derived topic list writes them from the new passages. The topic list comes from Kay's predictable topics (lows, carb counting, sick days, foot care, exercise, medication timing) plus the ADA guides' own sections.
 
 **Trade-offs accepted**: cards depend on the sponsor's time, and nothing goes live until they approve it. Until then, the assistant answers from raw passages as it does today. *Iteration 6*: during the first pass, testers lose the FAQ's 13 passages and the six ADA handouts. The book's numbers never reach a patient on the book's authority alone, even where they are right.
@@ -646,7 +647,7 @@ Cost: drafting about 25 cards with Haiku 5.5 over about 60k source tokens is aro
 - [ ] (Iteration 5) Add a reading-level measure (6th–8th grade) and a book-vs-ADA number-conflict report to the card check. Owner: Nibble
 - [ ] (Iteration 5) After the blind draft: compare cards with the clinical FAQ (coverage, agreement on facts and numbers) and give the sponsor the differences. Owner: Nibble, then Kay's clinical sponsor
 - [ ] (Iteration 14, QST-KB-EVAL-NEXT: D) Ask the clinical sponsor for nutrition material: 7 of the 13 FAQ questions are nutrition, and the sponsor's set answers them thinly or not at all (protein shakes, supplements, bedtime snack, affordable food, fruit portions, snacks, hunger between meals). Owner: Kay
-- [ ] (Iteration 14) Apply migration 0003 so passages carry their diabetes type in production (until then the app loads passages without it and search doesn't rank by type). Owner: Nibble, after Kay's OK and the rls-dev test credentials
+- [x] (Iteration 14; done in iteration 23, 2026-11-16) Apply migration 0003 so passages carry their diabetes type in production (until then the app loads passages without it and search doesn't rank by type). Owner: Nibble, after Kay's OK and the rls-dev test credentials
 
 ---
 
@@ -825,6 +826,19 @@ Cost: drafting about 25 cards with Haiku 5.5 over about 60k source tokens is aro
 - Trigger: Kay, on QST-KB-RUN4-NEXT: "i don't think that's relevant anymore".
 - Contributors: Kay, Nibble (Claude Opus 5.5)
 - Changes: QST-KB-RUN4-NEXT closed with Kay's words as the answer (status answered, noted as moot: "deferred" still counts as open, and the ADR tools don't yet treat "moot" as closed), with what still applies (trim orphans, less often; rule 2 waits on the sponsor's answer about medicine wording; TD-7).
+- Outcome: Accepted (no questions open)
+
+### Iteration 23 (2026-11-16)
+- Trigger: Kay asked whether production had the FAQ and the priority (it didn't), then: "it's fine to include the handout for now, and they stay with the ada level, so faq > ada > book right". Kay put the five handouts back in the Drive folder.
+- Contributors: Kay, Nibble (Claude Opus 5.5)
+- Changes:
+  - Handouts back at ADA priority (decision item 7); rebuilt, 472 passages, the 20 handout passages identical to the 2026-11-14 build.
+  - **Production updated**:
+    - migration 0003 applied (policy fingerprint now identical to rls-dev, 17 policies);
+    - `kb_chunks` reloaded with all 472 passages, each with source, year, and diabetes type;
+    - site code pushed to `main` (GitHub Pages deploys after the gate).
+  - Not yet run: the Data API access tests on rls-dev (credentials).
+  - The live app runs with all three dose rules on and cards paused, and still has the TD-7 gap.
 - Outcome: Accepted (no questions open)
 
 ---
