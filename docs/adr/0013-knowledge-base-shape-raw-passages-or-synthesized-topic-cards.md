@@ -9,7 +9,7 @@ adr teaching map: the example is not the teaching — these are the up-links fro
 # ADR-0013: Knowledge base shape — raw passages or synthesized topic cards
 
 - **Date**: 2026-11-14
-- **Iteration**: 20
+- **Iteration**: 21
 - **Status**: Accepted
 - **Deciders**: Kay, Nibble (Claude Opus 5.5)
 
@@ -403,6 +403,20 @@ Options:
 
 ## Supporting Materials
 
+### NOT: source priority weights (2026-11-16)
+- `scripts/ephemeral/2026-11-16-source-priority-weights.ts`, $0. 120 patient-style questions (the blind cards' phrasings, not the FAQ's own questions), type 2 patient; which source supplies the top passage.
+
+| Weights (FAQ / ADA / book) | Top from FAQ | ADA | Book | FAQ pulled up over a better match |
+|---|---|---|---|---|
+| none | 2 | 88 | 30 | 0 |
+| **1 / 1 / 0.8 (shipped)** | 3 | 103 | 14 | 1 |
+| 1.25 / 1 / 0.8 | 10 | 98 | 12 | 8 |
+| 1.5 / 1 / 0.75 | 16 | 96 | 8 | 14 |
+| 2 / 1 / 0.5 | 36 | 83 | 1 | 34 |
+
+- The FAQ "pulled up" cases were mostly wrong topics, even at 1.25: "How much juice should I drink if I'm going low?" got the FAQ's beverages answer; "Why does my sugar keep dropping?" and "What is a good sugar number?" got its fruit answer. So FAQ-first is applied only among passages already relevant, not as a search boost.
+- Also found: `kb:eval-faq` loaded passages without their diabetes type, so `--type=type2` had no effect in the second to fourth runs. The type-ranking measurement (`2026-11-16-diabetes-type-ranking.ts`) used its own loader and stands. Fixed in the script.
+
 ### NOT: fourth run: trim on, all dose rules paused in tests (2026-11-16)
 - `npm run kb:eval-faq -- --type=type2 --yes`: RAG only, type 2, rules 1–3 paused (test only), trim on (QST-KB-RAG-ROUND3: B, QST-KB-TRIM-ADA: B), 30 model calls, $0.0096. Output `kb/out/eval-faq.md`; the previous run kept as `kb/out/eval-faq-rule1-off.md`.
 - **Safety**: with rule 2 paused, the run marks what it would have blocked. One answer: #9, over "Don't skip a dose" in ADA's adherence advice. That's a false positive (QST-KB-RUN4-NEXT B). No dose amounts or changes were written. No question tripped rule 3.
@@ -599,6 +613,8 @@ Cost: drafting about 25 cards with Haiku 5.5 over about 60k source tokens is aro
    - A book passage is never shown word for word: not as a fallback, not as an urgent passage, not as a dose passage. Its voice is first-person, and copyright allows only brief quotes.
    - Dose-tagged book passages never reach the model, as with ADA.
 7. **Iteration 6: the care-team FAQ is held out everywhere for the first pass** (QST-KB-HOLDOUT-SCOPE: A). It leaves `kb_chunks` and card drafting, and is used only to evaluate: coverage (does a card exist for each FAQ question?) and agreement (do card and FAQ agree on facts and numbers?). ~~It returns as a source after the comparison.~~ *Iteration 10 (QST-KB-FAQ-RETURN, Kay: "my idea is to see whether we can answer the faqs well without the current FAQ")*: the FAQ stays held out. The question is no longer only card coverage but whether the whole assistant (cards, then AI-written answers from the ADA guides and the book) answers the FAQ questions well from the sponsor material alone. The FAQ answers are the clinical reference for judging that. *Iteration 11 (QST-KB-FAQ-EVAL: A)*: test as is, one baseline run of the 13 questions through the real turn (`kb:eval-faq`), no gap cards first.
+   - *Iteration 21 (Kay, 2026-11-16: "for now let's add the clinician faq's to the data we can retrieve from as well, and the priority is faq -> ada -> book"; "we will have other testing questions")*: **the FAQ is back in the knowledge base everywhere, test runs included.** Test questions will come from elsewhere; `kb:eval-faq` takes `--questions=<file>`.
+   - **Source priority FAQ → ADA → book**, applied in three places. (1) Search: the book is weighted at 0.8, so ADA wins a near-equal match; the FAQ is **not** boosted, because a boost ranked its short nutrition answers first for questions they don't answer (Supporting Materials, "source priority weights"). (2) The model reads relevant passages in priority order, each labelled with its source, and the prompt says to follow the higher source when they differ. (3) Numbers: the FAQ's count, like ADA's; the book's never do. A blocked answer's fallback passage is still chosen by relevance, not priority.
 8. **Iteration 6: all cards are redrafted blind** (QST-KB-REDRAFT: A). A drafting agent that has never seen the FAQ, the old drafts, or the FAQ-derived topic list writes them from the new passages. The topic list comes from Kay's predictable topics (lows, carb counting, sick days, foot care, exercise, medication timing) plus the ADA guides' own sections.
 
 **Trade-offs accepted**: cards depend on the sponsor's time, and nothing goes live until they approve it. Until then, the assistant answers from raw passages as it does today. *Iteration 6*: during the first pass, testers lose the FAQ's 13 passages and the six ADA handouts. The book's numbers never reach a patient on the book's authority alone, even where they are right.
@@ -795,6 +811,15 @@ Cost: drafting about 25 cards with Haiku 5.5 over about 60k source tokens is aro
   - Two rule flaws found: orphaned sentences after a trim, and rule 2 flagging ADA's "don't skip a dose". New question QST-KB-RUN4-NEXT.
   - Probe script `scripts/ephemeral/2026-11-16-rule2-match-probe.ts`.
 - Outcome: Accepted (one question open)
+
+### Iteration 21 (2026-11-16)
+- Trigger: Kay: "for now let's add the clinician faq's to the data we can retrieve from as well, and the priority is faq -> ada -> book", then "we will have other testing questions". (In between: drafted Kay's email to the clinical sponsor about the book; not recorded as a decision.)
+- Contributors: Kay, Nibble (Claude Opus 5.5)
+- Changes:
+  - Decision item 7 amended: the FAQ is back in the knowledge base everywhere. Rebuilt: 452 passages, with the FAQ's 13 and ADA's 99 identical to earlier builds.
+  - Source priority built and measured (book weighted 0.8 in search; FAQ-first among relevant passages; source labels and priority in the prompt).
+  - `kb:eval-faq` takes `--questions=<file>`, and its missing diabetes type is fixed.
+- Outcome: Accepted (one question open: QST-KB-RUN4-NEXT)
 
 ---
 
