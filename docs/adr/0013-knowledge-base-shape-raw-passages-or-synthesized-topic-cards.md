@@ -381,7 +381,7 @@ b
 ---
 
 ### QST-KB-RUN4-NEXT: The fourth run found two flaws in the rules themselves. Fix them?
-- Status: deferred — Kay, 2026-11-16: "i don't think that's relevant anymore" (after the FAQ came back and became top priority). A still applies whenever a book number is trimmed, now less often; B waits on the sponsor's answer to the email's medicine question; C stays tracked as TD-7 for the live app
+- Status: moot — Kay, 2026-11-16: "i don't think that's relevant anymore" (after the FAQ came back and became top priority). A still applies whenever a book number is trimmed, now less often; B waits on the sponsor's answer to the email's medicine question; C stays tracked as TD-7 for the live app
 - Why asking: the fourth run (Supporting Materials, "fourth run: trim on, all dose rules paused in tests") was the best so far: 3 good, 7 partial, 1 poor, 2 declined. It exposed two flaws in rules that apply in the live app:
   - **The trim can leave a sentence pointing at nothing.** For carbs per day, the dropped sentence was the author's "70–120 grams a day", but the next sentence, "That is his own choice, not a recommendation for you", stayed, with nothing for "his" to refer to. The model had put one citation after both sentences; the trim cut by sentence, not by what the citation covers.
   - **Rule 2 flags ADA's own adherence advice.** "Take your medicines as prescribed. Don't skip a dose." matches the "skip … dose" pattern. In the live app, the best answer to "Why is my blood sugar high?" would be blocked and replaced. TD-7 is the same rule failing in the other direction: "take two units" passes.
@@ -824,8 +824,8 @@ Cost: drafting about 25 cards with Haiku 5.5 over about 60k source tokens is aro
 ### Iteration 22 (2026-11-16)
 - Trigger: Kay, on QST-KB-RUN4-NEXT: "i don't think that's relevant anymore".
 - Contributors: Kay, Nibble (Claude Opus 5.5)
-- Changes: QST-KB-RUN4-NEXT deferred, with what still applies (trim orphans, less often; rule 2 waits on the sponsor's answer about medicine wording; TD-7).
-- Outcome: Accepted (no questions open; QST-KB-RUN4-NEXT and QST-KB-EVAL-NEXT deferred)
+- Changes: QST-KB-RUN4-NEXT closed as moot (first marked deferred, which the ADR panel still counts as open), with what still applies (trim orphans, less often; rule 2 waits on the sponsor's answer about medicine wording; TD-7).
+- Outcome: Accepted (no questions open)
 
 ---
 
