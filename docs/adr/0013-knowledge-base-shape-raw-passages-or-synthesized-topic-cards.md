@@ -9,7 +9,7 @@ adr teaching map: the example is not the teaching — these are the up-links fro
 # ADR-0013: Knowledge base shape — raw passages or synthesized topic cards
 
 - **Date**: 2026-11-14
-- **Iteration**: 16
+- **Iteration**: 17
 - **Status**: Accepted
 - **Deciders**: Kay, Nibble (Claude Opus 5.5)
 
@@ -682,6 +682,15 @@ Cost: drafting about 25 cards with Haiku 5.5 over about 60k source tokens is aro
   - Third run recorded (no dose advice written; 2 / 5 / 3 / 3).
   - New question QST-KB-RAG-ROUND3.
 - Outcome: Accepted (one question open)
+
+### Iteration 17 (2026-11-16)
+- Trigger: Kay asked what the blocking mechanisms are, then "i thought we are pausing the dosing constraint", then "pause 2 and 3 for now on test".
+- Contributors: Kay, Nibble (Claude Opus 5.5)
+- Changes:
+  - The three dose rules are now named and switchable per turn: (1) dose passages hidden from the model, (2) the guard's dose-advice block, (3) the dose refusal card. All on in the live app. All paused in `kb:eval-faq` (`--hide-dose` and `--dose-rules` turn them back on).
+  - Test output marks every answer a paused rule would have stopped, so pausing hides nothing.
+  - Found while explaining: rule 2 only sees digits ("take two units", "a few extra units", "a bit more insulin" all pass). Recorded as TD-7 (high for the live app). The fix was offered and not chosen; rule 2 is paused in tests by Kay's choice.
+- Outcome: Accepted (one question open: QST-KB-RAG-ROUND3)
 
 ---
 

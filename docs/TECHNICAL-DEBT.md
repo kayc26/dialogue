@@ -60,3 +60,13 @@ Workarounds and compromises, each with where it lives and how to retire it (CLAU
 - **Workaround**: none yet; the build is used as is for card drafting, where the drafter reads neighbouring passages.
 - **Fix**: Treat a one-line paragraph as a heading only if the next paragraph doesn't continue its sentence (starts lowercase), and reject one-letter and single-word all-caps lines in book sources. Or extract the book with `pdftotext -layout` and use its column structure. Rebuild and compare section counts.
 - **Priority**: Medium: the book stays in runtime search (ADR-0013, QST-KB-BOOK-RECHECK: A, Kay 2026-11-16).
+
+## TD-7: The dose-advice block (rule 2) only sees digits
+
+- **Discovered**: 2026-11-16, probing `checkAnswer` while explaining the blocking rules to Kay (ADR-0013 iteration 17)
+- **Location**: `src/lib/chat/guard.ts` (`DOSE_ADVICE`, and `numbersIn` for the number rule)
+- **Issue**: every dose pattern needs a digit or a specific verb. These all pass the guard: "Take **two** units of insulin before dinner", "Give yourself **a few extra units** tonight", "You could **take a bit more insulin** with big meals". The number rule has the same blind spot: "twenty minutes" is never checked against the sources.
+- **Impact**: in the live app, rule 2 is the only check on dose advice in model-written text. The monitor (ADR-0007) is paused, and rule 3 only catches dose *questions*. A model can write dose advice in words from its own knowledge, even with dose passages hidden. Test runs currently pause rule 2 anyway (Kay, 2026-11-16) and mark what it would have blocked, so this gap also hides some would-have-blocked answers from that marking.
+- **Workaround**: none. Kay chose to pause rules 2–3 in test runs; the fix was offered and not yet chosen.
+- **Fix**: (a) add word-number and vague-amount patterns to `DOSE_ADVICE` ("one/two/three… units", "a few/extra/more units", "take more/less/extra insulin"), with a regression test using the three sentences above. (b) Optionally normalise spelled-out numbers before the number rule; that makes it stricter, so it's a question for the ADR, not a silent change.
+- **Priority**: High for the live app (testers are older adults asking real questions).
