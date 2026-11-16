@@ -8,12 +8,17 @@
 // script prints only the database host, never the connection string.
 //
 // Without --yes it shows what it would do and exits.
+//
+// Needs migration 0003 (source label 'book', year, diabetes_type, kb_cards). After the
+// load it re-syncs every topic card's source hash (app.kb_cards_resync), so an
+// approved card whose source passages changed or vanished goes back to draft
+// (ADR-0013 iteration 6) and the sponsor sees it again.
 
 import { readFileSync } from 'node:fs'
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { neon } from '@neondatabase/serverless'
-import type { Passage } from '../src/lib/kb/chunk.ts'
+import type { BuiltPassage } from './build.ts'
 
 const here = dirname(fileURLToPath(import.meta.url))
 const url = process.env.DATABASE_URL
@@ -24,7 +29,7 @@ if (!url) {
 const host = new URL(url).hostname
 const { snapshotDate, passages } = JSON.parse(readFileSync(join(here, 'out', 'passages.json'), 'utf8')) as {
   snapshotDate: string
-  passages: Passage[]
+  passages: BuiltPassage[]
 }
 if (passages.some((p) => p.needsReview)) {
   console.error('passages.json contains passages marked needsReview; rebuild with kb/build.ts.')
@@ -39,13 +44,19 @@ if (!process.argv.includes('--yes')) {
 }
 
 const sql = neon(url)
+const approvedIds = async () => (await sql`select id from public.kb_cards where status = 'approved'`).map((r) => r.id as string)
+const before = await approvedIds()
 await sql.transaction([
   sql`delete from public.kb_chunks`,
   ...passages.map(
-    (p) => sql`insert into public.kb_chunks (id, doc_title, source_label, section, body, tags, snapshot_date)
-               values (${p.id}, ${p.docTitle}, ${p.sourceLabel}, ${p.section}, ${p.body}, ${p.tags}, ${snapshotDate})`,
+    (p) => sql`insert into public.kb_chunks (id, doc_title, source_label, section, body, tags, snapshot_date, year, diabetes_type)
+               values (${p.id}, ${p.docTitle}, ${p.sourceLabel}, ${p.section}, ${p.body}, ${p.tags}, ${snapshotDate}, ${p.year}, ${p.diabetesType})`,
   ),
+  sql`select app.kb_cards_resync()`, // same transaction: no moment with new passages under stale approvals
 ])
+const after = new Set(await approvedIds())
+const demoted = before.filter((id) => !after.has(id))
+if (demoted.length) console.log(`back to draft (their source passages changed): ${demoted.join(', ')}`)
 
 const rows = await sql`
   select count(*)::int as total,

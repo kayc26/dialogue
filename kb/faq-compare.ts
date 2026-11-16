@@ -18,7 +18,7 @@
 import { readFileSync, writeFileSync } from 'node:fs'
 import { buildCardIndex, CARD_MIN_SCORE, type TopicCard } from '../src/lib/chat/cards.ts'
 import type { KbPassage } from '../src/lib/chat/retrieve.ts'
-import type { DraftCard } from './cards-check.ts'
+import type { DraftCard } from './cards-lib.ts'
 
 const file = process.argv[2] ?? 'kb/out/cards-blind.json'
 type Built = { id: string; docTitle: string; sourceLabel: KbPassage['source_label']; section: string | null; body: string; tags: string[] }

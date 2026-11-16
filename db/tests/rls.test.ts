@@ -17,7 +17,8 @@
 //   RLS_AUTH_URL=... RLS_DATA_API_URL=... RLS_PASSWORD=... npm run test:db
 // Users (created once on that branch): rls-a, rls-b (patient_tester), rls-sponsor
 // (careteam_tester; the email predates the rename), rls-admin (admin), rls-stranger
-// (signed in, not a member). Seed: patient 'rls-p1', one reading, one chunk.
+// (signed in, not a member). Seed: patient 'rls-p1', one reading, one chunk, and (after
+// migration 0003) two topic cards: 'card-rls-approved' (approved) and 'card-rls-draft'.
 
 import { beforeAll, describe, expect, it } from 'vitest'
 
@@ -244,6 +245,32 @@ describe.skipIf(!configured)('RLS against a Neon branch', () => {
     it('is still bound by consent: a kept summary stays private', async () => {
       expect(rows(await api('admin', 'GET', `summaries?session_id=eq.${sessionA}`))).toHaveLength(0)
       expect(rows(await api('admin', 'GET', `messages?session_id=eq.${sessionA}`))).toHaveLength(0)
+    })
+  })
+
+  // Migration 0003 (ADR-0013): patients see a topic card word for word, so only cards
+  // the sponsor approved may leave the database. Seed: 'card-rls-approved' (approved)
+  // and 'card-rls-draft' (draft).
+  describe('topic cards', () => {
+    it('nobody signed in, and a stranger with an account, see no cards', async () => {
+      const anon = await api(null, 'GET', 'kb_cards?select=id')
+      expect(denied(anon) || rows(anon).length === 0).toBe(true)
+      expect(rows(await api('stranger', 'GET', 'kb_cards?select=id'))).toHaveLength(0)
+    })
+    it('every member role sees approved cards only, never a draft', async () => {
+      for (const who of ['a', 'careteam', 'admin'] as Who[]) {
+        const seen = rows(await api(who, 'GET', 'kb_cards?select=id,status'))
+        expect(seen.map((r) => r.id), who).toContain('card-rls-approved')
+        expect(seen.map((r) => r.id), who).not.toContain('card-rls-draft')
+        expect(seen.every((r) => r.status === 'approved'), who).toBe(true)
+      }
+    })
+    it('no one can write a card or approve one through the Data API, admin included', async () => {
+      for (const who of ['a', 'admin'] as Who[]) {
+        expect(denied(await tryInsert(who, 'kb_cards', { id: 'card-rls-intruder', topic: 't', body: 'b', source_ids: ['x'] })), who).toBe(true)
+        await api(who, 'PATCH', 'kb_cards?id=eq.card-rls-draft', { status: 'approved', approved_by: 'self', approved_at: new Date().toISOString() }, 'return=minimal')
+      }
+      expect(rows(await api('a', 'GET', 'kb_cards?id=eq.card-rls-draft&select=id'))).toHaveLength(0) // still a draft
     })
   })
 })

@@ -3,12 +3,11 @@
 //
 //   node kb/cards-check.ts [cards file]        default: kb/out/cards-blind.json
 //
-// For each card:
+// For each card (checks in kb/cards-lib.ts, shared with kb/cards-load.ts):
 //   1. every source id exists in kb/out/passages.json;
 //   2. the assistant's own answer guard passes (src/lib/chat/guard.ts): no dose advice,
 //      and every number appears in a cited ADA passage. Citing the book doesn't make a
-//      number count (QST-KB-BOOK-ROLE: A), and at least one source must be ADA when the
-//      card has any number;
+//      number count (QST-KB-BOOK-ROLE: A);
 //   3. reading level: Flesch-Kincaid grade, aiming for 6th–8th (Kay, 2026-11-16);
 //   4. cards citing dose-tagged passages are marked for closer reading
 //      (QST-KB-DOSE-CARDS: B: the sponsor decides each one).
@@ -16,33 +15,17 @@
 // $0: no model calls. Card and passage text is ADA- and book-derived, so all of it
 // stays in git-ignored kb/out/ (ADR-0005). Exit code 1 if any card fails 1 or 2.
 
-import { readFileSync, writeFileSync } from 'node:fs'
-import { checkAnswer } from '../src/lib/chat/guard.ts'
+import { writeFileSync } from 'node:fs'
+import { checkCard, readCards, readPassages } from './cards-lib.ts'
 
-interface Passage { id: string; docTitle: string; sourceLabel: 'ADA' | 'care_team' | 'book'; section: string | null; body: string; tags: string[] }
-export interface DraftCard { id: string; topic: string; asks: string[]; answer: string; sources: string[]; review_notes?: string[] }
+export type { DraftCard } from './cards-lib.ts'
 
 const file = process.argv[2] ?? 'kb/out/cards-blind.json'
-const passages = (JSON.parse(readFileSync('kb/out/passages.json', 'utf8')) as { passages: Passage[] }).passages
-const byId = new Map(passages.map((p) => [p.id, p]))
-const draft = JSON.parse(readFileSync(file, 'utf8')) as { status?: string; cards: DraftCard[] }
-
-/** Syllables by vowel groups, with a silent final e; close enough for a grade level. */
-function syllables(word: string): number {
-  const w = word.toLowerCase().replace(/[^a-z]/g, '')
-  if (!w) return 0
-  const groups = w.replace(/e$/, '').match(/[aeiouy]+/g)
-  return Math.max(1, groups?.length ?? 1)
-}
-export function gradeLevel(text: string): number {
-  const sentences = Math.max(1, (text.match(/[.!?]+(\s|$)/g) ?? []).length)
-  const words = text.split(/\s+/).filter((w) => /[a-z]/i.test(w))
-  const syl = words.reduce((n, w) => n + syllables(w), 0)
-  return 0.39 * (words.length / sentences) + 11.8 * (syl / Math.max(1, words.length)) - 15.59
-}
+const byId = readPassages()
+const draft = readCards(file)
 
 const SOURCE = { ADA: 'American Diabetes Association', care_team: 'Your care team', book: 'Bright Spots & Landmines (diaTribe)' } as const
-const ids = new Set<string>()
+const seen = new Set<string>()
 let failed = 0
 const md: string[] = [
   `# Topic cards for clinical review (${file})`,
@@ -60,23 +43,7 @@ const md: string[] = [
 ]
 
 for (const [i, c] of draft.cards.entries()) {
-  const problems: string[] = []
-  if (!/^card-[a-z0-9-]+$/.test(c.id)) problems.push('bad id')
-  if (ids.has(c.id)) problems.push('duplicate id')
-  ids.add(c.id)
-  const missing = c.sources.filter((s) => !byId.has(s))
-  if (missing.length) problems.push(`missing sources: ${missing.join(',')}`)
-  if (c.sources.length === 0) problems.push('no sources')
-  const cited = c.sources.filter((s) => byId.has(s)).map((s) => byId.get(s)!)
-  const verdict = checkAnswer(
-    `${c.answer} ${c.sources.map((s) => `[kb:${s}]`).join(' ')}`,
-    cited.map((p) => ({ id: p.id, body: p.body, source_label: p.sourceLabel })),
-    '',
-  )
-  if (!verdict.ok) problems.push(`guard: ${verdict.reason}`)
-  const doseTagged = cited.filter((p) => p.tags.includes('dose_related')).map((p) => p.id)
-  const words = c.answer.split(/\s+/).filter(Boolean).length
-  const grade = gradeLevel(c.answer)
+  const { problems, cited, doseTagged, grade, words } = checkCard(c, byId, seen)
   const ok = problems.length === 0
   if (!ok) failed++
   console.log(
