@@ -8,7 +8,7 @@ Columns: **Waiting** (blocked on a person's answer or material), **To do** (read
 
 ## Waiting
 
-- [ ] **Kay: clinician requirements for the summary fields.** They replace ADR-0008's field table; the summary mechanism can be built before they arrive. [ADR-0008](docs/adr/0008-diabetes-education-bot-intake-conversation-summary-and-nurse-handoff.md)
+- [ ] **Clinical sponsor's reply, then Kay: clinician requirements for the summary fields.** Kay (2026-11-17): the summary work waits for the sponsor's reply, so the whole "Conversation summary and nurse handoff" group below is on hold until then. The replies replace ADR-0008's field table. [ADR-0008](docs/adr/0008-diabetes-education-bot-intake-conversation-summary-and-nurse-handoff.md)
 - [ ] **Clinical sponsor: review and approve topic cards** (`npm run kb:cards:approve`). [ADR-0013](docs/adr/0013-knowledge-base-shape-raw-passages-or-synthesized-topic-cards.md)
 - [ ] **Clinical sponsor: more nutrition material.** 7 of the 13 FAQ questions are nutrition and the current sources answer them thinly. [ADR-0013](docs/adr/0013-knowledge-base-shape-raw-passages-or-synthesized-topic-cards.md)
 - [ ] **Clinician: check the demo patients' regimens and glucose traces for plausibility.** [ADR-0009](docs/adr/0009-diabetes-education-bot-synthetic-patients-glucose-data-and-insulin-regimens.md)
@@ -21,7 +21,7 @@ Columns: **Waiting** (blocked on a person's answer or material), **To do** (read
 - [ ] **TD-7: catch dose advice written in words** ("take two units", "a few extra units", "a bit more insulin"). Priority high: with the monitor paused, the guard is the only check on model-written dose advice. Add a regression test with the three example sentences. [TECHNICAL-DEBT](docs/TECHNICAL-DEBT.md), `src/lib/chat/guard.ts`
 - [ ] **Unpause the monitor** (`MONITOR_PAUSED = false` in `src/lib/chat/prompts.ts`) once answers come through reliably. [ADR-0007](docs/adr/0007-diabetes-education-bot-a-second-model-that-monitors-the-conversation.md)
 
-### Conversation summary and nurse handoff (ADR-0008: decided, not built)
+### Conversation summary and nurse handoff (ADR-0008: decided, not built; on hold for the sponsor's reply, see Waiting)
 
 Nothing in the app writes to `summaries` or `replies` today; the tables and their access rules exist (`db/migrations/0001`, `0002`) and are tested.
 
@@ -46,7 +46,7 @@ Nothing in the app writes to `summaries` or `replies` today; the tables and thei
 
 ### Shared key (ADR-0014)
 
-- [ ] **Redeploy `llm` to rls-dev**: it still runs the version without the `X-Title` fix, so browsers are blocked there. [ADR-0014](docs/adr/0014-shared-openrouter-account-with-a-1-dollar-cap-per-tester.md)
+- [ ] **Redeploy `llm` to rls-dev**: it still runs the version without the `X-Title` fix, so browsers are blocked there. Kay (2026-11-17): "not now"; nobody tests on rls-dev yet. Do it before the next rls-dev test. [ADR-0014](docs/adr/0014-shared-openrouter-account-with-a-1-dollar-cap-per-tester.md)
 
 ### Housekeeping
 

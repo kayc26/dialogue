@@ -103,7 +103,7 @@ c
 - [x] C: deploy the Neon Function to rls-dev, then production (iteration 4). Owner: Nibble
 - [x] Replace the dollar amount in the chat with "N% of your allowance used" (`a3e9fd6`). Owner: Nibble
 - [x] Verify a real signed-in call on production: the allowance line shows, a question is answered, and a row lands in `public.llm_spend` (iteration 6). Owner: Kay
-- [ ] Redeploy `llm` to rls-dev; it still runs the version without the `X-Title` fix (iteration 5). Owner: Nibble
+- [ ] Redeploy `llm` to rls-dev; it still runs the version without the `X-Title` fix (iteration 5). Kay, 2026-11-17: "not now"; do it before the next rls-dev test. Owner: Nibble
 
 ---
 

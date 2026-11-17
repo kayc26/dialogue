@@ -9,7 +9,7 @@ adr teaching map: the example is not the teaching — these are the up-links fro
 # ADR-0008: Diabetes education bot — intake, conversation summary, and nurse handoff
 
 - **Date**: 2026-11-14
-- **Iteration**: 5
+- **Iteration**: 6
 - **Status**: Partially Implemented
 - **Deciders**: Kay, Nibble (Claude Opus 5.5)
 
@@ -276,6 +276,12 @@ The design above stands as proposed.
 - Contributors: Nibble (Claude Opus 5.5)
 - Changes: Status set to Partially Implemented, with a note on what exists (tables and access rules) and what doesn't (everything the patient or nurse sees).
 - Outcome: Accepted → Partially Implemented
+
+### Iteration 6 (2026-11-17)
+- Trigger: Nibble asked which part to build first (a code-only summary, the follow-up questions, or the care-team inbox).
+- Contributors: Kay, Nibble (Claude Opus 5.5)
+- Changes: Kay: "wait for clinical sponsor's reply". Building is on hold until the sponsor answers; the clinician field requirements are expected with that reply. KANBAN updated.
+- Outcome: Partially Implemented (on hold)
 
 ---
 
