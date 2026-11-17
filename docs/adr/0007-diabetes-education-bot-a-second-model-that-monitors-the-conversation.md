@@ -9,7 +9,7 @@ adr teaching map: the example is not the teaching — these are the up-links fro
 # ADR-0007: Diabetes education bot — a second model that monitors the conversation
 
 - **Date**: 2026-11-14
-- **Iteration**: 3
+- **Iteration**: 4
 - **Status**: Accepted
 - **Deciders**: Kay, Nibble (Claude Opus 5.5)
 
@@ -183,6 +183,14 @@ On 2026-11-14, Kay answered: **QST-MONITOR-ROLE: A** (veto and escalate only, as
   
   The monitor code and its tests stay in place; the tests run with the monitor on.
 - Outcome: Accepted (paused). Unpause condition in Open Follow-ups.
+
+### Iteration 4 (2026-11-17)
+- Trigger: Nibble suggested unpausing (the live check showed answers coming through). Kay: "there're too many false positives if we run the monitor model".
+- Contributors: Kay, Nibble (Claude Opus 5.5)
+- Changes:
+  - Looked for evidence. Production `triage_events` has no turn where the monitor ran (18 turns `monitor: none`, 7 `paused`); `kb:eval-faq` doesn't run it; the iteration-3 pause followed guard blocks (`no_citation`) and classifier failures, not monitor verdicts. So the false-positive rate is not yet measured in this project's records.
+  - Stays paused. Open: measure the rate before deciding the monitor's future (see Kay's reply).
+- Outcome: Accepted (paused)
 
 ---
 
