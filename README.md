@@ -2,6 +2,8 @@
 
 A browser-only web app, hosted on GitHub Pages, that puts an AI diabetes education assistant inside a mock patient-portal Message Center. It is built for testing with invited testers and synthetic patients. It is **not** a medical device and does not give medical advice: it answers general education questions from an approved knowledge base, refuses dose questions, and routes anything urgent to the care team or 911.
 
+**Try it: <https://kayc26.github.io/harness/>** (sign-in required; accounts are created by an admin).
+
 There is no backend of our own. The page talks directly to:
 
 - **Neon** (Postgres with row-level security, the Neon Data API, and Neon's managed Better Auth) for sign-in, membership, demo patients, the knowledge base, and conversation logs.
