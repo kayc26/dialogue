@@ -847,7 +847,8 @@ Cost: drafting about 25 cards with Haiku 5.5 over about 60k source tokens is aro
 - Changes:
   - Cause: `ANSWER_SYSTEM` names the care team twice (dose questions, the no-information line), and many FAQ passages end with a referral; the model turned it into a sign-off.
   - `ANSWER_SYSTEM` gains one rule: stop when the question is answered; refer to the care team only for doses or medicines, or a personal plan or number the passages can't give. Prompt-only, so it changes likelihood, not a guarantee; no code strips the sentence (a code trim could also remove a referral that matters).
-  - Not yet checked with real answers (a test run costs about $0.01) or deployed.
+  - Checked with six questions through the real pipeline (`scripts/ephemeral/2026-11-17-care-team-ending-questions.md`, $0.0037): four food questions no longer end with a care-team line; the dose question and the personal-number question still refer, as intended. Deployed with Kay's OK.
+  - The hike answer still opened "My sources don't list foods for after a hike" (the prompt forbids mentioning sources) and answered with low treatment: the knowledge base has no passage on eating after exercise. Content gap, not fixed here.
   - Noticed in the same answer: the hike question was answered mostly with how to treat a low (the Rule of 15), which answers a nearby question rather than the one asked.
 - Outcome: Accepted
 
