@@ -72,7 +72,9 @@ export function checkChatRequest(raw: string): Checked {
 
 export function corsHeaders(origin: string | null, cfg: ProxyConfig): Record<string, string> {
   const h: Record<string, string> = {
-    'Access-Control-Allow-Headers': 'authorization, content-type',
+    // Every header the chat's requests carry (completeChat sends X-Title). A browser asks
+    // first and sends nothing if one is missing here: "Failed to fetch" (2026-11-16).
+    'Access-Control-Allow-Headers': 'authorization, content-type, x-title',
     'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
     Vary: 'Origin',
   }

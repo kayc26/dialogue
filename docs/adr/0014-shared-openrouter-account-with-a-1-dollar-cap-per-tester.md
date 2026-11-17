@@ -9,7 +9,7 @@ adr teaching map: the example is not the teaching — these are the up-links fro
 # ADR-0014: Shared OpenRouter account with a $1 cap per tester
 
 - **Date**: 2026-11-16
-- **Iteration**: 4
+- **Iteration**: 5
 - **Status**: Implemented
 - **Deciders**: Kay, Nibble (Claude Opus 5.5)
 
@@ -143,6 +143,16 @@ c
   - Site pushed.
   - Not yet verified: a real signed-in call (no tester sign-in available to Nibble). Kay checks on the live site.
 - Outcome: Accepted
+
+### Iteration 5 (2026-11-16)
+- Trigger: Kay, on the live site: "it says Answers aren't working right now. Help is still available."
+- Contributors: Kay, Nibble (Claude Opus 5.5)
+- Changes:
+  - Found from the turn's logged calls: both failed with "Failed to fetch" in about 45 ms, and nothing was spent. The browser blocked the request at the CORS preflight: `completeChat` sends `X-Title`, and the proxy allowed only `authorization, content-type`.
+  - The iteration-4 smoke tests used curl, which skips the preflight, so they passed.
+  - Fixed: `x-title` allowed. A regression test compares the headers the chat really sends with the allow-list; it fails without the fix.
+  - Redeployed; checked with a browser-style preflight (`Access-Control-Request-Headers`). Neon kept serving the old copy for about a minute after the deploy completed.
+- Outcome: Implemented
 
 ---
 

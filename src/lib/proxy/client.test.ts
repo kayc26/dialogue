@@ -4,6 +4,7 @@
 import { describe, expect, it } from 'vitest'
 import { allowanceText, fetchAllowance } from './client'
 import { completeChat, OpenRouterError } from '../openrouter'
+import { corsHeaders, proxyConfig } from './policy'
 
 describe('the allowance line', () => {
   it('shows a percentage, never dollars', () => {
@@ -40,6 +41,25 @@ describe('model calls through the proxy', () => {
       { url: 'https://fn.example.com/chat/completions', auth: 'Bearer jwt-2' },
     ])
   })
+  describe('Regression tests', () => {
+    it("the proxy allows every header the chat's model calls send (live failure, 2026-11-16)", async () => {
+      // Bug: completeChat sends X-Title, but the proxy's CORS preflight allowed only
+      // authorization and content-type. Browsers check the preflight first and sent
+      // nothing, so every answer failed with "Failed to fetch" in ~45 ms and nothing was
+      // spent. curl skips the preflight, so the smoke tests passed. Fixed: x-title is
+      // allowed; this test compares the headers the chat really sends with the allow-list.
+      let sent: string[] = []
+      const fake = (async (_url: string, init: RequestInit) => {
+        sent = [...new Headers(init.headers).keys()]
+        return new Response('data: [DONE]\n\n', { headers: { 'content-type': 'text/event-stream' } })
+      }) as unknown as typeof fetch
+      await completeChat({ apiKey: async () => 'jwt', baseUrl: 'https://fn.example.com', model: 'm', messages: [], fetchImpl: fake })
+      const allowed = corsHeaders('https://kayc26.github.io', proxyConfig({}))['Access-Control-Allow-Headers'].split(/,\s*/)
+      expect(sent.length).toBeGreaterThan(0)
+      for (const h of sent) expect(allowed, h).toContain(h.toLowerCase())
+    })
+  })
+
   it('a used-up allowance comes back as a 402 the chat can name', async () => {
     const fake = (async () => Response.json({ error: { message: 'allowance_used' } }, { status: 402 })) as unknown as typeof fetch
     const err = await completeChat({ apiKey: async () => 'jwt', baseUrl: 'https://fn.example.com', model: 'm', messages: [], fetchImpl: fake }).catch((e) => e)
