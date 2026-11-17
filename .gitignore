@@ -14,8 +14,8 @@ dist/
 *.tsbuildinfo
 coverage/
 
-# Secrets — never commit an API key. Harness takes the key in the browser at
-# runtime (ADR-0001); anything in a .env file would be inlined into the public bundle.
+# Secrets — never commit an API key or connection string (ADR-0001, ADR-0014);
+# anything in a .env file would be inlined into the public bundle.
 .env
 .env.*
 *.local

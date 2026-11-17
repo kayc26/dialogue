@@ -1,4 +1,4 @@
-# Build, gate, and publish Harness to GitHub Pages on every push to main.
+# Build, gate, and publish DIAlogue to GitHub Pages on every push to main.
 # One-time repo setting required: Settings → Pages → Source: "GitHub Actions".
 name: Deploy to GitHub Pages
 

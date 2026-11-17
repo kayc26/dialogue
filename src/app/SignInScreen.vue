@@ -73,7 +73,7 @@ const savePassword = () =>
 
 <template>
   <main class="card">
-    <h1>Diabetes Education Assistant</h1>
+    <h1>DIAlogue: Diabetes Education Assistant</h1>
     <p class="demo">Demo for testing. Please don't type real health information.</p>
 
     <p v-if="error" class="error" role="alert">{{ error }}</p>

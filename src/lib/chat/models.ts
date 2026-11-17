@@ -68,7 +68,7 @@ export function openRouterModels(
   opts: { signal?: AbortSignal; baseUrl?: string } = {},
 ): TurnModels {
   const { signal, baseUrl } = opts
-  const title = 'Diabetes Education Assistant (demo)'
+  const title = 'DIAlogue (demo)'
   const record = (cost?: number) => {
     meter.calls++
     if (typeof cost === 'number') meter.dollars += cost

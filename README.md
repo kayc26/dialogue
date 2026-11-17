@@ -1,15 +1,15 @@
-# Harness: a diabetes education assistant inside a patient portal (demo)
+# DIAlogue: a diabetes education assistant inside a patient portal (demo)
 
 A browser-only web app, hosted on GitHub Pages, that puts an AI diabetes education assistant inside a mock patient-portal Message Center. It is built for testing with invited testers and synthetic patients. It is **not** a medical device and does not give medical advice: it answers general education questions from an approved knowledge base, refuses dose questions, and routes anything urgent to the care team or 911.
 
-**Try it: <https://kayc26.github.io/harness/>** (sign-in required; accounts are created by an admin).
+**Try it: <https://kayc26.github.io/dialogue/>** (sign-in required; accounts are created by an admin).
 
 There is no server of our own. Everything runs in Neon or the browser:
 
 - **Neon** (Postgres with row-level security, the Neon Data API, and Neon's managed Better Auth) for sign-in, membership, demo patients, the knowledge base, and conversation logs.
 - **OpenRouter** for the language models, reached only through a **Neon Function** (`llm`, [ADR-0014](docs/adr/0014-shared-openrouter-account-with-a-1-dollar-cap-per-tester.md)). The function holds the project's shared OpenRouter key, so testers never need a key and the browser never sees one. It checks the tester's sign-in and membership, allows only the assistant's models, and stops each tester at $1 of spending.
 
-The same site also still serves **Harness v1**, the general-purpose OpenRouter chat client this repo started as, at `#/harness` (see [below](#harness-v1-the-general-chat-client)).
+The project was called Harness until 2026-11-16 ([ADR-0015](docs/adr/0015-rename-the-project-from-harness-to-dialogue.md)), so older decision records and some code still use that name. The same site also still serves **Harness v1**, the general-purpose OpenRouter chat client DIAlogue grew from, at `#/harness` (see [below](#harness-v1-the-general-chat-client)).
 
 ---
 

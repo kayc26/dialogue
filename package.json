@@ -1,9 +1,9 @@
 {
-  "name": "harness",
+  "name": "dialogue",
   "version": "0.1.0",
   "private": true,
   "type": "module",
-  "description": "A browser-only agent harness for OpenRouter: chat, tool calling, localStorage. Hosted on GitHub Pages.",
+  "description": "DIAlogue: a diabetes education assistant inside a mock patient portal. Browser-only, hosted on GitHub Pages.",
   "scripts": {
     "dev": "vite",
     "build": "vite build",
