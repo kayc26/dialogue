@@ -80,7 +80,11 @@ Kay: "can we call patient_tester, careteam_tester, and admin (see both)". The ta
 
 * **Four `patient_tester` accounts** were added to production on Kay's request, the same way (`create_auth_user`, then a `members` row). Names and emails stay out of this record.
 * `patient_tester` because the care-team view depends on summaries, which are on hold (ADR-0008). Each is capped at $1 by the `llm` proxy (only `admin` is uncapped).
-* Creating an account emails no one. Each tester sets a first password with "set a password" on the sign-in screen, which sends a code from Neon's shared sender.
+* Creating an account emails no one. Each tester sets a first password with "set a password" on the sign-in screen, which sends them a code.
+
+**Codes stopped arriving; production now sends through Gmail SMTP.** Same day, the testers' codes never arrived, not even in junk. Neon had created every code (rows in `neon_auth.verification`), so the failure was in delivery. A code sent to Kay's own account on the same Penn domain didn't arrive either, though one had on 11-14. Neon's status page showed no incident. Our best explanation is that Penn's mail system stopped accepting Neon's shared sender (`auth@mail.myneon.app`). Kay switched production's email provider to **standard SMTP through `smtp.gmail.com`** with an app password, entered by Kay in the Neon console so it never passed through Nibble. Neon's SMTP test email reached Kay's Penn inbox. The account and password aren't recorded here.
+* Codes still expire after 5 minutes, and each new request replaces the previous code.
+* rls-dev still uses the shared sender. Switch it the same way before relying on emails there.
 
 **Second mutation lesson.** Widening `sessions_create` to any member didn't make "the care team can't start a session" fail. The test sent `Prefer: return=representation`, and RETURNING needs read access too, so the insert was blocked by the *read* rule, not the write rule. A real client can send `return=minimal`. Every write-denial test now uses `return=minimal`. Re-run against widened `sessions_create` and `messages_create`, exactly the two expected tests failed. Rows the weakened rules had let in were deleted, the real rules were restored, and the suite was back to 24/24. The suite also now signs in sequentially and retries on Neon Auth's 429 rate limit.
 
