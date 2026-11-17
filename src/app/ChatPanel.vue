@@ -128,7 +128,7 @@ async function send(): Promise<void> {
     usedModels = true
     try {
       outcome = await runTurn({
-        message, history, profile: props.profile, index: index.value, cards: cardIndex.value, diabetesType: props.diabetesType, doseSession,
+        message, history, profile: props.profile, index: index.value, passages: props.passages, cards: cardIndex.value, diabetesType: props.diabetesType, doseSession,
         models: openRouterModels(getJwt, meter, { baseUrl: LLM_PROXY_URL }),
       })
     } catch (e) {

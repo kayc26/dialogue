@@ -106,7 +106,7 @@ for (const [i, f] of faq.entries()) {
   meter.notes = []
   const o = await runTurn({
     message: f.q, history: [], profile: { history_of_dka: false, pregnant: false, uses_pump: false },
-    index, cards: cardIndex, cardsEnabled: useCards, diabetesType, hideDosePassages, enforceDoseRules, doseSession: false, models: openRouterModels(key, meter),
+    index, passages, cards: cardIndex, cardsEnabled: useCards, diabetesType, hideDosePassages, enforceDoseRules, doseSession: false, models: openRouterModels(key, meter),
   })
   const kinds = o.cards.map((c) => c.kind).join('+')
   // What the paused dose rules would have done (always shown, so pausing them never hides it).
@@ -122,7 +122,7 @@ for (const [i, f] of faq.entries()) {
     '',
     `**Reference answer**: ${f.a || "(none given)"}`,
     '',
-    `**Assistant** (tier ${o.tier}; card step: ${o.card ? `${o.card.how}${o.card.id ? ` \`${o.card.id}\`` : ''}, shortlist ${o.card.shortlist.join(', ') || 'none'}` : 'not run'}${o.guard ? `; guard blocked: ${o.guard}` : ''}):`,
+    `**Assistant** (tier ${o.tier}; material: ${o.retrieval ?? '-'}${o.topics?.length ? ` (${o.topics.join(', ')})` : ''}; card step: ${o.card ? `${o.card.how}${o.card.id ? ` \`${o.card.id}\`` : ''}, shortlist ${o.card.shortlist.join(', ') || 'none'}` : 'not run'}${o.guard ? `; guard blocked: ${o.guard}` : ''}):`,
     '',
     ...o.cards.map(shown),
     '',

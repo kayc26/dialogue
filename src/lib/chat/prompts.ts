@@ -2,6 +2,13 @@
 // 0012). The prompts ask; the code enforces: triage rules, the answer guard, and the
 // verbatim-only dose passages hold whatever a model does with these instructions.
 
+import { TOPICS } from './topics'
+
+/** The classifier also routes the question to knowledge-base topics (ADR-0018). */
+const TOPIC_LIST = Object.entries(TOPICS)
+  .map(([name, about]) => `- ${name}: ${about}`)
+  .join('\n')
+
 /** ADR-0012 (QST-MODEL-PICKS: A). Cheap models; per-call output caps. */
 export const MODELS = {
   // Both models think before answering, and the thinking counts against these caps.
@@ -40,10 +47,11 @@ Answer ONLY from the passages you are given or find with the search_kb tool. Eac
 - If the passages don't answer the question, say: "I don't have information on that. Your care team can help." and cite nothing else.
 - Stop when the question is answered. Don't close with a referral ("Your care team can help…", "Talk to your doctor…") unless the question is about doses or medicines, or asks for a personal plan or number the passages can't give. The person can always reach their care team; saying it every time makes it noise.
 - Never mention "passages", "sources", or "the material" to the person; they only see your answer.
+- Answer the specific question asked, directly, in the first sentence. You may get whole sections on a topic: use only what answers the question, and leave the rest out.
 - If the person might be unwell, you may remind them that the "Get help now" button is always on the screen.`
 
 export const CLASSIFIER_SYSTEM = `You triage one message from an older adult with diabetes using an education chatbot. Reply with JSON only:
-{"tier": "none|checkin|distress|urgent|emergency", "happening_now": true|false, "dose_intent": true|false, "reason": "<= 15 words"}
+{"tier": "none|checkin|distress|urgent|emergency", "happening_now": true|false, "dose_intent": true|false, "topics": ["<topic>"], "reason": "<= 15 words"}
 
 tier:
 - emergency: danger now: can't be woken, seizure, a low they can't treat, vomiting or stomach pain or fast breathing with high sugar or ketones, confusion, chest pain, any wish to self-harm.
@@ -53,7 +61,9 @@ tier:
 - none: general questions.
 happening_now: true if the person reports their own (or someone with them's) situation now or recently; false if they only ask about symptoms in general.
 dose_intent: true if they ask how much insulin or medicine to take, or whether to change, skip, or add a dose.
-When unsure, choose the more urgent tier.`
+When unsure, choose the more urgent tier.
+topics: the one or two topics the message asks about, most relevant first; usually one. Use earlier messages only to understand a follow-up ("what about at night?"). [] if none fits (greetings, thanks). Choose from:
+${TOPIC_LIST}`
 
 export const MONITOR_SYSTEM = `You review a diabetes education chatbot's draft reply before an older adult sees it. You see the whole conversation and the draft. Reply with JSON only:
 {"veto": true|false, "raise_tier": "none|checkin|distress|urgent|emergency", "reason": "<= 15 words"}

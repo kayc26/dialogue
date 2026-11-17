@@ -23,6 +23,7 @@ import { ANSWER_SYSTEM, ANSWER_TOOL_ROUNDS, CARDS_PAUSED, MONITOR_PAUSED } from 
 import { direction, type DiabetesType, type Hit, type Index, type KbPassage, type SearchOptions } from './retrieve'
 import { detectLanguage, type Lang } from './language'
 import { socialIntent, type SocialIntent } from './social'
+import { sectionPassages, type Topic } from './topics'
 import { maxTier, triageRules, type Profile, type Tier } from './triage'
 
 export type Card =
@@ -78,6 +79,8 @@ export interface TurnInput {
   doseSession: boolean // sticky once a dose/medication topic has come up (ADR-0007)
   models: TurnModels
   timeoutMs?: number
+  /** All loaded passages, for the curated topic sections (ADR-0018). Absent: word search only. */
+  passages?: KbPassage[]
   /** Overrides MONITOR_PAUSED (tests run both ways). */
   monitorEnabled?: boolean
   /** Overrides CARDS_PAUSED (tests run both ways). */
@@ -99,6 +102,10 @@ export interface TurnOutcome {
   /** The model's draft when the guard blocked it, kept for the care-team log so a
    *  block can be diagnosed later (the patient never sees it). */
   blockedDraft?: string
+  /** The classifier's topics (ADR-0018). */
+  topics?: Topic[]
+  /** How the answer's material was found: whole topic sections, or word search. Null when no answer was attempted. */
+  retrieval?: 'topics' | 'search' | null
   monitor: 'none' | 'blocking' | 'background' | 'paused'
   monitorVerdict: MonitorVerdict | null
   /** For background review: resolves after display; may raise the tier next screen. */
@@ -208,7 +215,9 @@ export async function runTurn(input: TurnInput): Promise<TurnOutcome> {
 
   // 2. Classifier.
   modelCalls++
-  const triage = combineTriage(rules, parseClassifier(await withTimeout(models.classify(message, input.history.slice(-4)), timeoutMs)))
+  const classified = parseClassifier(await withTimeout(models.classify(message, input.history.slice(-4)), timeoutMs))
+  const triage = combineTriage(rules, classified)
+  const topics = classified?.topics ?? [] // ADR-0018: which knowledge-base sections to read
   let tier = triage.tier
   const doseSession = input.doseSession || triage.doseIntent || MEDICAL_TOPIC.test(message) && /\b(insulin|dose|medic|pump|shot|injection)\w*/i.test(message)
 
@@ -229,10 +238,11 @@ export async function runTurn(input: TurnInput): Promise<TurnOutcome> {
   const hasPassage = () => cards.some((c) => c.kind === 'passage')
 
   let cardStep: CardStep | null = null
+  let retrieval: TurnOutcome['retrieval'] = null
   // Set when a book-number sentence was trimmed from an answer that is still shown.
   let trimNote: Pick<TurnOutcome, 'guard' | 'blockedDraft'> = { guard: null }
   const done = (extra: Partial<TurnOutcome> = {}): TurnOutcome => ({
-    triage, tier, cards, doseSession, monitor: 'none', monitorVerdict: null, background: null, modelCalls, card: cardStep, ...trimNote, ...extra,
+    triage, tier, cards, doseSession, monitor: 'none', monitorVerdict: null, background: null, modelCalls, card: cardStep, topics, retrieval, ...trimNote, ...extra,
   })
 
   // 2b. Not English (ADR-0017, QST-LANG-FLOOR: A). The fixed rules above are English
@@ -289,13 +299,19 @@ export async function runTurn(input: TurnInput): Promise<TurnOutcome> {
     }
   }
 
-  // 4–5. Retrieval.
+  // 4–5. Retrieval. Word search always runs: it picks the dose passage below and ranks
+  // passages by relevance for the fallback after a blocked answer.
   const hits: Hit[] = index.search(message, 8, byType)
   const top = hits[0]
   // A dose-tagged best match is never given to the model; it is shown word for word,
   // but only when no answer is shown (as the one passage in place of an answer).
   const dosePassage = top && hidden(top.passage) && showable(top.passage) && MEDICAL_TOPIC.test(message) ? top.passage : null
-  const context = hits.filter((h) => !hidden(h.passage) && h.score >= MIN_SCORE).slice(0, 4).map((h) => h.passage)
+  // ADR-0018 (QST-RETRIEVAL-SHAPE: A): the whole curated sections for the classifier's
+  // topics, plus the few best book passages. No topic, no loaded passages, or a failed
+  // classifier: word search's top 4, as before.
+  const routed = input.passages ? sectionPassages(topics, message, input.passages, index, { diabetesType: input.diabetesType, hidden }) : []
+  retrieval = routed.length ? 'topics' : 'search'
+  const context = routed.length ? routed : hits.filter((h) => !hidden(h.passage) && h.score >= MIN_SCORE).slice(0, 4).map((h) => h.passage)
   if (context.length === 0) {
     if (dosePassage && !hasPassage()) cards.push({ kind: 'passage', passage: dosePassage, why: 'dose' })
     else if (!hasPassage()) cards.push({ kind: 'no_info' })
@@ -338,7 +354,12 @@ export async function runTurn(input: TurnInput): Promise<TurnOutcome> {
   const fallback = (): void => {
     if (hasPassage()) return // an urgent passage is already the reply's body
     if (dosePassage) return void cards.push({ kind: 'passage', passage: dosePassage, why: 'dose' })
-    const best = context.find(showable) // by relevance, not priority: a less relevant FAQ passage must not stand in for an answer
+    // By relevance, not priority: a less relevant FAQ passage must not stand in for an
+    // answer. Routed sections are in priority order, so rank them by the search hits.
+    const inContext = new Set(context.map((p) => p.id))
+    const best = routed.length
+      ? index.search(message, 60, byType).map((h) => h.passage).find((p) => inContext.has(p.id) && showable(p) && !hidden(p))
+      : context.find(showable)
     cards.push(best ? { kind: 'passage', passage: best, why: 'fallback' } : { kind: 'no_info' })
   }
   if (!verdict.ok && !trimmed) {

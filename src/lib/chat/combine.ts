@@ -6,6 +6,7 @@
 //   - A failed, slow, or unreadable classifier counts as at least "check-in", never
 //     as "none".
 
+import { validTopics, type Topic } from './topics'
 import { maxTier, type Tier, type TriageResult } from './triage'
 
 export interface ClassifierResult {
@@ -13,6 +14,8 @@ export interface ClassifierResult {
   happening_now: boolean
   dose_intent: boolean
   reason: string
+  /** Up to two knowledge-base topics for the answer (ADR-0018); empty when none fits. */
+  topics: Topic[]
 }
 
 const TIERS: Tier[] = ['none', 'checkin', 'distress', 'urgent', 'emergency']
@@ -29,6 +32,7 @@ export function parseClassifier(text: string | null | undefined): ClassifierResu
       happening_now: o.happening_now,
       dose_intent: o.dose_intent === true,
       reason: typeof o.reason === 'string' ? o.reason.slice(0, 200) : '',
+      topics: validTopics(o.topics),
     }
   } catch {
     return null

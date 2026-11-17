@@ -72,6 +72,8 @@ export class ConversationLog {
         model_calls: outcome.modelCalls,
         card: outcome.card, // ADR-0013: which card answered, or why none did
         social: outcome.cards.flatMap((c) => (c.kind === 'social' ? [c.intent] : []))[0] ?? null, // ADR-0016: which fixed small-talk reply, if any
+        topics: outcome.topics ?? [], // ADR-0018: the knowledge-base topics the classifier chose
+        retrieval: outcome.retrieval ?? null, // ADR-0018: "topics" (whole sections) or "search" (word search fallback)
         language: outcome.cards.flatMap((c) => (c.kind === 'language' ? [c.lang] : []))[0] ?? 'en', // ADR-0017
         calls, // per-call finish reason, tokens, timing (models.ts CallNote)
       },
