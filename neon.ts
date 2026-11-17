@@ -15,9 +15,9 @@ export default defineConfig({
       source: "./functions/llm/index.ts",
       env: {
         OPENROUTER_API_KEY: { value: process.env.OPENROUTER_API_KEY, required: true },
-        CAP_DOLLARS: { value: "1" },
-        UNCAPPED_ROLES: { value: "admin" },
-        ALLOWED_ORIGINS: { value: "https://kayc26.github.io,http://localhost:5173" },
+        CAP_DOLLARS: { value: "1", required: false },
+        UNCAPPED_ROLES: { value: "admin", required: false },
+        ALLOWED_ORIGINS: { value: "https://kayc26.github.io,http://localhost:5173", required: false },
       },
     },
   },
