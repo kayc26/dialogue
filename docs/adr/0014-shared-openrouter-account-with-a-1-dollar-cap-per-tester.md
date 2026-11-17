@@ -9,8 +9,8 @@ adr teaching map: the example is not the teaching — these are the up-links fro
 # ADR-0014: Shared OpenRouter account with a $1 cap per tester
 
 - **Date**: 2026-11-16
-- **Iteration**: 2
-- **Status**: Draft
+- **Iteration**: 3
+- **Status**: Accepted
 - **Deciders**: Kay, Nibble (Claude Opus 5.5)
 
 **TL;DR**: Kay wants testers on the shared OpenRouter account, capped at $1 each, with the chat showing a percentage of the allowance used instead of dollars. A static site can't hold a shared key secretly, so the question is how to share the account safely. Recommendation (iteration 2): keep the one shared key in a Neon Function inside the existing Neon project, which checks sign-in, tracks each tester's spending in the database, and stops at $1.
@@ -45,7 +45,7 @@ adr teaching map: the example is not the teaching — these are the up-links fro
 ## Questions
 
 ### QST-KEY-SHARING: How do testers use the shared OpenRouter account, each capped at $1?
-- Status: unanswered
+- Status: answered
 - Why asking: Kay asked to use "the shared openrouter key in the current local env if that's possible". It's possible to share the *account*. Sharing the *key* through the website isn't safe: the site has no server, so any key it uses is visible to anyone who opens it, and a $1 cap kept in the browser can be bypassed. Each option below gives every tester a $1 limit and lets the chat show a percentage instead of dollars.
 - Need: pick a letter (or override — any shape answers)
 
@@ -66,14 +66,34 @@ That matches Kay's actual ask: *one* shared key, with nothing to set up per test
 
 *Confidence*: 0.7 — because Neon Functions are new to this project (nothing deployed yet), and the deploy step (Neon CLI, secrets) hasn't been tried. *If wrong*: if deploying a function or verifying the sign-in token there doesn't work, choose **B**.
 
-**ANS:** (by Kay)
-[Fill this in]
+**ANS:** (by Kay, 2026-11-16, in chat)
+c
 
 ---
 
 ## Decision
 
-Pending QST-KEY-SHARING. Whatever is chosen, the chat stops showing dollars and shows the percentage of the tester's $1 allowance used.
+### Chosen: C — the shared key in a Neon Function, in the existing Neon project (Kay, 2026-11-16)
+
+**How it's built** (commit `a3e9fd6`):
+- **Neon Function `llm`** (`functions/llm/index.ts`, declared in `neon.ts`).
+  - The shared OpenRouter key is read from `.env.local` when deploying, so it is never in the repo or the site.
+  - It verifies the caller's Neon Auth token (Ed25519, WebCrypto) and checks membership.
+  - Testers are refused past $1 (`CAP_DOLLARS`). The admin is metered but not capped (`UNCAPPED_ROLES`).
+  - Only the assistant's models get through, each at its output cap (ADR-0012).
+  - It answers browsers only from the site's origins.
+  - It streams OpenRouter's reply through unchanged and records its cost.
+- **Logic** in `src/lib/proxy/`, tested offline in the gate.
+- **Migration 0004:** `public.llm_spend`, written only by the function; no Data API access.
+- **The chat:** no key form and no dollar amount. Model calls go to the proxy with a fresh sign-in token. Below the Ask box it shows "You've used N% of your test allowance"; at 100%, answers turn off and the help button stays.
+
+**Trade-offs accepted**:
+- A tester can overshoot $1 by at most one turn's cost: spending is checked before a call and recorded after it.
+- The function is a new deployed piece, though Neon hosts it next to the database.
+
+### Consequences
+- ADR-0001 still holds: no key in the build. Testers no longer paste a key at all.
+- The Harness v1 page (`#/harness`) and `kb:eval-faq` still use an OpenRouter key directly; they are not tester-facing.
 
 ---
 
@@ -101,6 +121,16 @@ Pending QST-KEY-SHARING. Whatever is chosen, the chat stops showing dollars and 
   - Neon Functions (same project) can: secrets, sign-in verification, browser calls, streaming, free-plan allowance (Neon docs: runtime limits, authentication, plans).
   - Option C rewritten as a Neon Function. Recommendation walked back from B to C, stated in the Recommendation.
 - Outcome: Draft (one question open)
+
+### Iteration 3 (2026-11-16)
+- Trigger: Kay answered QST-KEY-SHARING: "c".
+- Contributors: Kay, Nibble (Claude Opus 5.5)
+- Changes:
+  - Decision filled in.
+  - Built and tested offline (`a3e9fd6`, 268 tests).
+  - Migration 0004 applied to rls-dev.
+  - Deploying the function with the Neon CLI was blocked by the session's permission rules. Kay runs the deploy, which is also the step that moves the key from `.env.local` to Neon.
+- Outcome: Draft → Accepted (no questions open)
 
 ---
 
