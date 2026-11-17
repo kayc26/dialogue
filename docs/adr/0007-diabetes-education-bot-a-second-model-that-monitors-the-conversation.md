@@ -227,6 +227,7 @@ On 2026-11-14, Kay answered: **QST-MONITOR-ROLE: A** (veto and escalate only, as
 - Contributors: Kay, Nibble (Claude Opus 5.5)
 - Changes: `MONITOR_PAUSED = false`; comments updated; gate green (286 tests, which already ran with the monitor on). Not yet deployed. `kb:eval-faq` now runs the monitor too (about one extra cheap call per question).
 - Outcome: Accepted (monitor on, not yet deployed)
+- Verified live after the push (2026-11-17, Kay's test): a dose question in words got the refusal and set the session's dose flag; the next two answers were checked before display (`monitor: blocking`), both approved (`veto: false`); the hike answer was raised to check-in ("mild glucose concern"), one of the mild raises the measurement predicted.
 
 ---
 
