@@ -48,7 +48,10 @@ export async function listModels(fetchImpl: FetchFn = fetch, signal?: AbortSigna
 }
 
 export interface CompleteOptions {
-  apiKey: string
+  /** The OpenRouter key, or (through the model proxy, ADR-0014) a function returning a fresh sign-in token. */
+  apiKey: string | (() => Promise<string>)
+  /** Where to send it: OpenRouter by default, or the model proxy's URL. */
+  baseUrl?: string
   model: string
   messages: ChatMessage[]
   tools?: ToolSpec[]
@@ -91,10 +94,11 @@ export async function completeChat(opts: CompleteOptions): Promise<CompletionRes
     if (opts.json) body.response_format = { type: 'json_object' }
     if (opts.reasoningEffort) body.reasoning = { effort: opts.reasoningEffort, exclude: true }
 
-    const res = await fetchImpl(`${API_BASE}/chat/completions`, {
+    const bearer = typeof opts.apiKey === 'function' ? await opts.apiKey() : opts.apiKey
+    const res = await fetchImpl(`${opts.baseUrl ?? API_BASE}/chat/completions`, {
       method: 'POST',
       headers: {
-        Authorization: `Bearer ${opts.apiKey}`,
+        Authorization: `Bearer ${bearer}`,
         'Content-Type': 'application/json',
         'X-Title': opts.title ?? 'Harness',
       },
@@ -166,6 +170,7 @@ function friendly(status: number, detail: string): string {
     case 401:
       return `OpenRouter rejected the API key (401). Check it in Settings. (${detail})`
     case 402:
+      if (/allowance_used/.test(detail)) return "You've used your test allowance (402)."
       return `Out of OpenRouter credits (402). (${detail})`
     case 429:
       return `Rate limited by OpenRouter (429); wait a moment and retry. (${detail})`

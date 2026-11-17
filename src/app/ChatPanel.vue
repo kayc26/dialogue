@@ -3,10 +3,14 @@
 // (docs/mockups/portal-assistant.html): a scrolling message area on the soft background,
 // white assistant bubbles with source chips, the patient's bubbles in Penn Blue, and the
 // "Ask" composer pinned at the bottom. Each message runs one turn (src/lib/chat/turn.ts)
-// and is saved to Neon. The OpenRouter key is the tester's own and lives only in this
-// browser (ADR-0001). Without a key, or if a model call fails, the fixed-rule triage
-// still runs and still shows help: the help path never depends on the key.
-import { computed, nextTick, ref, watch } from 'vue'
+// and is saved to Neon. Model calls go through the model proxy (ADR-0014, C): a Neon
+// Function holding the shared OpenRouter key, which the browser never sees. The tester's
+// sign-in token is the only credential here, and the proxy caps each tester at $1, shown
+// below the Ask box as a percentage, never in dollars. If a model call fails, the
+// fixed-rule triage still runs and still shows help: the help path never depends on it.
+import { computed, nextTick, onMounted, ref, watch } from 'vue'
+import { LLM_PROXY_URL } from '../config'
+import { allowanceText, fetchAllowance, type AllowanceView } from '../lib/proxy/client'
 import type { ChatMessage } from '../lib/types'
 import type { DataClient } from '../lib/neon/data'
 import { buildIndex, type DiabetesType, type KbPassage } from '../lib/chat/retrieve'
@@ -28,33 +32,14 @@ const props = defineProps<{
   diabetesType: DiabetesType
 }>()
 
-const KEY = 'dea.openrouterKey'
-const readKey = () => {
-  try {
-    return localStorage.getItem(KEY) ?? ''
-  } catch {
-    return ''
-  }
+// The tester's sign-in token, fresh for each call (tokens last 15 minutes).
+const getJwt = () => props.data.getJwt()
+const allowance = ref<AllowanceView | null>(null)
+async function refreshAllowance(): Promise<void> {
+  allowance.value = await fetchAllowance(LLM_PROXY_URL, getJwt)
 }
-const apiKey = ref(readKey())
-const keyDraft = ref('')
-function saveKey(): void {
-  apiKey.value = keyDraft.value.trim()
-  keyDraft.value = ''
-  try {
-    localStorage.setItem(KEY, apiKey.value)
-  } catch {
-    /* the key then lasts for this page only */
-  }
-}
-function forgetKey(): void {
-  apiKey.value = ''
-  try {
-    localStorage.removeItem(KEY)
-  } catch {
-    /* nothing stored */
-  }
-}
+onMounted(refreshAllowance)
+const allowanceUsedUp = computed(() => allowance.value?.percent !== null && (allowance.value?.percent ?? 0) >= 100)
 
 interface Item {
   who: 'you' | 'assistant' | 'note'
@@ -68,7 +53,6 @@ const saveProblem = ref('')
 const index = computed(() => buildIndex(props.passages))
 const cardIndex = computed(() => buildCardIndex(props.cards, props.passages))
 const meter: CostMeter = { dollars: 0, calls: 0 }
-const cost = ref(0)
 let history: ChatMessage[] = []
 let doseSession = false
 let tier: Tier = 'none'
@@ -101,7 +85,7 @@ async function scrollDown(): Promise<void> {
 }
 
 /**
- * Rules-only turn. With no key, show exactly what the fixed rules found (nothing for a
+ * Rules-only turn. With answers off (allowance used up), show exactly what the fixed rules found (nothing for a
  * plain question). When the model path *fails* mid-turn, the ADR-0006 floor applies:
  * a failure counts as at least check-in.
  */
@@ -111,7 +95,7 @@ function rulesOnly(message: string, failed: boolean): TurnOutcome {
   const cards: Card[] = t === 'none' ? [] : [{ kind: 'escalation', tier: t, criteria: r.criteria }]
   if (r.doseIntent) cards.push({ kind: 'dose_refusal' })
   return {
-    triage: { tier: t, criteria: [...r.criteria, failed ? 'model_unavailable' : 'no_key'], doseIntent: r.doseIntent, softened: false, classifierFailed: true },
+    triage: { tier: t, criteria: [...r.criteria, failed ? 'model_unavailable' : 'allowance_used'], doseIntent: r.doseIntent, softened: false, classifierFailed: true },
     tier: t, cards, doseSession, guard: null, monitor: 'none', monitorVerdict: null, background: null, modelCalls: 0, card: null,
   }
 }
@@ -131,27 +115,29 @@ async function send(): Promise<void> {
 
   let outcome: TurnOutcome
   let note = ''
-  if (!apiKey.value) {
+  let usedModels = false
+  if (allowanceUsedUp.value) {
     outcome = rulesOnly(message, false)
-    note = 'To get answers, add your OpenRouter key (below the Ask box). Help is always available with the red button.'
+    note = "You've used all of your test allowance, so answers are off. Help is always available with the red button."
   } else {
     meter.notes = [] // this turn's model calls, for the care-team log
+    usedModels = true
     try {
       outcome = await runTurn({
         message, history, profile: props.profile, index: index.value, cards: cardIndex.value, diabetesType: props.diabetesType, doseSession,
-        models: openRouterModels(apiKey.value, meter),
+        models: openRouterModels(getJwt, meter, { baseUrl: LLM_PROXY_URL }),
       })
     } catch (e) {
       outcome = rulesOnly(message, true)
       note =
-        e instanceof OpenRouterError && e.status === 401
-          ? 'Your OpenRouter key was not accepted. Check it below the Ask box.'
-          : e instanceof OpenRouterError && e.status === 402
-            ? 'The OpenRouter key is out of credit.'
+        e instanceof OpenRouterError && e.status === 402
+          ? "You've used all of your test allowance, so answers are off. Help is always available with the red button."
+          : e instanceof OpenRouterError && (e.status === 401 || e.status === 403)
+            ? 'Your sign-in has expired. Please sign out and in again.'
             : "Answers aren't working right now. Help is still available."
     }
+    void refreshAllowance()
   }
-  cost.value = meter.dollars
   doseSession = outcome.doseSession
   tier = outcome.tier
   if (outcome.cards.length) items.value.push({ who: 'assistant', cards: outcome.cards })
@@ -160,13 +146,12 @@ async function send(): Promise<void> {
   busy.value = false
   await scrollDown()
 
-  log.record(message, outcome, apiKey.value ? [...(meter.notes ?? [])] : []).catch(() => {
+  log.record(message, outcome, usedModels ? [...(meter.notes ?? [])] : []).catch(() => {
     saveProblem.value = "This conversation couldn't be saved. You can keep chatting."
   })
 
   // Background review (ADR-0007): it can only escalate, never take back what was shown.
   outcome.background?.then(async (v) => {
-    cost.value = meter.dollars
     if (!v) return
     const turn = log.lastTurn
     if (TIER_RANK[v.raise_tier] > TIER_RANK[tier]) {
@@ -289,18 +274,8 @@ const docTitles = (sources: KbPassage[], label: KbPassage['source_label']) =>
         messages, or advise on doses.
       </p>
       <p v-if="saveProblem" class="note-text" role="status">{{ saveProblem }}</p>
-      <details class="key">
-        <summary>
-          {{ apiKey ? 'OpenRouter key saved in this browser' : 'Add your OpenRouter key to get answers' }}
-          · this chat has used about ${{ cost.toFixed(4) }}
-        </summary>
-        <form v-if="!apiKey" class="keyform" @submit.prevent="saveKey">
-          <label for="key">OpenRouter key (stays in this browser only)</label>
-          <input id="key" v-model="keyDraft" type="password" autocomplete="off" spellcheck="false" />
-          <button type="submit" :disabled="!keyDraft.trim()">Save key</button>
-        </form>
-        <button v-else type="button" @click="forgetKey">Remove key from this browser</button>
-      </details>
+      <!-- ADR-0014: a percentage of the tester's allowance, never dollars. -->
+      <p v-if="allowance" class="key" role="status">{{ allowanceText(allowance) }}</p>
     </div>
   </section>
 </template>
@@ -517,18 +492,6 @@ button {
   margin-top: 0.3rem;
   font-size: 0.8rem;
   color: var(--muted);
-}
-.key summary {
-  cursor: pointer;
-  min-height: 2.25rem;
-  display: flex;
-  align-items: center;
-}
-.keyform {
-  display: flex;
-  flex-direction: column;
-  gap: 0.4rem;
-  max-width: 28rem;
 }
 @media (max-width: 700px) {
   .msgs {

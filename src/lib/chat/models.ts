@@ -57,7 +57,17 @@ async function noted<T extends Reply>(meter: CostMeter, role: CallNote['role'], 
   }
 }
 
-export function openRouterModels(apiKey: string, meter: CostMeter, signal?: AbortSignal): TurnModels {
+/**
+ * `apiKey` is an OpenRouter key (kb:eval-faq runs locally with one), or a function that
+ * returns a fresh sign-in token when calls go through the model proxy (ADR-0014, C), in
+ * which case `baseUrl` is the proxy's URL and the shared key never reaches the browser.
+ */
+export function openRouterModels(
+  apiKey: string | (() => Promise<string>),
+  meter: CostMeter,
+  opts: { signal?: AbortSignal; baseUrl?: string } = {},
+): TurnModels {
+  const { signal, baseUrl } = opts
   const title = 'Diabetes Education Assistant (demo)'
   const record = (cost?: number) => {
     meter.calls++
@@ -69,7 +79,7 @@ export function openRouterModels(apiKey: string, meter: CostMeter, signal?: Abor
       // back to a check-in (Kay's test, 2026-11-14). The prompt asks for JSON and
       // parseClassifier / parseMonitor take the {...} out of plain text.
       completeChat({
-        apiKey, model: model.id, maxTokens: model.maxTokens, temperature: 0, reasoningEffort: 'low', title, signal,
+        apiKey, baseUrl, model: model.id, maxTokens: model.maxTokens, temperature: 0, reasoningEffort: 'low', title, signal,
         messages: [{ role: 'system', content: system }, { role: 'user', content: user }],
       }),
     )
@@ -79,7 +89,7 @@ export function openRouterModels(apiKey: string, meter: CostMeter, signal?: Abor
   const complete: CompleteFn = async (messages, tools, onContent) => {
     const r = await noted(meter, 'answer', MODELS.answer.id, () =>
       completeChat({
-        apiKey, model: MODELS.answer.id, maxTokens: MODELS.answer.maxTokens, temperature: 0.2, title, signal,
+        apiKey, baseUrl, model: MODELS.answer.id, maxTokens: MODELS.answer.maxTokens, temperature: 0.2, title, signal,
         messages, tools, onContent,
       }),
     )

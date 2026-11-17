@@ -21,6 +21,8 @@ export interface DataClient {
   get<T>(path: string): Promise<T>
   /** Insert; returns the inserted rows. */
   post?<T>(table: string, body: unknown): Promise<T[]>
+  /** A fresh sign-in token, for calls outside the Data API (the model proxy, ADR-0014). */
+  getJwt?(): Promise<string>
 }
 
 const realWait = (ms: number) => new Promise<void>((r) => setTimeout(r, ms))
@@ -32,6 +34,7 @@ export function createDataClient(
   wait: (ms: number) => Promise<void> = realWait,
 ): Required<DataClient> {
   return {
+    getJwt,
     async get<T>(path: string): Promise<T> {
       const res = await fetchImpl(`${baseUrl}/${path}`, {
         headers: { Authorization: `Bearer ${await getJwt()}`, Accept: 'application/json' },
