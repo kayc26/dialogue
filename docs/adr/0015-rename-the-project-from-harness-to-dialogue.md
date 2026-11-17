@@ -112,7 +112,7 @@ a
 - [x] Make the in-repo edits, run the gate, commit (`30eb0f1`, `6121e50`). Owner: Nibble
 - [x] Rename the GitHub repo to `dialogue`, set the new remote, push (deployed 2026-11-17, run 43997692940). Owner: Kay, Nibble
 - [x] Rename the local folder to `~/CIS7000/dialogue` and copy Claude Code's project memory. Owner: Kay
-- [ ] After the first deploy at the new URL, sign in there and check an answer. Owner: Kay
+- [x] After the first deploy at the new URL, sign in there and check an answer (2026-11-17; ADR-0014 iteration 6). Owner: Kay
 - [ ] Delete the old memory folder `~/.claude/projects/-Users-kaychen-CIS7000-harness/` once the new one is confirmed. Owner: Kay
 
 ---

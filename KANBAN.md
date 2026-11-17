@@ -47,7 +47,6 @@ Nothing in the app writes to `summaries` or `replies` today; the tables and thei
 
 ### Shared key (ADR-0014)
 
-- [ ] **Verify a real signed-in call on production:** the allowance line shows, a question gets an answer, and a row lands in `public.llm_spend`. Only preflight and unsigned calls have been checked so far. [ADR-0014](docs/adr/0014-shared-openrouter-account-with-a-1-dollar-cap-per-tester.md)
 - [ ] **Redeploy `llm` to rls-dev**: it still runs the version without the `X-Title` fix, so browsers are blocked there. [ADR-0014](docs/adr/0014-shared-openrouter-account-with-a-1-dollar-cap-per-tester.md)
 
 ### Housekeeping
@@ -90,4 +89,6 @@ Nothing in the app writes to `summaries` or `replies` today; the tables and thei
 - [x] Model proxy `llm` built and deployed to rls-dev and production: sign-in and membership check, model allow-list, $1 cap per tester (admin metered, not capped), cost recorded in `llm_spend` (migration 0004). ADR-0014
 - [x] Chat shows "N% of your test allowance" instead of dollars; no key form for testers. ADR-0014
 - [x] Proxy CORS preflight fixed (`X-Title` allowed), with a regression test. ADR-0014
+- [x] Signed-in call verified live: allowance line, answers, cost rows in `llm_spend`. ADR-0014
+- [x] Project renamed to DIAlogue; site moved to `kayc26.github.io/dialogue/`. ADR-0015
 - [x] README rewritten to describe the current code base, including the shared-key proxy.

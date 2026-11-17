@@ -9,7 +9,7 @@ adr teaching map: the example is not the teaching — these are the up-links fro
 # ADR-0014: Shared OpenRouter account with a $1 cap per tester
 
 - **Date**: 2026-11-16
-- **Iteration**: 5
+- **Iteration**: 6
 - **Status**: Implemented
 - **Deciders**: Kay, Nibble (Claude Opus 5.5)
 
@@ -102,7 +102,7 @@ c
 - [x] Kay answers QST-KEY-SHARING (C, iteration 3). Owner: Kay
 - [x] C: deploy the Neon Function to rls-dev, then production (iteration 4). Owner: Nibble
 - [x] Replace the dollar amount in the chat with "N% of your allowance used" (`a3e9fd6`). Owner: Nibble
-- [ ] Verify a real signed-in call on production: the allowance line shows, a question is answered, and a row lands in `public.llm_spend`. Owner: Kay
+- [x] Verify a real signed-in call on production: the allowance line shows, a question is answered, and a row lands in `public.llm_spend` (iteration 6). Owner: Kay
 - [ ] Redeploy `llm` to rls-dev; it still runs the version without the `X-Title` fix (iteration 5). Owner: Nibble
 
 ---
@@ -155,6 +155,15 @@ c
   - Fixed: `x-title` allowed. A regression test compares the headers the chat really sends with the allow-list; it fails without the fix.
   - Redeployed; checked with a browser-style preflight (`Access-Control-Request-Headers`). Neon kept serving the old copy for about a minute after the deploy completed.
 - Outcome: Implemented
+
+### Iteration 6 (2026-11-17)
+- Trigger: Kay signed in on the live site (now `kayc26.github.io/dialogue/`, ADR-0015) and asked two questions.
+- Contributors: Kay, Nibble (Claude Opus 5.5)
+- Changes:
+  - Verified end to end: the chat shows "Test allowance: not capped (admin)"; both turns ran the classifier and the answer model through the proxy.
+  - `llm_spend` gained four rows for Kay's account (ids 14 to 17), about $0.0004 per turn.
+  - Side finding, not a proxy problem: "hi" got "I don't have information on that", because the guard blocked the model's uncited greeting and no passage fit as a fallback.
+- Outcome: Implemented (verified live)
 
 ---
 
