@@ -27,6 +27,7 @@ import { openRouterModels, type CostMeter } from '../src/lib/chat/models'
 import { buildIndex, type DiabetesType, type KbPassage } from '../src/lib/chat/retrieve'
 import { CARDS_PAUSED } from '../src/lib/chat/prompts'
 import { runTurn, type Card } from '../src/lib/chat/turn'
+import { NO_INFO_REPLY, SOCIAL_REPLY } from '../src/lib/chat/social'
 import { doseAdviceIn } from '../src/lib/chat/guard'
 import type { DraftCard } from './cards-lib'
 
@@ -84,7 +85,8 @@ const shown = (c: Card): string => {
     case 'passage': return `**[passage \`${c.passage.id}\` shown word for word (${c.why})]** ${c.passage.body}`
     case 'escalation': return `**[help shown: ${c.tier}]**`
     case 'dose_refusal': return "**[dose refusal]** I can't give advice about insulin or medicine doses. Your care team can help with that."
-    case 'no_info': return "**[no information]** I don't have information on that. Your care team can help."
+    case 'no_info': return `**[no information]** ${NO_INFO_REPLY}`
+    case 'social': return `**[small talk: fixed ${c.intent} reply]** ${SOCIAL_REPLY[c.intent]}`
   }
 }
 

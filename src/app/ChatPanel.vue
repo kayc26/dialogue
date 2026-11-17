@@ -17,6 +17,7 @@ import { buildIndex, type DiabetesType, type KbPassage } from '../lib/chat/retri
 import { buildCardIndex, type TopicCard } from '../lib/chat/cards'
 import { openRouterModels, type CostMeter } from '../lib/chat/models'
 import { ConversationLog, cardsToText } from '../lib/chat/persist'
+import { NO_INFO_REPLY, SOCIAL_REPLY } from '../lib/chat/social'
 import { runTurn, type Card, type TurnOutcome } from '../lib/chat/turn'
 import { maxTier, triageRules, TIER_RANK, type Profile, type Tier } from '../lib/chat/triage'
 import { OpenRouterError } from '../lib/openrouter'
@@ -228,7 +229,11 @@ const docTitles = (sources: KbPassage[], label: KbPassage['source_label']) =>
                 <p>I can't give advice about insulin or medicine doses. Your care team can help with that. Call the nurse line if you need an answer today.</p>
               </div>
               <div v-else-if="c.kind === 'no_info'">
-                <p>I don't have information on that. Your care team can help.</p>
+                <p>{{ NO_INFO_REPLY }}</p>
+              </div>
+              <!-- ADR-0016: a fixed, approved reply to small talk. -->
+              <div v-else-if="c.kind === 'social'">
+                <p>{{ SOCIAL_REPLY[c.intent] }}</p>
               </div>
               <div v-else-if="c.kind === 'answer'">
                 <p class="answer-text">{{ c.text }}</p>

@@ -21,6 +21,7 @@ import { combineTriage, parseClassifier, type CombinedTriage } from './combine'
 import { checkAnswer, stripCitations, trimBookNumbers } from './guard'
 import { ANSWER_SYSTEM, ANSWER_TOOL_ROUNDS, CARDS_PAUSED, MONITOR_PAUSED } from './prompts'
 import { direction, type DiabetesType, type Hit, type Index, type KbPassage, type SearchOptions } from './retrieve'
+import { socialIntent, type SocialIntent } from './social'
 import { maxTier, triageRules, type Profile, type Tier } from './triage'
 
 export type Card =
@@ -28,6 +29,8 @@ export type Card =
   | { kind: 'passage'; passage: KbPassage; why: 'urgent' | 'dose' | 'fallback' }
   | { kind: 'dose_refusal' }
   | { kind: 'no_info' }
+  /** A fixed reply to small talk (ADR-0016); no model wrote it. */
+  | { kind: 'social'; intent: SocialIntent }
   | { kind: 'answer'; text: string; sources: KbPassage[] }
   | { kind: 'topic_card'; card: TopicCard; sources: KbPassage[] }
 
@@ -229,6 +232,15 @@ export async function runTurn(input: TurnInput): Promise<TurnOutcome> {
   // 3. Dose question: fixed card, no answer model.
   if (triage.doseIntent && enforceDose) {
     cards.push({ kind: 'dose_refusal' })
+    return done()
+  }
+
+  // 3a. Small talk (ADR-0016, QST-SOCIAL-PATH: A). Only after triage says `none`, so a
+  // greeting with a red flag has already escalated above. A fixed, approved reply; the
+  // answer model is not called, because the guard would block an uncited greeting.
+  const social = tier === 'none' ? socialIntent(message) : null
+  if (social) {
+    cards.push({ kind: 'social', intent: social })
     return done()
   }
 

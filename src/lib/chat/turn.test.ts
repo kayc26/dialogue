@@ -207,7 +207,46 @@ describe('turn orchestration', () => {
   })
 })
 
+describe('small talk (ADR-0016)', () => {
+  it('a greeting with a red flag still escalates; it is not answered as small talk', async () => {
+    // The fixed rules alone must catch this: the classifier here says "none".
+    const { m } = models({})
+    const o = await turn('hi, my sugar is 400 and I have ketones', m)
+    expect(o.tier).not.toBe('none')
+    expect(o.cards[0]).toMatchObject({ kind: 'escalation' })
+    expect(o.cards.some((c) => c.kind === 'social')).toBe(false)
+  })
+
+  it('a greeting followed by a question gets the normal cited answer', async () => {
+    const { m, calls } = models({ answers: ['Berries and apples raise glucose less than bananas. [kb:fruit]'] })
+    const o = await turn('Hi! What fruit can I eat?', m)
+    expect(o.cards[0]).toMatchObject({ kind: 'answer' })
+    expect(calls.complete).toBe(1)
+  })
+
+  it('small talk the classifier flags (e.g. distress) is not brushed off with a fixed reply', async () => {
+    const { m } = models({ classify: cls('distress') })
+    const o = await turn('bye', m)
+    expect(o.cards[0]).toMatchObject({ kind: 'escalation', tier: 'distress' })
+    expect(o.cards.some((c) => c.kind === 'social')).toBe(false)
+  })
+})
+
 describe('Regression tests', () => {
+  it('"hi" gets the fixed greeting, not "I don\'t have information on that" (Kay, live site, 2026-11-17)', async () => {
+    // Bug: "hi" ran the answer model, which wrote a friendly uncited greeting; the
+    // guard blocked it (no_citation, by design: ADR-0005), no passage fit as a
+    // fallback, and the tester's first reply was "I don't have information on that".
+    // Fixed (ADR-0016): after triage says "none", small talk gets a fixed reply and
+    // the answer model is not called.
+    const { m, calls } = models({ answers: ['Hi! I can help with questions about diabetes care. What would you like to know?'] })
+    const o = await turn('hi', m)
+    expect(o.cards).toEqual([{ kind: 'social', intent: 'greeting' }])
+    expect(calls.classify).toBe(1) // triage still ran
+    expect(calls.complete).toBe(0)
+    expect(o.guard).toBeNull()
+  })
+
   it('"how to lower my blood sugar after a meal" never shows the treat-a-low passage in place of a "no information" reply (Kay, 2026-11-14)', async () => {
     // Bug: Kay asked how to LOWER their blood sugar and was shown how to treat a LOW.
     // The model followed ANSWER_SYSTEM and replied "I don't have information on
