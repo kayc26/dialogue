@@ -9,8 +9,8 @@ adr teaching map: the example is not the teaching — these are the up-links fro
 # ADR-0016: Greetings and small talk in a cited assistant
 
 - **Date**: 2026-11-17
-- **Iteration**: 2
-- **Status**: Accepted
+- **Iteration**: 3
+- **Status**: Implemented
 - **Deciders**: Kay, Nibble (Claude Opus 5.5)
 
 **TL;DR**: "hi" gets "I don't have information on that", because the guard rejects any model-written answer without a citation, and a greeting has nothing to cite. Recommendation: after triage, recognize messages that are only small talk and answer them with fixed, sponsor-approved text, with no answer model; also make the "no information" reply say what the assistant can help with.
@@ -125,15 +125,17 @@ a, but rephrase computer assistnat to AI assistant
 **How it's built**:
 - `src/lib/chat/social.ts`: `socialIntent(message): 'greeting' | 'thanks' | 'goodbye' | 'about' | null`, matching only when the whole message is small talk (after trimming punctuation and filler words).
 - `turn.ts`: after the classifier and the escalation step, if `tier === 'none'` and `socialIntent` is set, push a new `{ kind: 'social'; intent }` card and return; no answer model.
-- Logged like other turns, with the intent in `triage_events.detail`.
+- Logged like other turns: `triage_events.detail.social` holds the intent, and the stored reply reads `[small talk: fixed <intent> reply]`.
+- The fixed texts live in `src/lib/chat/social.ts` (`SOCIAL_REPLY`, `NO_INFO_REPLY`); the chat and `kb:eval-faq` both render from there.
 - Tests: "hi", "Hello there!", "thanks so much" → social; "hi, what should I eat?" → normal path; "hi, my sugar is 400" → escalation, not social.
 
 ---
 
 ## Action Items
 
-- [ ] Kay answers QST-SOCIAL-PATH, QST-NO-INFO-TEXT, QST-SOCIAL-TEXT. Owner: Kay
-- [ ] Build the chosen path with its tests; gate; deploy with Kay's OK. Owner: Nibble
+- [x] Kay answers QST-SOCIAL-PATH, QST-NO-INFO-TEXT, QST-SOCIAL-TEXT. Owner: Kay
+- [x] Build the chosen path with its tests; gate (iteration 3). Owner: Nibble
+- [ ] Deploy (push) with Kay's OK, then say "hi" on the live site. Owner: Kay, Nibble
 - [ ] Add the fixed texts to the clinical sponsor's review. Owner: Kay
 
 ---
@@ -151,6 +153,16 @@ a, but rephrase computer assistnat to AI assistant
 - Contributors: Kay, Nibble (Claude Opus 5.5)
 - Changes: Decision filled in; build follows.
 - Outcome: Draft → Accepted (no questions open)
+
+### Iteration 3 (2026-11-17)
+- Trigger: build.
+- Contributors: Nibble (Claude Opus 5.5)
+- Changes:
+  - `social.ts`: a closed phrase list; the whole message must be small talk; mixed messages answer the more useful part (`about` > `goodbye` > `thanks` > `greeting`); whole words only ("high" is not "hi").
+  - `turn.ts` step 3a, after triage and the dose check, only when the tier is `none`; a `distress` or `checkin` tier keeps its escalation card and takes the normal path.
+  - The type check caught a third card renderer (`kb/eval-faq.ts`), now on the same texts.
+  - Tests: 8 new (277 total). The "hi" regression test was checked to fail with the small-talk step switched off.
+- Outcome: Accepted → Implemented (not yet deployed)
 
 ---
 
