@@ -237,6 +237,7 @@ On 2026-11-14, Kay answered: **QST-MONITOR-ROLE: A** (veto and escalate only, as
   - Regression check `scripts/ephemeral/2026-11-17-monitor-carb-amounts.ts` (repeats each case, because the monitor varies): new prompt 10/10 good answers passed, 12/12 dose answers vetoed; old prompt vetoed "I feel shaky" 5/5. Full re-run: controls 7/7; one veto of 28 good answers, on a dose question that the live app refuses before any answer is written.
   - No gate test: only a model run can check a prompt; the script is the regression check.
 - Outcome: Accepted (monitor on)
+- Verified live after the push (Kay: "it's working", 2026-11-17 04:11 UTC): "I feel shaky" was reviewed in the background and no dose concern was logged; the classifier picked both low_blood_sugar and high_blood_sugar (the unwell rule from ADR-0018 iteration 4).
 
 ---
 
