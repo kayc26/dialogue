@@ -9,7 +9,7 @@ adr teaching map: the example is not the teaching — these are the up-links fro
 # ADR-0013: Knowledge base shape — raw passages or synthesized topic cards
 
 - **Date**: 2026-11-14
-- **Iteration**: 23
+- **Iteration**: 24
 - **Status**: Accepted
 - **Deciders**: Kay, Nibble (Claude Opus 5.5)
 
@@ -840,6 +840,16 @@ Cost: drafting about 25 cards with Haiku 5.5 over about 60k source tokens is aro
   - Not yet run: the Data API access tests on rls-dev (credentials).
   - The live app runs with all three dose rules on and cards paused, and still has the TD-7 gap.
 - Outcome: Accepted (no questions open)
+
+### Iteration 24 (2026-11-17)
+- Trigger: Kay, on the live site: "I don't like how every message is ending with you care team..." ("what can i eat after a hike" ended "Your care team can help you plan for hikes.").
+- Contributors: Kay, Nibble (Claude Opus 5.5)
+- Changes:
+  - Cause: `ANSWER_SYSTEM` names the care team twice (dose questions, the no-information line), and many FAQ passages end with a referral; the model turned it into a sign-off.
+  - `ANSWER_SYSTEM` gains one rule: stop when the question is answered; refer to the care team only for doses or medicines, or a personal plan or number the passages can't give. Prompt-only, so it changes likelihood, not a guarantee; no code strips the sentence (a code trim could also remove a referral that matters).
+  - Not yet checked with real answers (a test run costs about $0.01) or deployed.
+  - Noticed in the same answer: the hike question was answered mostly with how to treat a low (the Rule of 15), which answers a nearby question rather than the one asked.
+- Outcome: Accepted
 
 ---
 
