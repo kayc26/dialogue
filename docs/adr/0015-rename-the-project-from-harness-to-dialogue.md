@@ -9,8 +9,8 @@ adr teaching map: the example is not the teaching — these are the up-links fro
 # ADR-0015: Rename the project from Harness to DIAlogue
 
 - **Date**: 2026-11-16
-- **Iteration**: 1
-- **Status**: Accepted
+- **Iteration**: 2
+- **Status**: Implemented
 - **Deciders**: Kay, Nibble (Claude Opus 5.5)
 
 **TL;DR**: The project is now called DIAlogue. The visible name changes everywhere (README, CLAUDE.md, package, page title, OpenRouter label, GitHub repo), while the historical record and Harness v1's internal identifiers (storage keys, export format, `#/harness` route) stay as they are, so nothing a user saved breaks.
@@ -49,7 +49,7 @@ adr teaching map: the example is not the teaching — these are the up-links fro
 ## Questions
 
 ### QST-V1-NAME: What happens to Harness v1's name?
-- Status: unanswered — Nibble proceeded with A; switching is a few lines
+- Status: answered
 - Why asking: Harness v1 is the general OpenRouter chat client the repo started as, still reachable at `#/harness`. Its UI says "Harness", and its `localStorage` keys (`harness.state`, `harness.apiKey`, `harness.notes.v1`) and export files (`app: 'harness'`) carry the name. Renaming those keys without a migration silently loses saved conversations and makes old exports unreadable.
 - Need: pick a letter (or override — any shape answers)
 
@@ -64,12 +64,12 @@ Options:
 **A — keep it as the ancestor.** *Rationale*: the name is historically accurate (ADR-0001 to 0003 decided "Harness"), v1 is not tester-facing (ADR-0014 Consequences), and A costs nothing and risks no saved data. C spends code and tests on a page TD-4 already plans to remove; D is a larger change than a rename should carry. *Confidence*: 0.8 — because the only users of v1 are Kay and Nibble, and TD-4 already plans its removal. *If wrong*: if Kay wants a single name on everything a viewer can see, this flips to B; if v1 is no longer wanted at all, to D.
 
 **ANS:** (by Kay)
-[Fill this in]   <!-- literal placeholder — parser-significant, do not paraphrase -->
+a
 
 ---
 
 ### QST-REPO-CASE: What exact name does the GitHub repo get?
-- Status: unanswered — Nibble wrote the README link as `kayc26.github.io/dialogue/`
+- Status: answered
 - Why asking: the repo name becomes the site's path. The README link, the git remote and anything sent to testers use it.
 - Need: pick a letter (or override)
 
@@ -82,7 +82,7 @@ Options:
 **A — `dialogue`.** *Rationale*: GitHub's own settings print Pages URLs in lowercase, and a lowercase path can't be mistyped by case. Nibble has not verified whether Pages matches a mixed-case path case-insensitively. *Confidence*: 0.7 — because it rests on convention, not a test. *If wrong*: if Kay wants the brand visible in the link and a test shows both casings load, this flips to B.
 
 **ANS:** (by Kay)
-[Fill this in]   <!-- literal placeholder — parser-significant, do not paraphrase -->
+a
 
 ---
 
@@ -109,9 +109,11 @@ Options:
 
 ## Action Items
 
-- [ ] Make the in-repo edits, run the gate, commit. Owner: Nibble
-- [ ] Rename the GitHub repo, set the new remote, and give Nibble the OK to push. Owner: Kay
+- [x] Make the in-repo edits, run the gate, commit (`30eb0f1`, `6121e50`). Owner: Nibble
+- [x] Rename the GitHub repo to `dialogue`, set the new remote, push (deployed 2026-11-17, run 43997692940). Owner: Kay, Nibble
+- [x] Rename the local folder to `~/CIS7000/dialogue` and copy Claude Code's project memory. Owner: Kay
 - [ ] After the first deploy at the new URL, sign in there and check an answer. Owner: Kay
+- [ ] Delete the old memory folder `~/.claude/projects/-Users-kaychen-CIS7000-harness/` once the new one is confirmed. Owner: Kay
 
 ---
 
@@ -122,6 +124,15 @@ Options:
 - Contributors: Kay, Nibble (Claude Opus 5.5)
 - Changes: Scope written up; two naming questions left open with recommendations Nibble proceeds on.
 - Outcome: Accepted (two questions open)
+
+### Iteration 2 (2026-11-16)
+- Trigger: Kay answered QST-V1-NAME (A) and QST-REPO-CASE (A); renamed the repo and the local folder; said "push".
+- Contributors: Kay, Nibble (Claude Opus 5.5)
+- Changes:
+  - Both answers match what was built: Harness v1 keeps its name, route, storage keys and export format; the repo is `dialogue`.
+  - Pushed; the deploy passed the gate and `https://kayc26.github.io/dialogue/` serves the page with the new title.
+  - Not yet checked: a signed-in answer at the new URL.
+- Outcome: Accepted → Implemented (no questions open)
 
 ---
 
