@@ -357,9 +357,9 @@ export async function runTurn(input: TurnInput): Promise<TurnOutcome> {
   }
   const answer: Card = { kind: 'answer', text: stripCitations(text), sources: citations.map((id) => shown.get(id)!).filter(Boolean) }
 
-  // 8. Monitor (paused by Kay, 2026-11-14: ADR-0007). While paused, no monitor call is
-  // made; the fixed-rule guard above still blocks dose advice, and dose questions still
-  // get the refusal card before any model writes.
+  // 8. Monitor (ADR-0007; on again since 2026-11-17, QST-MONITOR-UNPAUSE: A). If it is
+  // paused (MONITOR_PAUSED), no monitor call is made; the fixed-rule guard above still
+  // blocks dose advice in numbers, and dose questions still get the refusal card.
   if (!(input.monitorEnabled ?? !MONITOR_PAUSED)) {
     cards.push(answer)
     return done({ monitor: 'paused' })

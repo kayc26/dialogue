@@ -63,8 +63,8 @@ function models(o: { classify?: string | null | Error; answers?: string[]; monit
   }
   return { m, calls }
 }
-// The monitor is on here unless a test says otherwise: these tests guard its behavior
-// for when it is unpaused (MONITOR_PAUSED, ADR-0007).
+// The monitor is on here unless a test says otherwise, as in the live app since
+// 2026-11-17 (MONITOR_PAUSED = false, ADR-0007 QST-MONITOR-UNPAUSE: A).
 const turn = (message: string, m: TurnModels, extra: { doseSession?: boolean; profile?: Profile; monitorEnabled?: boolean } = {}) =>
   runTurn({
     message, history: [], profile: extra.profile ?? NONE, index, doseSession: extra.doseSession ?? false, models: m, timeoutMs: 50,

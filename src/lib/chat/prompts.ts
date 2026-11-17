@@ -16,9 +16,11 @@ export const MODELS = {
   picker: { id: 'anthropic/claude-haiku-5.5', maxTokens: 600 },
 } as const
 
-/** The monitor (ADR-0007's second model) is paused: Kay, 2026-11-14, while the answer
- *  and classifier failures are diagnosed. Flip to false to bring it back. */
-export const MONITOR_PAUSED = true
+/** The monitor (ADR-0007's second model). Paused 2026-11-14 while the answer and
+ *  classifier failures were diagnosed; back on 2026-11-17 (QST-MONITOR-UNPAUSE: A) after an
+ *  offline measurement: 0 blocks on 33 good answers, 6 of 7 planted problems caught,
+ *  including dose advice in words (TD-7). Set to true to pause it again. */
+export const MONITOR_PAUSED = false
 
 /** Topic cards are paused: Kay, 2026-11-16 (ADR-0013, QST-KB-RAG-FIRST: "try c first"),
  *  a trial of RAG only. The card code stays; flip to false to bring cards back. */
