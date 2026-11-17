@@ -9,8 +9,8 @@ adr teaching map: the example is not the teaching — these are the up-links fro
 # ADR-0017: Multi-language support
 
 - **Date**: 2026-11-17
-- **Iteration**: 1
-- **Status**: Draft
+- **Iteration**: 2
+- **Status**: Accepted
 - **Deciders**: Kay, Nibble (Claude Opus 5.5)
 
 **TL;DR**: Kay wants the assistant to work in more than one language. Every safety layer that doesn't use a model is English-only, so a non-English emergency today relies on the AI classifier alone. Recommendation: close that gap first with a cheap language check that always shows help; then pick the languages with the sponsor, and run the safety checks on an English translation while the patient reads and writes in their own language.
@@ -52,7 +52,7 @@ adr teaching map: the example is not the teaching — these are the up-links fro
 ## Questions
 
 ### QST-LANG-FLOOR: What happens to a non-English message until multi-language is built?
-- Status: unanswered
+- Status: answered
 - Why asking: today a message in another language skips every English-only safety pattern (fixed triage rules, dose rules) and relies on the AI classifier (`gpt-oss-20b`, untested in other languages). If the classifier misses an emergency, the tester sees an ordinary reply or "I don't have information on that". This holds now, whatever is decided about full support.
 - Need: pick a letter (or override — any shape answers)
 
@@ -66,12 +66,12 @@ Options:
 **A — detect and always show help.** *Rationale*: it restores the property ADR-0006 depends on, a floor that doesn't rely on a model, for the case where that floor is currently missing. Over-showing help is the failure mode the triage rules already accept ("false negatives cost far more than false positives", `triage.ts`). B is worth doing too, but a test pass on a dozen messages doesn't make a 20B model a floor. C depends on every tester reading the notice. *Confidence*: 0.75 — because language detection on short messages is imperfect; a two-word English message with a brand name could trip it. *If wrong*: if a trial shows A firing on many English messages, this flips to B, with the classifier tested in the target languages.
 
 **ANS:** (by Kay)
-[Fill this in]   <!-- literal placeholder — parser-significant, do not paraphrase -->
+a
 
 ---
 
 ### QST-LANG-WHICH: Which languages, and who decides?
-- Status: unanswered
+- Status: answered
 - Why asking: every language needs approved translations of the fixed texts, emergency patterns checked by someone who speaks it, and test questions. The cost scales with the number of languages, so the choice should follow the clinic's actual patients and the testers who will be recruited.
 - Need: pick a letter, or name the languages
 
@@ -85,12 +85,12 @@ Options:
 **A — ask the sponsor**, with B as the default if the sponsor has no preference. *Rationale*: the sponsor knows the clinic's population and is already being emailed (KANBAN Waiting); the answer also says whether approved translated sources exist. *Confidence*: 0.7 — because Kay may already know which testers will be recruited, which would make C quicker and just as right. *If wrong*: if Kay's recruited testers need a specific language, this flips to C.
 
 **ANS:** (by Kay)
-[Fill this in]   <!-- literal placeholder — parser-significant, do not paraphrase -->
+c
 
 ---
 
 ### QST-LANG-MODE: How does a non-English conversation work?
-- Status: unanswered
+- Status: answered
 - Why asking: the patient should read and write in their language, but the safety checks (triage rules, dose rules, guard, decline detection) and the knowledge base are English. Where translation happens decides which checks still work. See the Explicitation for which layers are English-only.
 - Need: pick a letter (or override — any shape answers)
 
@@ -105,13 +105,21 @@ Options:
 **A — translate at the edges**, after QST-LANG-FLOOR is in place. *Rationale*: it keeps every existing check working unchanged, including the ones already known to be weak in English (TD-7), instead of rebuilding them per language as B requires. The new risk is the translation step itself; A contains it by checking numbers and failing to the help card. C is the long-term ideal but depends on translated, approved sources that don't exist yet in the knowledge base. *Confidence*: 0.55 — because a mistranslated symptom on the way in could lower triage for a message the classifier also misreads; this is a safety design that a clinician should look at, and it should be routed to the sponsor along with QST-LANG-WHICH. *If wrong*: if testing shows translation errors changing triage on real test messages, this flips to C for the chosen language; if the languages chosen have approved sources (ADA Spanish), C becomes cheap enough to prefer.
 
 **ANS:** (by Kay)
-[Fill this in]   <!-- literal placeholder — parser-significant, do not paraphrase -->
+a
 
 ---
 
 ## Decision
 
-Pending. Whatever is chosen:
+### Chosen (Kay, 2026-11-17)
+
+- **QST-LANG-FLOOR: A.** Code detects a message that isn't English and always shows help (nurse line and 911) with a fixed "English only" note; no answer model. Built first, because the gap exists today.
+- **QST-LANG-WHICH: C.** Kay named four: **Spanish, Chinese (Simplified), Chinese (Traditional), Korean.**
+- **QST-LANG-MODE: A.** Translate at the edges: the checks run on an English translation; the checked answer is translated back, numbers verified; a failed translation shows help.
+
+**Until QST-LANG-MODE is built**, the floor applies to every non-English message, including the four chosen languages.
+
+In every case:
 - Every fixed text needs a translation approved by a person who speaks the language (sponsor or delegate), recorded like card approvals.
 - "Get help now" (`index.html`) must be translated in the static HTML, so it still works if the app fails.
 - Tests in the gate: non-English emergencies from QST-LANG-FLOOR's examples must reach help.
@@ -120,8 +128,11 @@ Pending. Whatever is chosen:
 
 ## Action Items
 
-- [ ] Kay answers QST-LANG-FLOOR, QST-LANG-WHICH, QST-LANG-MODE. Owner: Kay
-- [ ] Add the language question (and, if QST-LANG-MODE is A or B, a request to review the design) to the clinical sponsor email. Owner: Kay
+- [x] Kay answers QST-LANG-FLOOR, QST-LANG-WHICH, QST-LANG-MODE. Owner: Kay
+- [ ] Build the floor (QST-LANG-FLOOR: A). Owner: Nibble
+- [ ] Find a reviewer for each language's fixed texts (Spanish, Chinese in both scripts, Korean): fixed texts are shown word for word, so a person who reads the language approves them. Owner: Kay
+- [ ] Ask the clinical sponsor to review the translate-at-the-edges design (QST-LANG-MODE confidence 0.55). Owner: Kay
+- [ ] Build QST-LANG-MODE: A once reviewers exist. Owner: Nibble
 
 ---
 
@@ -132,6 +143,12 @@ Pending. Whatever is chosen:
 - Contributors: Kay, Nibble (Claude Opus 5.5)
 - Changes: Checked which layers are English-only; found the safety gap exists today. Three questions with recommendations.
 - Outcome: Draft (three questions open)
+
+### Iteration 2 (2026-11-17)
+- Trigger: Kay answered A, C, A, and named Spanish, Chinese (Simplified), Chinese (Traditional), Korean.
+- Contributors: Kay, Nibble (Claude Opus 5.5)
+- Changes: Decision filled in. Two scripts of Chinese means five sets of fixed text in all (English plus four), each needing a reader to approve it.
+- Outcome: Draft → Accepted (no questions open)
 
 ---
 
