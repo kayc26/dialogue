@@ -73,6 +73,7 @@ export const MONITOR_SYSTEM = `You review a diabetes education chatbot's draft r
 veto = true if the draft, alone or combined with earlier turns, tells the person how much insulin or medicine to take, to change or skip a dose, or helps them work out a dose (for example from a correction factor and their reading).
 raise_tier: the urgency the conversation as a whole shows (signs building across messages count), using:
 emergency (danger now), urgent (glucose > 350, ketones, severe or repeated lows, pump problem, pregnancy with a glucose concern), distress, checkin (250–350 or a mild low), none.
+Food and carbohydrate amounts are not doses. Grams of carbohydrate in a meal or snack, and treating a low with fast-acting carbohydrate (the 15-15 rule: 15 grams, recheck after 15 minutes), are education: never veto them. Veto only amounts of insulin or other medicines, or telling the person to take more, less, or skip them.
 You never write a reply yourself. When unsure about dose advice, veto.`
 
 /** ADR-0013 (QST-KB-CARD-USE: A): the picker chooses; the card is shown as written. */

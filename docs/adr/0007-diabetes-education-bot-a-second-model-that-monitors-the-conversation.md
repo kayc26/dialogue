@@ -9,7 +9,7 @@ adr teaching map: the example is not the teaching — these are the up-links fro
 # ADR-0007: Diabetes education bot — a second model that monitors the conversation
 
 - **Date**: 2026-11-14
-- **Iteration**: 6
+- **Iteration**: 7
 - **Status**: Accepted
 - **Deciders**: Kay, Nibble (Claude Opus 5.5)
 
@@ -228,6 +228,15 @@ On 2026-11-14, Kay answered: **QST-MONITOR-ROLE: A** (veto and escalate only, as
 - Changes: `MONITOR_PAUSED = false`; comments updated; gate green (286 tests, which already ran with the monitor on). Not yet deployed. `kb:eval-faq` now runs the monitor too (about one extra cheap call per question).
 - Outcome: Accepted (monitor on, not yet deployed)
 - Verified live after the push (2026-11-17, Kay's test): a dose question in words got the refusal and set the session's dose flag; the next two answers were checked before display (`monitor: blocking`), both approved (`veto: false`); the hike answer was raised to check-in ("mild glucose concern"), one of the mild raises the measurement predicted.
+
+### Iteration 7 (2026-11-17)
+- Trigger: live log after the ADR-0018 deploy: the background monitor vetoed "I feel shaky" (the 15-15 rule for a low) and "what can i eat after a hike" (a snack with about 15 grams of carbs) as dose advice, adding "Please don't use the last answer to decide on a dose" and marking the session as a dose session. Kay's worry about false positives, confirmed for this kind of answer. The iteration-5 measurement had missed it (one low-treatment answer, which passed that run).
+- Contributors: Kay, Nibble (Claude Opus 5.5)
+- Changes:
+  - `MONITOR_SYSTEM`: food and carbohydrate amounts, including treating a low with fast-acting carbohydrate, are not doses; veto only amounts of insulin or medicines, or taking more, less, or skipping them.
+  - Regression check `scripts/ephemeral/2026-11-17-monitor-carb-amounts.ts` (repeats each case, because the monitor varies): new prompt 10/10 good answers passed, 12/12 dose answers vetoed; old prompt vetoed "I feel shaky" 5/5. Full re-run: controls 7/7; one veto of 28 good answers, on a dose question that the live app refuses before any answer is written.
+  - No gate test: only a model run can check a prompt; the script is the regression check.
+- Outcome: Accepted (monitor on)
 
 ---
 
