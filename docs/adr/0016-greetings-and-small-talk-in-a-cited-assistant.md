@@ -9,7 +9,7 @@ adr teaching map: the example is not the teaching — these are the up-links fro
 # ADR-0016: Greetings and small talk in a cited assistant
 
 - **Date**: 2026-11-17
-- **Iteration**: 3
+- **Iteration**: 4
 - **Status**: Implemented
 - **Deciders**: Kay, Nibble (Claude Opus 5.5)
 
@@ -135,7 +135,7 @@ a, but rephrase computer assistnat to AI assistant
 
 - [x] Kay answers QST-SOCIAL-PATH, QST-NO-INFO-TEXT, QST-SOCIAL-TEXT. Owner: Kay
 - [x] Build the chosen path with its tests; gate (iteration 3). Owner: Nibble
-- [ ] Deploy (push) with Kay's OK, then say "hi" on the live site. Owner: Kay, Nibble
+- [x] Deploy (push) with Kay's OK, then say "hi" on the live site (iteration 4). Owner: Kay, Nibble
 - [ ] Add the fixed texts to the clinical sponsor's review. Owner: Kay
 
 ---
@@ -163,6 +163,15 @@ a, but rephrase computer assistnat to AI assistant
   - The type check caught a third card renderer (`kb/eval-faq.ts`), now on the same texts.
   - Tests: 8 new (277 total). The "hi" regression test was checked to fail with the small-talk step switched off.
 - Outcome: Accepted → Implemented (not yet deployed)
+
+### Iteration 4 (2026-11-17)
+- Trigger: deployed (Kay: "push"); Kay tried it on the live site.
+- Contributors: Kay, Nibble (Claude Opus 5.5)
+- Changes:
+  - Verified from the production log: "hiii" → `social: greeting`, one model call (the classifier), no answer model.
+  - "I'm hungrym" and "hmmm" got the new no-information reply. Cause: the typo. Search matches exact words, so "hungrym" has no hits, while "I'm hungry" scores 9.24 on the care-team FAQ "I am still hungry between meals" (`scripts/ephemeral/2026-11-17-search-hungry.ts`). Filed as a backlog card: typo tolerance in search.
+  - Noticed: for a misspelled food question, "I don't have information on that. I can answer general questions about eating…" reads as a contradiction.
+- Outcome: Implemented (verified live)
 
 ---
 

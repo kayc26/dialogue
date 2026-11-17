@@ -61,6 +61,7 @@ Nothing in the app writes to `summaries` or `replies` today; the tables and thei
 
 ## Backlog
 
+- [ ] **Typo tolerance in search:** "I'm hungrym" finds nothing, while "I'm hungry" finds the FAQ answer (score 9.24). Older testers mistype. Options: fuzzy-match unknown words to the knowledge base's vocabulary, or say "I didn't find that. Could you check the spelling or ask another way?" when no word in the message is known. [ADR-0016](docs/adr/0016-greetings-and-small-talk-in-a-cited-assistant.md) iteration 4
 - [ ] After an escalation, check in on the next turn ("Are you feeling better?"). [ADR-0006](docs/adr/0006-diabetes-education-bot-urgent-situation-triage-and-escalation.md)
 - [ ] Caregiver wording for reports about someone else ("my wife won't wake up"). [ADR-0006](docs/adr/0006-diabetes-education-bot-urgent-situation-triage-and-escalation.md)
 - [ ] Have a clinician confirm which ADA passages are used for the urgent cards (low treatment, "while you wait", DKA). [ADR-0006](docs/adr/0006-diabetes-education-bot-urgent-situation-triage-and-escalation.md)
