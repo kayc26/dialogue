@@ -9,11 +9,11 @@ adr teaching map: the example is not the teaching — these are the up-links fro
 # ADR-0007: Diabetes education bot — a second model that monitors the conversation
 
 - **Date**: 2026-11-14
-- **Iteration**: 5
+- **Iteration**: 6
 - **Status**: Accepted
 - **Deciders**: Kay, Nibble (Claude Opus 5.5)
 
-**TL;DR**: **Paused 2026-11-14 at Kay's request (Iteration 3): no monitor calls are made until `MONITOR_PAUSED` is flipped back.** Decided: a small monitor model, ideally from a different family, that can only veto an answer or raise the escalation tier. It checks answers before display for the rest of any session where a dose or medication topic has come up, and reviews in the background otherwise. It never writes user-facing text, never lowers anything, and adds to the fixed-rule checks rather than replacing them.
+**TL;DR**: **Paused 2026-11-14 (Iteration 3); back on 2026-11-17 (Iteration 6, QST-MONITOR-UNPAUSE: A) after an offline measurement of false positives.** Decided: a small monitor model, ideally from a different family, that can only veto an answer or raise the escalation tier. It checks answers before display for the rest of any session where a dose or medication topic has come up, and reviews in the background otherwise. It never writes user-facing text, never lowers anything, and adds to the fixed-rule checks rather than replacing them.
 
 ---
 
@@ -124,7 +124,7 @@ c
 ---
 
 ### QST-MONITOR-UNPAUSE: Turn the monitor back on, after measuring its false positives?
-- Status: unanswered
+- Status: answered
 - Why asking: the monitor has been off since 2026-11-14. Kay's concern is false positives. A measurement on 2026-11-17 (iteration 5; `scripts/ephemeral/2026-11-17-monitor-false-positives.ts`, $0.0008): over 33 real answers (four test runs and the live site) it blocked **none**, and raised the help level to "check-in" on **3**, all general questions about highs or lows. On 7 answers written to be caught it caught **6**, including all four dose-advice-in-words examples that the answer check misses (TD-7); the fixed rules cover its one miss. Limits: 33 single-turn answers, mostly about food; no long conversations.
 - Need: pick a letter (or override — any shape answers)
 
@@ -139,7 +139,7 @@ Options:
 **A — on, as designed.** *Rationale*: in this measurement it never blocked a good answer, and its only extra output was a check-in line on questions about highs and lows, which the classifier often shows anyway. Meanwhile it is the only layer that caught dose advice written in words (4 of 4), the gap TD-7 leaves open while it waits on the sponsor. B misses that gap outside dose conversations; C is cheap if the check-in lines bother testers, but there is no evidence of that yet. *Confidence*: 0.7 — because the sample is small and single-turn; Kay's experience of false positives may come from cases this sample doesn't have. *If wrong*: if Kay can point to the false positives seen (what was asked, what it blocked), add them to the measurement; if they reproduce, this flips to C.
 
 **ANS:** (by Kay)
-[Fill this in]   <!-- literal placeholder — parser-significant, do not paraphrase -->
+a
 
 ---
 
@@ -175,7 +175,7 @@ On 2026-11-14, Kay answered: **QST-MONITOR-ROLE: A** (veto and escalate only, as
 
 - [x] Should the monitor's flags persist across turns? Yes. Resolved in the Decision: a dose or medication flag lasts for the rest of the session.
 - [ ] Logging monitor verdicts is useful for the class write-up. Under real PHI (ADR-0005), those logs would be PHI too.
-- [ ] Unpause the monitor (`MONITOR_PAUSED = false` in `src/lib/chat/prompts.ts`) once answers come through reliably, and before testers who aren't on the team use the site. While it's paused, dose-flagged sessions have no check across turns. A dose request split over several messages relies on the fixed-rule guard alone.
+- [x] Unpause the monitor (`MONITOR_PAUSED = false` in `src/lib/chat/prompts.ts`), done 2026-11-17 (iteration 6), once answers come through reliably, and before testers who aren't on the team use the site. While it's paused, dose-flagged sessions have no check across turns. A dose request split over several messages relies on the fixed-rule guard alone.
 
 ---
 
@@ -221,6 +221,12 @@ On 2026-11-14, Kay answered: **QST-MONITOR-ROLE: A** (veto and escalate only, as
   - Controls: 6 of 7 caught, including all four TD-7 examples. The miss (repeated lows, needed help) is urgent by the fixed rules.
   - Asked QST-MONITOR-UNPAUSE.
 - Outcome: Accepted (paused; one question open)
+
+### Iteration 6 (2026-11-17)
+- Trigger: Kay answered QST-MONITOR-UNPAUSE: A.
+- Contributors: Kay, Nibble (Claude Opus 5.5)
+- Changes: `MONITOR_PAUSED = false`; comments updated; gate green (286 tests, which already ran with the monitor on). Not yet deployed. `kb:eval-faq` now runs the monitor too (about one extra cheap call per question).
+- Outcome: Accepted (monitor on, not yet deployed)
 
 ---
 

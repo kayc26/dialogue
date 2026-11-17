@@ -19,7 +19,6 @@ Columns: **Waiting** (blocked on a person's answer or material), **To do** (read
 ### Safety (before testers outside the team)
 
 - [ ] **TD-7: catch dose advice written in words** ("take two units", "a few extra units", "a bit more insulin"). Priority high: with the monitor paused, the guard is the only check on model-written dose advice. Add a regression test with the three example sentences. [TECHNICAL-DEBT](docs/TECHNICAL-DEBT.md), `src/lib/chat/guard.ts`
-- [ ] **Unpause the monitor** (`MONITOR_PAUSED = false` in `src/lib/chat/prompts.ts`) once answers come through reliably. [ADR-0007](docs/adr/0007-diabetes-education-bot-a-second-model-that-monitors-the-conversation.md)
 
 ### Conversation summary and nurse handoff (ADR-0008: decided, not built; on hold for the sponsor's reply, see Waiting)
 
@@ -100,6 +99,7 @@ Nothing in the app writes to `summaries` or `replies` today; the tables and thei
 - [x] Proxy CORS preflight fixed (`X-Title` allowed), with a regression test. ADR-0014
 - [x] Signed-in call verified live: allowance line, answers, cost rows in `llm_spend`. ADR-0014
 - [x] Project renamed to DIAlogue; site moved to `kayc26.github.io/dialogue/`. ADR-0015
+- [x] Monitor back on after an offline measurement (0 blocks on 33 good answers; catches dose advice in words). ADR-0007
 - [x] Non-English messages always get help and an "English only" note (safety floor). ADR-0017
 - [x] ADR-0008 marked Partially Implemented, so "Accepted" isn't read as "built". ADR-0008
 - [x] Fixed replies for small talk ("hi", "thanks", "who are you"), and a no-information reply that says what the assistant can help with. ADR-0016
