@@ -9,8 +9,8 @@ adr teaching map: the example is not the teaching — these are the up-links fro
 # ADR-0016: Greetings and small talk in a cited assistant
 
 - **Date**: 2026-11-17
-- **Iteration**: 1
-- **Status**: Draft
+- **Iteration**: 2
+- **Status**: Accepted
 - **Deciders**: Kay, Nibble (Claude Opus 5.5)
 
 **TL;DR**: "hi" gets "I don't have information on that", because the guard rejects any model-written answer without a citation, and a greeting has nothing to cite. Recommendation: after triage, recognize messages that are only small talk and answer them with fixed, sponsor-approved text, with no answer model; also make the "no information" reply say what the assistant can help with.
@@ -52,7 +52,7 @@ What the log showed (production `triage_events`, 2026-11-17 01:47:10 UTC):
 ## Questions
 
 ### QST-SOCIAL-PATH: How should the assistant answer messages that are only small talk?
-- Status: unanswered
+- Status: answered
 - Why asking: today a greeting runs the answer model (about $0.0002), whose reply the guard then blocks, so the tester sees "I don't have information on that". The guard requires a citation on every model-written answer (ADR-0005), and a greeting has nothing to cite. Whatever is chosen runs after triage, so a greeting with a red flag still escalates.
 - Need: pick a letter (or override — any shape answers)
 
@@ -67,12 +67,12 @@ Options:
 **A — fixed replies by rule.** *Rationale*: it matches how regulated bots handle conversation (scripted, approved text) and how this project already handles escalation and dose refusal (`turn.ts` cards). It costs nothing per message, needs no change to the guard (ADR-0005's "every model-written answer cites" stays absolute), and is testable offline in the gate. A missed phrasing just falls through to today's behaviour, so A's failure mode is the current state, not a new risk. B's extra coverage isn't worth putting a model in charge of skipping the guard; C weakens the one check that stands alone while the monitor is paused (`MONITOR_PAUSED`). *Confidence*: 0.8 — because the failure mode of A is the current behaviour and the pattern list is small and checkable; the field summary above is from general knowledge, not a search. *If wrong*: if moderated sessions show testers' openings are too varied for a pattern list (many greetings still reaching `no_info`), this flips to B.
 
 **ANS:** (by Kay)
-[Fill this in]   <!-- literal placeholder — parser-significant, do not paraphrase -->
+a
 
 ---
 
 ### QST-NO-INFO-TEXT: Should "I don't have information on that" say what the assistant can help with?
-- Status: unanswered
+- Status: answered
 - Why asking: the current reply ("I don't have information on that. Your care team can help.") is shown whenever search finds nothing or the guard blocks an answer with no fallback passage. It tells the tester what the assistant can't do but not what it can, so a tester who missed the scope doesn't know what to try next. The same text is in the answer prompt (`src/lib/chat/prompts.ts`), and code recognizes it (`turn.ts`, `NO_INFO`).
 - Need: pick a letter (or override — reword freely)
 
@@ -86,12 +86,12 @@ Options:
 **B — add what it can help with.** *Rationale*: it points the tester somewhere without new UI, and the scope it names comes from the knowledge base's actual coverage (ADR-0013: FAQ, ADA guides, the book). C is better for older adults who may not know what to type, but the tappable questions are new UI and each needs an eval run (costs money, ADR-0012). *Confidence*: 0.7 — because the wording is a judgement call and the sponsor may prefer narrower scope words. *If wrong*: if moderated sessions show testers still don't know what to ask after B, this flips to C.
 
 **ANS:** (by Kay)
-[Fill this in]   <!-- literal placeholder — parser-significant, do not paraphrase -->
+b
 
 ---
 
 ### QST-SOCIAL-TEXT: What should the fixed small-talk replies say?
-- Status: unanswered — only matters if QST-SOCIAL-PATH is A or B
+- Status: answered
 - Why asking: under A or B these replies are shown to testers word for word, like the escalation and refusal cards, so they need approved wording. Drafts below are written at a plain reading level for older adults.
 - Need: approve, edit, or replace (any shape answers)
 
@@ -108,15 +108,21 @@ Options:
 **A — the drafts as written**, with the sponsor asked to confirm them in the same email as the card review. *Rationale*: the "who are you" reply states the limits ADR-0005 and ADR-0006 set (not a clinician, no dose advice, help button), which testers otherwise learn only by hitting them. *Confidence*: 0.6 — because wording for older adults is the sponsor's expertise, not Nibble's. *If wrong*: if the sponsor rewrites them, B.
 
 **ANS:** (by Kay)
-[Fill this in]   <!-- literal placeholder — parser-significant, do not paraphrase -->
+a, but rephrase computer assistnat to AI assistant
 
 ---
 
 ## Decision
 
-Pending QST-SOCIAL-PATH.
+### Chosen (Kay, 2026-11-17)
 
-**If A (sketch, for review before building)**:
+- **QST-SOCIAL-PATH: A**, fixed replies by rule, after triage, with no answer model.
+- **QST-NO-INFO-TEXT: B**: "I don't have information on that. I can answer general questions about eating, blood sugar, and everyday diabetes care. For anything else, your care team can help."
+- **QST-SOCIAL-TEXT: A**, the drafts as written, with "computer assistant" changed to "AI assistant": *"I'm an AI assistant, not a nurse or doctor. …"*
+
+**Trade-offs accepted**: a greeting phrased outside the pattern list still gets the "no information" reply (now the clearer B wording). The fixed texts are Kay-approved for testing; the clinical sponsor confirms them with the card review.
+
+**How it's built**:
 - `src/lib/chat/social.ts`: `socialIntent(message): 'greeting' | 'thanks' | 'goodbye' | 'about' | null`, matching only when the whole message is small talk (after trimming punctuation and filler words).
 - `turn.ts`: after the classifier and the escalation step, if `tier === 'none'` and `socialIntent` is set, push a new `{ kind: 'social'; intent }` card and return; no answer model.
 - Logged like other turns, with the intent in `triage_events.detail`.
@@ -139,6 +145,12 @@ Pending QST-SOCIAL-PATH.
 - Contributors: Kay, Nibble (Claude Opus 5.5)
 - Changes: Problem traced from the production log; field practice summarized; options and recommendations for three questions.
 - Outcome: Draft (three questions open)
+
+### Iteration 2 (2026-11-17)
+- Trigger: Kay answered: SOCIAL-PATH A, NO-INFO-TEXT B, SOCIAL-TEXT A "but rephrase computer assistant to AI assistant".
+- Contributors: Kay, Nibble (Claude Opus 5.5)
+- Changes: Decision filled in; build follows.
+- Outcome: Draft → Accepted (no questions open)
 
 ---
 
