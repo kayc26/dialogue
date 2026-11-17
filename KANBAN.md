@@ -61,6 +61,11 @@ Nothing in the app writes to `summaries` or `replies` today; the tables and thei
 
 ## Backlog
 
+- [ ] **Multi-language support** (Kay, 2026-11-17). Not yet scoped: which languages, and whether testers write in them, read in them, or both. What it touches:
+  - **Safety first:** the fixed triage rules (`src/lib/chat/triage.ts`), the dose-question patterns, and the small-talk list (`social.ts`) are English patterns. Today a non-English emergency relies on the classifier alone; the fixed rules, which are designed never to miss, don't see it.
+  - **Knowledge base:** the FAQ, the ADA material and the book are English, and search matches English words. Either translated, approved sources, or a translated question searched against English and an answer translated back (which the guard would then have to check).
+  - **Fixed text** (escalation, dose refusal, small talk, no-information) needs approved translations; the UI needs a language choice.
+  - Needs an ADR before any work. [ADR-0006](docs/adr/0006-diabetes-education-bot-urgent-situation-triage-and-escalation.md), [ADR-0013](docs/adr/0013-knowledge-base-shape-raw-passages-or-synthesized-topic-cards.md), [ADR-0016](docs/adr/0016-greetings-and-small-talk-in-a-cited-assistant.md)
 - [ ] **Typo tolerance in search:** "I'm hungrym" finds nothing, while "I'm hungry" finds the FAQ answer (score 9.24). Older testers mistype. Options: fuzzy-match unknown words to the knowledge base's vocabulary, or say "I didn't find that. Could you check the spelling or ask another way?" when no word in the message is known. [ADR-0016](docs/adr/0016-greetings-and-small-talk-in-a-cited-assistant.md) iteration 4
 - [ ] After an escalation, check in on the next turn ("Are you feeling better?"). [ADR-0006](docs/adr/0006-diabetes-education-bot-urgent-situation-triage-and-escalation.md)
 - [ ] Caregiver wording for reports about someone else ("my wife won't wake up"). [ADR-0006](docs/adr/0006-diabetes-education-bot-urgent-situation-triage-and-escalation.md)
