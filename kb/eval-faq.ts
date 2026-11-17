@@ -86,6 +86,7 @@ const shown = (c: Card): string => {
     case 'escalation': return `**[help shown: ${c.tier}]**`
     case 'dose_refusal': return "**[dose refusal]** I can't give advice about insulin or medicine doses. Your care team can help with that."
     case 'no_info': return `**[no information]** ${NO_INFO_REPLY}`
+    case 'clarify': return `**[clarifying question]** ${c.text}`
     case 'language': return `**[not English (${c.lang}): help shown]**`
     case 'social': return `**[small talk: fixed ${c.intent} reply]** ${SOCIAL_REPLY[c.intent]}`
   }

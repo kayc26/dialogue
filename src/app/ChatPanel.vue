@@ -243,6 +243,10 @@ const docTitles = (sources: KbPassage[], label: KbPassage['source_label']) =>
               <div v-else-if="c.kind === 'no_info'">
                 <p>{{ NO_INFO_REPLY }}</p>
               </div>
+              <!-- ADR-0018 iteration 5: one short question when the model needs a detail. -->
+              <div v-else-if="c.kind === 'clarify'">
+                <p>{{ c.text }}</p>
+              </div>
               <!-- ADR-0016: a fixed, approved reply to small talk. -->
               <div v-else-if="c.kind === 'social'">
                 <p>{{ SOCIAL_REPLY[c.intent] }}</p>

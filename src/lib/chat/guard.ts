@@ -111,6 +111,25 @@ export function trimBookNumbers(
 }
 
 /** The text a patient sees: citations removed (they are shown as source chips). */
+/**
+ * A short clarifying question may go out without a citation (ADR-0018 iteration 5,
+ * Kay 2026-11-17: "clarifying questions are fine if not sure"). Everything else the
+ * model writes must still cite. Narrow on purpose, and checked here, not trusted to the
+ * prompt: one sentence ending in "?", at most 30 words, no citation, no dose advice,
+ * and no number the patient didn't write ("Is your sugar above 250?" reads as a
+ * threshold). Returns the question to show, or null.
+ */
+export function clarifyingQuestion(draft: string, userMessage: string, opts: { doseAdvice?: boolean } = {}): string | null {
+  const text = draft.trim()
+  if (!text || citationsIn(text).length > 0) return null
+  if (!text.endsWith('?') || (text.match(/\?/g) ?? []).length !== 1 || /[.!]\s/.test(text)) return null
+  if (text.split(/\s+/).length > 30) return null
+  if ((opts.doseAdvice ?? true) && doseAdviceIn(text)) return null
+  const allowed = new Set(numbersIn(userMessage))
+  if (numbersIn(text).some((n) => !allowed.has(n))) return null
+  return text
+}
+
 export function stripCitations(text: string): string {
   return text.replace(CITE, '').replace(/[ \t]+([.,;:!?])/g, '$1').replace(/[ \t]{2,}/g, ' ').trim()
 }

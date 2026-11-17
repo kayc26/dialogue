@@ -18,7 +18,7 @@ import { runAgent, type CompleteFn } from '../agent'
 import type { ChatMessage, ToolSpec } from '../types'
 import { CARD_FALLBACK_SCORE, CARD_MIN_SCORE, CARD_SHORTLIST, parsePick, type CardHit, type CardIndex, type TopicCard } from './cards'
 import { combineTriage, parseClassifier, type CombinedTriage } from './combine'
-import { checkAnswer, stripCitations, trimBookNumbers } from './guard'
+import { checkAnswer, clarifyingQuestion, stripCitations, trimBookNumbers } from './guard'
 import { ANSWER_SYSTEM, ANSWER_TOOL_ROUNDS, CARDS_PAUSED, MONITOR_PAUSED } from './prompts'
 import { direction, type DiabetesType, type Hit, type Index, type KbPassage, type SearchOptions } from './retrieve'
 import { detectLanguage, type Lang } from './language'
@@ -33,6 +33,8 @@ export type Card =
   | { kind: 'no_info' }
   /** A fixed reply to small talk (ADR-0016); no model wrote it. */
   | { kind: 'social'; intent: SocialIntent }
+  /** One short question the model asks when it needs a detail to answer (ADR-0018 it. 5); uncited, checked in guard.ts. */
+  | { kind: 'clarify'; text: string }
   /** The message isn't English: help buttons and an "English only" note (ADR-0017). */
   | { kind: 'language'; lang: Lang }
   | { kind: 'answer'; text: string; sources: KbPassage[] }
@@ -361,6 +363,14 @@ export async function runTurn(input: TurnInput): Promise<TurnOutcome> {
       ? index.search(message, 60, byType).map((h) => h.passage).find((p) => inContext.has(p.id) && showable(p) && !hidden(p))
       : context.find(showable)
     cards.push(best ? { kind: 'passage', passage: best, why: 'fallback' } : { kind: 'no_info' })
+  }
+  // A short clarifying question, uncited, checked in guard.ts (ADR-0018 iteration 5).
+  if (!verdict.ok && verdict.reason === 'no_citation') {
+    const question = clarifyingQuestion(draft, message, { doseAdvice: enforceDose })
+    if (question) {
+      cards.push({ kind: 'clarify', text: question })
+      return done()
+    }
   }
   if (!verdict.ok && !trimmed) {
     // The prompt tells the model to say "I don't have information on that" when the

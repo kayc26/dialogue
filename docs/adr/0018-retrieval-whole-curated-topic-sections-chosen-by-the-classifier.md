@@ -9,7 +9,7 @@ adr teaching map: the example is not the teaching — these are the up-links fro
 # ADR-0018: Retrieval: whole curated topic sections chosen by the classifier
 
 - **Date**: 2026-11-17
-- **Iteration**: 4
+- **Iteration**: 5
 - **Status**: Implemented
 - **Deciders**: Kay, Nibble (Claude Opus 5.5)
 
@@ -162,6 +162,17 @@ Plan: build the sections (reviewable files, outside git like the rest of the sou
   - **Topic map**: glucagon passages (t1-025, t1-060) also in medicines_devices; support's description spelled out (doctor visits, information found online).
   - Results: run 1, 31/38 ($0.0011); after the fixes, 34/38 ($0.0013). The hike question now routes to activity. Still failing: swimming → monitoring (defensible); glucagon → basics (it went to medicines_devices in run 1: the small classifier varies between runs); "I'm fainting" → low only (an emergency, so the 911 alert comes first anyway); doctor's appointment → daily_life. Tuning stopped there to avoid fitting the prompt to one test set.
   - Not borrowed yet: asking one clarifying question when context is missing. The guard would block a question with no citation, and ADR-0008 plans structured follow-ups; needs its own decision.
+- Outcome: Implemented
+
+### Iteration 5 (2026-11-17)
+- Trigger: Kay: "clarifying questions are fine if not sure", then "yes" after comparing citations with the prototype (which names whole documents at the end and checks nothing).
+- Contributors: Kay, Nibble (Claude Opus 5.5)
+- Changes:
+  - **A narrow exception to ADR-0005's "every model-written answer cites"**: `clarifyingQuestion` in `guard.ts` lets an uncited reply through only if it is one sentence ending in "?", at most 30 words, with no dose advice and no number the patient didn't write. Anything else uncited is still blocked.
+  - The answer instructions allow one short question when a missing detail would really change the answer; never about doses.
+  - Shown as a plain question (`clarify`); the stored reply keeps the question, so the next turn's model sees it.
+  - Not the same as ADR-0008's structured follow-up questions (on hold for the sponsor), which collect fields for the nurse summary.
+  - Tests: 4 new (296 total).
 - Outcome: Implemented
 
 ---

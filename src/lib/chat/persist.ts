@@ -22,6 +22,8 @@ export function cardsToText(cards: Card[]): string {
           return "[no information on that in the knowledge base]"
         case 'social':
           return `[small talk: fixed ${c.intent} reply]`
+        case 'clarify':
+          return `${c.text} [clarifying question, no source needed]`
         case 'language':
           return `[not English (${c.lang}): help and "English only" note shown]`
         case 'answer':

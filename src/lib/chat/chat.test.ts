@@ -4,7 +4,7 @@
 import { describe, expect, it } from 'vitest'
 import { combineTriage, parseClassifier } from './combine'
 import { buildIndex, direction, type KbPassage } from './retrieve'
-import { checkAnswer, citationsIn, stripCitations, trimBookNumbers } from './guard'
+import { checkAnswer, citationsIn, clarifyingQuestion, stripCitations, trimBookNumbers } from './guard'
 import { triageRules, type Profile } from './triage'
 
 const NONE: Profile = { history_of_dka: false, pregnant: false, uses_pump: false }
@@ -203,6 +203,24 @@ describe('answer guard (QST-DIAB-DOSE-GUARD: D, output gate)', () => {
 
   it('removes citation markers from what the patient reads', () => {
     expect(stripCitations('Water is the best choice [kb:drinks].')).toBe('Water is the best choice.')
+  })
+})
+
+describe('clarifying questions may go out uncited, and only those (ADR-0018 iteration 5)', () => {
+  it('lets one short question through when the model needs a detail', () => {
+    expect(clarifyingQuestion('Is this happening to you right now?', 'what do I do if I feel shaky')).toBe('Is this happening to you right now?')
+    expect(clarifyingQuestion('Is it still 280 now?', 'my sugar was 280 after lunch')).toBe('Is it still 280 now?') // the patient's own number
+  })
+
+  it('still blocks anything that is not just a question', () => {
+    expect(clarifyingQuestion('Eat some fruit. What did you have for lunch?', 'what should I eat')).toBeNull() // advice before the question
+    expect(clarifyingQuestion('Fruit is fine in small portions.', 'can I eat fruit')).toBeNull()
+    expect(clarifyingQuestion('When did you last eat? [kb:fruit]', 'x')).toBeNull() // cited: the normal checks apply
+  })
+
+  it('blocks a question that carries a dose or a number the patient never gave', () => {
+    expect(clarifyingQuestion('Did you take 4 units before dinner?', 'my sugar is high')).toBeNull()
+    expect(clarifyingQuestion('Is your sugar above 250?', 'I feel thirsty')).toBeNull()
   })
 })
 

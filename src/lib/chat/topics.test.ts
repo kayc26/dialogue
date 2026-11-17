@@ -89,6 +89,15 @@ describe('the turn reads topic sections when the classifier names a topic', () =
   })
 })
 
+describe('a clarifying question from the answer model (ADR-0018 iteration 5)', () => {
+  it('is shown as a question, not blocked for having no citation', async () => {
+    const { m } = models(cls(['activity']), 'Are you asking about right after the hike, or later that day?')
+    const o = await turn('what can i eat after a hike', m)
+    expect(o.cards).toEqual([{ kind: 'clarify', text: 'Are you asking about right after the hike, or later that day?' }])
+    expect(o.guard).toBeNull()
+  })
+})
+
 describe('Regression tests', () => {
   it('"what can i eat after a hike" reads the exercise section, not how to treat a low (Kay, live site, 2026-11-17)', async () => {
     // Bug: word search matched "eat" and "after" and handed the model how to treat a
