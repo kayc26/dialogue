@@ -9,7 +9,7 @@ adr teaching map: the example is not the teaching — these are the up-links fro
 # ADR-0017: Multi-language support
 
 - **Date**: 2026-11-17
-- **Iteration**: 3
+- **Iteration**: 4
 - **Status**: Partially Implemented
 - **Deciders**: Kay, Nibble (Claude Opus 5.5)
 
@@ -162,6 +162,16 @@ In every case:
   - Tests: 13 new (286 total); the three floor tests were checked to fail with the check removed.
   - Known misses: a Latin-script language with no accents and no English words (e.g. plain Tagalog) reads as English; Chinese replies can't yet be told apart by script (not needed until translation).
 - Outcome: Accepted → Partially Implemented (floor built, not deployed; translation not started)
+
+### Iteration 4 (2026-11-17)
+- Trigger: Kay, after comparing dose checks with the other prototype: "but this complicates the language option right".
+- Contributors: Kay, Nibble (Claude Opus 5.5)
+- Changes (notes for whoever builds QST-LANG-MODE):
+  - Language independence of the dose protections: rule 1 (hidden dose passages) uses tags, any language; rule 3 (dose refusal) is English fixed rules plus the classifier (a model); rule 2 (the guard's dose check) is English patterns only; the monitor is a model, untested outside English.
+  - Under A (chosen), every dose check runs on English text, so nothing is lost. The new risk is the translation back: check numbers survive (already planned), and consider running the monitor on the translated answer too.
+  - Under B, rule 2 sees nothing and the monitor judges other languages alone. B should not be combined with loosening rule 1 (letting the model read dose passages, raised for thin high-blood-sugar answers in ADR-0018 iteration 3).
+  - Since ADR-0018 the classifier picks topics by meaning in any language, which makes B cheaper than when A was chosen; worth a look when this work starts, not a reason to reopen now.
+- Outcome: Partially Implemented
 
 ---
 
