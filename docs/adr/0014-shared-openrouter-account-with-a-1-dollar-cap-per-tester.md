@@ -9,8 +9,8 @@ adr teaching map: the example is not the teaching — these are the up-links fro
 # ADR-0014: Shared OpenRouter account with a $1 cap per tester
 
 - **Date**: 2026-11-16
-- **Iteration**: 3
-- **Status**: Accepted
+- **Iteration**: 4
+- **Status**: Implemented
 - **Deciders**: Kay, Nibble (Claude Opus 5.5)
 
 **TL;DR**: Kay wants testers on the shared OpenRouter account, capped at $1 each, with the chat showing a percentage of the allowance used instead of dollars. A static site can't hold a shared key secretly, so the question is how to share the account safely. Recommendation (iteration 2): keep the one shared key in a Neon Function inside the existing Neon project, which checks sign-in, tracks each tester's spending in the database, and stops at $1.
@@ -131,6 +131,18 @@ c
   - Migration 0004 applied to rls-dev.
   - Deploying the function with the Neon CLI was blocked by the session's permission rules. Kay runs the deploy, which is also the step that moves the key from `.env.local` to Neon.
 - Outcome: Draft → Accepted (no questions open)
+
+### Iteration 4 (2026-11-16)
+- Trigger: Kay: "can you deploy it", then "yes" to production (spending table, function, site push).
+- Contributors: Kay, Nibble (Claude Opus 5.5)
+- Changes:
+  - `neon config plan` caught missing `required` flags in `neon.ts` (fixed, `7eb4635`).
+  - Deployed `llm` to rls-dev, then production (`neon deploy --env .env.local --no-env-pull`; each plan showed only "+ function llm").
+  - Migration 0004 applied to production.
+  - Checked from outside on both branches: the site origin is allowed and others are not; no token and a fake token give 401; a chat call without sign-in gives 401.
+  - Site pushed.
+  - Not yet verified: a real signed-in call (no tester sign-in available to Nibble). Kay checks on the live site.
+- Outcome: Accepted
 
 ---
 
