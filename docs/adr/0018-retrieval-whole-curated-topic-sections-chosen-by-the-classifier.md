@@ -9,8 +9,8 @@ adr teaching map: the example is not the teaching — these are the up-links fro
 # ADR-0018: Retrieval: whole curated topic sections chosen by the classifier
 
 - **Date**: 2026-11-17
-- **Iteration**: 1
-- **Status**: Draft
+- **Iteration**: 2
+- **Status**: Accepted
 - **Deciders**: Kay, Nibble (Claude Opus 5.5)
 
 **TL;DR**: Kay's other prototype (`kayc26/diabetes_chatbot`) answers better mainly because of what it gives the model: whole, hand-curated topic sections picked by a model that understands the question, where DIAlogue gives four word-matched fragments. Recommendation: adopt its retrieval (curated sections, chosen by the classifier DIAlogue already runs) and keep DIAlogue's safety layers.
@@ -66,7 +66,7 @@ adr teaching map: the example is not the teaching — these are the up-links fro
 ## Questions
 
 ### QST-RETRIEVAL-SHAPE: How should DIAlogue find the material it answers from?
-- Status: unanswered
+- Status: answered
 - Why asking: DIAlogue's word search hands the answer model four short fragments, and when the question's words aren't in the text it returns nearby material (the hike question got low treatment). Kay's other prototype answers better by sending whole hand-curated topic sections chosen by a model. See the table in the Explicitation.
 - Need: pick a letter (or override — any shape answers)
 
@@ -81,12 +81,12 @@ Options:
 **A — curated sections, chosen by the classifier.** *Rationale*: the comparison above shows the failures come from what reaches the model, and A is the approach already shown to work on the same sources in Kay's other prototype. It costs no extra call (the classifier is already there), the sections are small enough to review by hand (the other bot's are 82,000 characters), and every DIAlogue check still applies to what the model writes. B patches symptoms one word list at a time; C adds a dependency for a corpus small enough to curate. *Confidence*: 0.7 — because the gain in the other bot is partly from having no checks, which A keeps; and the extra input cost per answer isn't measured yet. *If wrong*: if a side-by-side run on the same questions shows A's answers no better once the guard applies, or the cost is too high for the $1 cap, this flips to B.
 
 **ANS:** (by Kay)
-[Fill this in]   <!-- literal placeholder — parser-significant, do not paraphrase -->
+a
 
 ---
 
 ### QST-RETRIEVAL-BOOK: What happens to the book?
-- Status: unanswered — only matters if QST-RETRIEVAL-SHAPE is A or D
+- Status: answered
 - Why asking: *Bright Spots & Landmines* is 340 of DIAlogue's 472 passages. It adds practical tips, but it is one person's experience, its numbers already don't count for the guard (ADR-0013), and it often crowds ADA material out of the four slots. The other bot doesn't use it.
 - Need: pick a letter (or override)
 
@@ -100,19 +100,26 @@ Options:
 **B — its own topic.** *Rationale*: keeps the tips Kay chose to include (ADR-0013) without letting them crowd out ADA material on clinical questions. *Confidence*: 0.6 — because curating 340 book passages into a section is real work, and A is simpler if the tips aren't missed. *If wrong*: if the side-by-side run shows answers don't lose anything without it, this flips to A.
 
 **ANS:** (by Kay)
-[Fill this in]   <!-- literal placeholder — parser-significant, do not paraphrase -->
+c
 
 ---
 
 ## Decision
 
-Pending. If A: build the sections (reviewable files, outside git like the rest of the source text), extend the classifier's reply with a topic, swap retrieval in `turn.ts`, keep the guard and monitor, and run the same questions side by side (old vs new) before deploying. Cost measured in that run.
+### Chosen (Kay, 2026-11-17)
+
+- **QST-RETRIEVAL-SHAPE: A** — curated topic sections, chosen by the classifier; every DIAlogue check stays.
+- **QST-RETRIEVAL-BOOK: C** (Nibble recommended B) — the book stays mixed into each topic, as now.
+
+**Sizes, measured after the answers** (`kb/out/passages.json`): the book is 222,000 characters; the ADA material and the team FAQ together about 94,000. Its chapters map onto topics (Food, Exercise, Mindset, Sleep), so the book's food chapter alone would be several times the ADA food material. How much of it goes into each answer is open (see Iteration 2).
+
+Plan: build the sections (reviewable files, outside git like the rest of the source text), extend the classifier's reply with a topic, swap retrieval in `turn.ts`, keep the guard and monitor, and run the same questions side by side (old vs new) before deploying. Cost measured in that run.
 
 ---
 
 ## Action Items
 
-- [ ] Kay answers QST-RETRIEVAL-SHAPE and QST-RETRIEVAL-BOOK. Owner: Kay
+- [x] Kay answers QST-RETRIEVAL-SHAPE (A) and QST-RETRIEVAL-BOOK (C). Owner: Kay
 - [ ] Kay decides whether `kayc26/diabetes_chatbot` should stay public with the ADA text and team FAQ in it. Owner: Kay
 
 ---
@@ -124,6 +131,12 @@ Pending. If A: build the sections (reviewable files, outside git like the rest o
 - Contributors: Kay, Nibble (Claude Opus 5.5)
 - Changes: Read the other bot; compared what each hands its answer model for four questions; two questions with recommendations.
 - Outcome: Draft (two questions open)
+
+### Iteration 2 (2026-11-17)
+- Trigger: Kay answered A and C.
+- Contributors: Kay, Nibble (Claude Opus 5.5)
+- Changes: Decision filled in. Measured the sources: the book is 222,000 characters against about 94,000 for ADA and the FAQ, so sending whole book chapters with each topic would multiply the text per answer. Nibble asked Kay how much of the book goes into each answer.
+- Outcome: Draft → Accepted
 
 ---
 
