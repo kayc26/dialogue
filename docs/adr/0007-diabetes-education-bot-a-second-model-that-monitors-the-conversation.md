@@ -9,7 +9,7 @@ adr teaching map: the example is not the teaching — these are the up-links fro
 # ADR-0007: Diabetes education bot — a second model that monitors the conversation
 
 - **Date**: 2026-11-14
-- **Iteration**: 4
+- **Iteration**: 5
 - **Status**: Accepted
 - **Deciders**: Kay, Nibble (Claude Opus 5.5)
 
@@ -123,6 +123,26 @@ c
 
 ---
 
+### QST-MONITOR-UNPAUSE: Turn the monitor back on, after measuring its false positives?
+- Status: unanswered
+- Why asking: the monitor has been off since 2026-11-14. Kay's concern is false positives. A measurement on 2026-11-17 (iteration 5; `scripts/ephemeral/2026-11-17-monitor-false-positives.ts`, $0.0008): over 33 real answers (four test runs and the live site) it blocked **none**, and raised the help level to "check-in" on **3**, all general questions about highs or lows. On 7 answers written to be caught it caught **6**, including all four dose-advice-in-words examples that the answer check misses (TD-7); the fixed rules cover its one miss. Limits: 33 single-turn answers, mostly about food; no long conversations.
+- Need: pick a letter (or override — any shape answers)
+
+Options:
+- **A — on, as designed**: before display in dose conversations (it can block); after display everywhere else (it can only add a help line, or a "don't use that answer for a dose" note). The 3 check-in raises would show as the line "If this is happening to you now, call the nurse line…" when the turn didn't already show help.
+- **B — on in dose conversations only**: before display when a dose or medicine word has appeared; no review elsewhere. No extra help lines on ordinary answers, but dose advice in words in a conversation with no dose word (e.g. "my sugar is high tonight") goes unchecked.
+- **C — on, with a stricter prompt first**: as A, after changing its instructions so a general question about highs or lows doesn't raise the level; re-run the same measurement before turning it on.
+- **D — stay paused**: the answer check remains the only check before display; TD-7 stays open with nothing covering it.
+
+**Recommendation**: (by Nibble, Claude Opus 5.5, 2026-11-17)
+
+**A — on, as designed.** *Rationale*: in this measurement it never blocked a good answer, and its only extra output was a check-in line on questions about highs and lows, which the classifier often shows anyway. Meanwhile it is the only layer that caught dose advice written in words (4 of 4), the gap TD-7 leaves open while it waits on the sponsor. B misses that gap outside dose conversations; C is cheap if the check-in lines bother testers, but there is no evidence of that yet. *Confidence*: 0.7 — because the sample is small and single-turn; Kay's experience of false positives may come from cases this sample doesn't have. *If wrong*: if Kay can point to the false positives seen (what was asked, what it blocked), add them to the measurement; if they reproduce, this flips to C.
+
+**ANS:** (by Kay)
+[Fill this in]   <!-- literal placeholder — parser-significant, do not paraphrase -->
+
+---
+
 ## Decision
 
 On 2026-11-14, Kay answered: **QST-MONITOR-ROLE: A** (veto and escalate only, as recommended), **QST-MONITOR-PLACEMENT: C** (split; I recommended A), and **QST-MONITOR-MODEL: C** (a smaller, cheaper model; I recommended B).
@@ -191,6 +211,16 @@ On 2026-11-14, Kay answered: **QST-MONITOR-ROLE: A** (veto and escalate only, as
   - Looked for evidence. Production `triage_events` has no turn where the monitor ran (18 turns `monitor: none`, 7 `paused`); `kb:eval-faq` doesn't run it; the iteration-3 pause followed guard blocks (`no_citation`) and classifier failures, not monitor verdicts. So the false-positive rate is not yet measured in this project's records.
   - Stays paused. Open: measure the rate before deciding the monitor's future (see Kay's reply).
 - Outcome: Accepted (paused)
+
+### Iteration 5 (2026-11-17)
+- Trigger: Kay: "yes run it" (an offline measurement of false positives).
+- Contributors: Kay, Nibble (Claude Opus 5.5)
+- Changes:
+  - Ran the monitor (same model, prompt and parser as the app) over 33 saved answers and 7 controls; nothing shown to anyone; $0.0008. Results in `kb/out/monitor-measure.md` (git-ignored).
+  - Normal answers: 0 vetoes; 3 raises to check-in, all general questions about highs or lows.
+  - Controls: 6 of 7 caught, including all four TD-7 examples. The miss (repeated lows, needed help) is urgent by the fixed rules.
+  - Asked QST-MONITOR-UNPAUSE.
+- Outcome: Accepted (paused; one question open)
 
 ---
 
