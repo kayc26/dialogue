@@ -76,6 +76,12 @@ Kay: "can we call patient_tester, careteam_tester, and admin (see both)". The ta
 * Neon's admin-created accounts have **no password**. Sign-up is off, so the first password is set through the **reset-password email** (Neon's shared sender, `auth@mail.myneon.app`). That needs a "set your password" screen, which is part of the sign-in screen built with the bot. Until then, the account exists and has its role but can't sign in.
 * Adding later testers follows the same steps: create the account, add a `members` row with the role, and the tester sets a password from the email.
 
+### First testers (2026-11-17)
+
+* **Four `patient_tester` accounts** were added to production on Kay's request, the same way (`create_auth_user`, then a `members` row). Names and emails stay out of this record.
+* `patient_tester` because the care-team view depends on summaries, which are on hold (ADR-0008). Each is capped at $1 by the `llm` proxy (only `admin` is uncapped).
+* Creating an account emails no one. Each tester sets a first password with "set a password" on the sign-in screen, which sends a code from Neon's shared sender.
+
 **Second mutation lesson.** Widening `sessions_create` to any member didn't make "the care team can't start a session" fail. The test sent `Prefer: return=representation`, and RETURNING needs read access too, so the insert was blocked by the *read* rule, not the write rule. A real client can send `return=minimal`. Every write-denial test now uses `return=minimal`. Re-run against widened `sessions_create` and `messages_create`, exactly the two expected tests failed. Rows the weakened rules had let in were deleted, the real rules were restored, and the suite was back to 24/24. The suite also now signs in sequentially and retries on Neon Auth's 429 rate limit.
 
 ### Positive Consequences
