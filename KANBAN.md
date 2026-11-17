@@ -100,6 +100,7 @@ Nothing in the app writes to `summaries` or `replies` today; the tables and thei
 - [x] Proxy CORS preflight fixed (`X-Title` allowed), with a regression test. ADR-0014
 - [x] Signed-in call verified live: allowance line, answers, cost rows in `llm_spend`. ADR-0014
 - [x] Project renamed to DIAlogue; site moved to `kayc26.github.io/dialogue/`. ADR-0015
+- [x] Non-English messages always get help and an "English only" note (safety floor). ADR-0017
 - [x] ADR-0008 marked Partially Implemented, so "Accepted" isn't read as "built". ADR-0008
 - [x] Fixed replies for small talk ("hi", "thanks", "who are you"), and a no-information reply that says what the assistant can help with. ADR-0016
 - [x] README rewritten to describe the current code base, including the shared-key proxy.

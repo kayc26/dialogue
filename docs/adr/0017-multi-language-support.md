@@ -9,8 +9,8 @@ adr teaching map: the example is not the teaching — these are the up-links fro
 # ADR-0017: Multi-language support
 
 - **Date**: 2026-11-17
-- **Iteration**: 2
-- **Status**: Accepted
+- **Iteration**: 3
+- **Status**: Partially Implemented
 - **Deciders**: Kay, Nibble (Claude Opus 5.5)
 
 **TL;DR**: Kay wants the assistant to work in more than one language. Every safety layer that doesn't use a model is English-only, so a non-English emergency today relies on the AI classifier alone. Recommendation: close that gap first with a cheap language check that always shows help; then pick the languages with the sponsor, and run the safety checks on an English translation while the patient reads and writes in their own language.
@@ -129,7 +129,8 @@ In every case:
 ## Action Items
 
 - [x] Kay answers QST-LANG-FLOOR, QST-LANG-WHICH, QST-LANG-MODE. Owner: Kay
-- [ ] Build the floor (QST-LANG-FLOOR: A). Owner: Nibble
+- [x] Build the floor (QST-LANG-FLOOR: A), iteration 3. Owner: Nibble
+- [ ] Deploy the floor (push) with Kay's OK, then try a Spanish and a Chinese message on the live site. Owner: Kay, Nibble
 - [ ] Find a reviewer for each language's fixed texts (Spanish, Chinese in both scripts, Korean): fixed texts are shown word for word, so a person who reads the language approves them. Owner: Kay
 - [ ] Ask the clinical sponsor to review the translate-at-the-edges design (QST-LANG-MODE confidence 0.55). Owner: Kay
 - [ ] Build QST-LANG-MODE: A once reviewers exist. Owner: Nibble
@@ -149,6 +150,18 @@ In every case:
 - Contributors: Kay, Nibble (Claude Opus 5.5)
 - Changes: Decision filled in. Two scripts of Chinese means five sets of fixed text in all (English plus four), each needing a reader to approve it.
 - Outcome: Draft → Accepted (no questions open)
+
+### Iteration 3 (2026-11-17)
+- Trigger: build of QST-LANG-FLOOR: A.
+- Contributors: Nibble (Claude Opus 5.5)
+- Changes:
+  - `src/lib/chat/language.ts`: `detectLanguage` by script (Hangul → `ko`, Han → `zh`, Kana and other scripts → `other`) and, for Latin text, Spanish vs English word lists plus ¿ ¡ and accents; other Latin diacritics with no English words → `other`. Leans towards "not English".
+  - `turn.ts` step 2b: after the classifier (whose 911 or nurse-line card still comes first), a non-English message gets the `language` card ("This test only works in English", Call 911, Call the nurse line) and the turn stops: no dose rules, search, answer model or small talk. The English urgent passage is skipped for non-English readers.
+  - The rules-only path (allowance used, models down) shows the same card.
+  - Logged as `triage_events.detail.language`.
+  - Tests: 13 new (286 total); the three floor tests were checked to fail with the check removed.
+  - Known misses: a Latin-script language with no accents and no English words (e.g. plain Tagalog) reads as English; Chinese replies can't yet be told apart by script (not needed until translation).
+- Outcome: Accepted → Partially Implemented (floor built, not deployed; translation not started)
 
 ---
 
