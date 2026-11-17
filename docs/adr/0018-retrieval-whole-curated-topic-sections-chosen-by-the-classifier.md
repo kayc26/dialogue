@@ -9,7 +9,7 @@ adr teaching map: the example is not the teaching — these are the up-links fro
 # ADR-0018: Retrieval: whole curated topic sections chosen by the classifier
 
 - **Date**: 2026-11-17
-- **Iteration**: 3
+- **Iteration**: 4
 - **Status**: Implemented
 - **Deciders**: Kay, Nibble (Claude Opus 5.5)
 
@@ -151,6 +151,18 @@ Plan: build the sections (reviewable files, outside git like the rest of the sou
   - Tests: 6 new (292 total); the hike regression test fails without the routing.
   - Side-by-side run skipped at Kay's request; Kay tests on the live site. Cost per answer to be read from `llm_spend`.
 - Outcome: Accepted → Implemented
+
+### Iteration 4 (2026-11-17)
+- Trigger: Kay liked the live result, then asked what else to learn from the prototype; "sounds good" to four borrowings.
+- Contributors: Kay, Nibble (Claude Opus 5.5)
+- Changes:
+  - **Routing test** (from the prototype's `test_questions.txt` and `run_tests.py`): `kb/routing-questions.txt` (38 questions written for this file, expected topics; "a / b" accepts either) and `npm run kb:eval-routing` (classifier only, about $0.001 per run; report in `kb/out/eval-routing.md`).
+  - **Classifier**: unwell without a reading → both low_blood_sugar and high_blood_sugar (from the prototype); choose two topics when a question touches two (eating after exercise: activity and food).
+  - **Answer instructions** (from the prototype): no examples or foods from the model's own knowledge, and don't list items under a general group the passages don't list (the guard checks numbers, not foods); the person's own care-team plan comes first.
+  - **Topic map**: glucagon passages (t1-025, t1-060) also in medicines_devices; support's description spelled out (doctor visits, information found online).
+  - Results: run 1, 31/38 ($0.0011); after the fixes, 34/38 ($0.0013). The hike question now routes to activity. Still failing: swimming → monitoring (defensible); glucagon → basics (it went to medicines_devices in run 1: the small classifier varies between runs); "I'm fainting" → low only (an emergency, so the 911 alert comes first anyway); doctor's appointment → daily_life. Tuning stopped there to avoid fitting the prompt to one test set.
+  - Not borrowed yet: asking one clarifying question when context is missing. The guard would block a question with no citation, and ADR-0008 plans structured follow-ups; needs its own decision.
+- Outcome: Implemented
 
 ---
 

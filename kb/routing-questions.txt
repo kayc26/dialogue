@@ -1,0 +1,61 @@
+# Routing test for the classifier's topics (ADR-0018). Run: npm run kb:eval-routing -- --yes
+# One test per line: expected topics | question
+# Expected topics are names from src/lib/chat/topics.ts, comma-separated, or "none".
+# A test passes if the classifier picks every expected topic (an extra topic is allowed);
+# "a / b" accepts either one, for questions where both are reasonable; "none" passes
+# only if it picks no topic. Adapted from kayc26/diabetes_chatbot's
+# test_questions.txt. Questions are written for this file (not copied from the FAQ).
+
+# Food
+food | What can I eat for breakfast?
+food | Is rice okay to eat?
+food | How big should my portions be?
+food | I'm always hungry in the afternoon
+food | Can I have a glass of wine with dinner?
+food | What snacks are good before bed?
+
+# Sweeteners
+sweeteners | Is stevia safe for me?
+sweeteners | What are sugar alcohols?
+sweeteners / food | Are sugar-free cookies okay to eat?
+
+# Activity (the hike question is Kay's, from the live site)
+activity | what can i eat after a hike
+activity | Is walking good for my blood sugar?
+activity | How much exercise should I get each week?
+activity | Should I check my sugar before swimming?
+
+# Lows and highs
+low_blood_sugar | What should I do if my blood sugar is low?
+low_blood_sugar | My sugar is 62 and I feel shaky
+low_blood_sugar / medicines_devices | What is glucagon?
+high_blood_sugar | Why is my blood sugar high in the morning?
+high_blood_sugar | What are ketones?
+high_blood_sugar | My sugar is 320 and I keep throwing up
+
+# Unwell without a reading: both (the rule borrowed from the prototype)
+low_blood_sugar, high_blood_sugar | I feel dizzy and confused
+low_blood_sugar, high_blood_sugar | I'm fainting
+low_blood_sugar, high_blood_sugar | I feel weak and not myself today
+
+# Monitoring, medicines and devices
+monitoring | How often should I check my blood sugar?
+monitoring | What is a CGM?
+monitoring | What does time in range mean?
+medicines_devices | What does metformin do?
+medicines_devices | How do insulin pumps work?
+medicines_devices | Should I take my mealtime insulin before or after eating?
+
+# Daily life, support, basics
+daily_life | What should I do on a sick day?
+daily_life | How does sleep affect my blood sugar?
+daily_life | I'm traveling next week, what should I bring?
+support | I feel burned out from managing diabetes
+support | How do I prepare for my doctor's appointment?
+support | Can I trust diabetes information I find online?
+basics | What is type 2 diabetes?
+
+# Off topic and small talk
+none | What is the capital of France?
+none | Can you recommend a good movie?
+none | hi

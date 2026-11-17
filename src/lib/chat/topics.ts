@@ -27,7 +27,7 @@ export const TOPICS = {
   sweeteners: 'sugar substitutes, artificial sweeteners, sugar alcohols, sugar-free labels',
   activity: 'exercise, physical activity, walking, hiking, sports, staying safe while active, eating around exercise',
   daily_life: 'sick days, stress, sleep, work, travel, routines, getting older',
-  support: 'emotional wellbeing, burnout, motivation, the care team, appointments, diabetes education, finding reliable information',
+  support: 'emotional wellbeing, burnout, motivation, working with the care team, preparing for doctor visits and appointments, diabetes education classes, judging health information found online or from friends',
 } as const
 export type Topic = keyof typeof TOPICS
 export const TOPIC_NAMES = Object.keys(TOPICS) as Topic[]
@@ -47,7 +47,7 @@ const SECTIONS: Record<Topic, string[]> = {
   low_blood_sugar: [...t1(14, 15, 16, 23, 24, 25, 60), ...t2(21, 22)],
   high_blood_sugar: [...faq(8, 9), ...t1(27, 28, 29), ...t2(23)],
   monitoring: [...t1(32, 36, 38, 70), ...t2(13, 20)],
-  medicines_devices: [...faq(12), ...t1(33, 34, 39, 40, 59, 76), ...t2(6, 7, 9, 11, 15, 16)],
+  medicines_devices: [...faq(12), ...t1(25, 33, 34, 39, 40, 59, 60, 76), ...t2(6, 7, 9, 11, 15, 16)], // 25, 60: glucagon
   food: [
     ...faq(1, 2, 3, 4, 5, 6, 7, 10, 11, 13),
     ...t1(41, 42, 43, 44, 46, 47, 75),
