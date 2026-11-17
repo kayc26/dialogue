@@ -9,8 +9,8 @@ adr teaching map: the example is not the teaching — these are the up-links fro
 # ADR-0018: Retrieval: whole curated topic sections chosen by the classifier
 
 - **Date**: 2026-11-17
-- **Iteration**: 2
-- **Status**: Accepted
+- **Iteration**: 3
+- **Status**: Implemented
 - **Deciders**: Kay, Nibble (Claude Opus 5.5)
 
 **TL;DR**: Kay's other prototype (`kayc26/diabetes_chatbot`) answers better mainly because of what it gives the model: whole, hand-curated topic sections picked by a model that understands the question, where DIAlogue gives four word-matched fragments. Recommendation: adopt its retrieval (curated sections, chosen by the classifier DIAlogue already runs) and keep DIAlogue's safety layers.
@@ -137,6 +137,20 @@ Plan: build the sections (reviewable files, outside git like the rest of the sou
 - Contributors: Kay, Nibble (Claude Opus 5.5)
 - Changes: Decision filled in. Measured the sources: the book is 222,000 characters against about 94,000 for ADA and the FAQ, so sending whole book chapters with each topic would multiply the text per answer. Nibble asked Kay how much of the book goes into each answer.
 - Outcome: Draft → Accepted
+
+### Iteration 3 (2026-11-17)
+- Trigger: Kay chose "best few passages" for the book, then "no, push and I'll test myself" instead of the side-by-side run.
+- Contributors: Kay, Nibble (Claude Opus 5.5)
+- Changes:
+  - `src/lib/chat/topics.ts`: 10 topics plus "always" (when to seek help); FAQ and ADA passages assigned by hand by id; the book's chapters by id range (start → basics, food, mindset → support, exercise → activity, sleep → daily_life).
+  - The classifier's reply gains `topics` (up to two, checked against the list); still one call.
+  - The answer model reads those sections whole (care-team FAQ, then ADA with the patient's own type first) plus the 4 best book passages from the matching chapters (score ≥ 2). No topic, no loaded passages, or a failed classifier: word search's top 4, as before.
+  - Unchanged: dose passages hidden, the guard, the monitor. A blocked answer falls back to the most relevant routed passage. The answer prompt adds the other bot's rule: answer the question directly in the first sentence.
+  - Logged: `triage_events.detail.topics` and `retrieval` (`topics` or `search`).
+  - Section sizes (`scripts/ephemeral/2026-11-17-topic-map-check.ts`): ~1,700 characters (high blood sugar) to ~19,000 (food). High blood sugar is thin because most of its ADA passages are dose-tagged and hidden.
+  - Tests: 6 new (292 total); the hike regression test fails without the routing.
+  - Side-by-side run skipped at Kay's request; Kay tests on the live site. Cost per answer to be read from `llm_spend`.
+- Outcome: Accepted → Implemented
 
 ---
 

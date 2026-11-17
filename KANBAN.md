@@ -99,6 +99,7 @@ Nothing in the app writes to `summaries` or `replies` today; the tables and thei
 - [x] Proxy CORS preflight fixed (`X-Title` allowed), with a regression test. ADR-0014
 - [x] Signed-in call verified live: allowance line, answers, cost rows in `llm_spend`. ADR-0014
 - [x] Project renamed to DIAlogue; site moved to `kayc26.github.io/dialogue/`. ADR-0015
+- [x] Answers read whole curated topic sections chosen by the classifier (the hike question now gets the exercise section). ADR-0018
 - [x] Monitor back on after an offline measurement (0 blocks on 33 good answers; catches dose advice in words). ADR-0007
 - [x] Non-English messages always get help and an "English only" note (safety floor). ADR-0017
 - [x] ADR-0008 marked Partially Implemented, so "Accepted" isn't read as "built". ADR-0008
