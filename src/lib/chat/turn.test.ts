@@ -232,6 +232,36 @@ describe('small talk (ADR-0016)', () => {
   })
 })
 
+describe('messages that are not English (ADR-0017)', () => {
+  it('a Spanish emergency the classifier misses still gets help, and no answer model', async () => {
+    // The floor: the fixed rules are English patterns, and here the classifier says "none".
+    const { m, calls } = models({})
+    const o = await turn('no puedo respirar y me duele el pecho', m)
+    expect(o.cards).toEqual([{ kind: 'language', lang: 'es' }])
+    expect(calls.complete).toBe(0)
+  })
+
+  it('when the classifier does catch it, its 911 card comes first', async () => {
+    const { m } = models({ classify: cls('emergency') })
+    const o = await turn('我的血糖很低，站不起来', m)
+    expect(o.cards[0]).toMatchObject({ kind: 'escalation', tier: 'emergency' })
+    expect(o.cards[1]).toEqual({ kind: 'language', lang: 'zh' })
+  })
+
+  it('an urgent non-English message gets no English "what to do" passage', async () => {
+    const { m } = models({ classify: cls('urgent') })
+    const o = await turn('혈당이 너무 높아요', m)
+    expect(o.cards.map((c) => c.kind)).toEqual(['escalation', 'language'])
+  })
+
+  it('an English question with a Spanish food word is answered normally', async () => {
+    const { m, calls } = models({ answers: ['Berries and apples raise glucose less than bananas. [kb:fruit]'] })
+    const o = await turn('What fruit can I eat with jalapeños?', m)
+    expect(o.cards[0]).toMatchObject({ kind: 'answer' })
+    expect(calls.complete).toBe(1)
+  })
+})
+
 describe('Regression tests', () => {
   it('"hi" gets the fixed greeting, not "I don\'t have information on that" (Kay, live site, 2026-11-17)', async () => {
     // Bug: "hi" ran the answer model, which wrote a friendly uncited greeting; the

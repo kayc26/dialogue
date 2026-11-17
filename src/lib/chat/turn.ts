@@ -21,6 +21,7 @@ import { combineTriage, parseClassifier, type CombinedTriage } from './combine'
 import { checkAnswer, stripCitations, trimBookNumbers } from './guard'
 import { ANSWER_SYSTEM, ANSWER_TOOL_ROUNDS, CARDS_PAUSED, MONITOR_PAUSED } from './prompts'
 import { direction, type DiabetesType, type Hit, type Index, type KbPassage, type SearchOptions } from './retrieve'
+import { detectLanguage, type Lang } from './language'
 import { socialIntent, type SocialIntent } from './social'
 import { maxTier, triageRules, type Profile, type Tier } from './triage'
 
@@ -31,6 +32,8 @@ export type Card =
   | { kind: 'no_info' }
   /** A fixed reply to small talk (ADR-0016); no model wrote it. */
   | { kind: 'social'; intent: SocialIntent }
+  /** The message isn't English: help buttons and an "English only" note (ADR-0017). */
+  | { kind: 'language'; lang: Lang }
   | { kind: 'answer'; text: string; sources: KbPassage[] }
   | { kind: 'topic_card'; card: TopicCard; sources: KbPassage[] }
 
@@ -213,9 +216,12 @@ export async function runTurn(input: TurnInput): Promise<TurnOutcome> {
   // several cards"). Besides the help notice, a turn shows ONE body: the answer, or a
   // single approved passage, or a fixed card. Only an urgent red flag adds its "what
   // to do" passage, because there that passage is the point.
+  const lang = detectLanguage(message)
   if (tier !== 'none') {
     cards.push({ kind: 'escalation', tier, criteria: triage.criteria })
-    if (tier === 'urgent') {
+    // The urgent "what to do" passage is English; it would only be noise to a reader
+    // who wrote in another language (the language card below carries the help).
+    if (tier === 'urgent' && lang === 'en') {
       const p = urgentPassage(index, message, rules.glucose, byType)
       if (p) cards.push({ kind: 'passage', passage: p, why: 'urgent' })
     }
@@ -228,6 +234,15 @@ export async function runTurn(input: TurnInput): Promise<TurnOutcome> {
   const done = (extra: Partial<TurnOutcome> = {}): TurnOutcome => ({
     triage, tier, cards, doseSession, monitor: 'none', monitorVerdict: null, background: null, modelCalls, card: cardStep, ...trimNote, ...extra,
   })
+
+  // 2b. Not English (ADR-0017, QST-LANG-FLOOR: A). The fixed rules above are English
+  // patterns, so here only the classifier could have caught a red flag. Whatever it
+  // said, show help (nurse line and 911) with an "English only" note, and stop: the
+  // dose rules, search, the guard and small talk are English-only too.
+  if (lang !== 'en') {
+    cards.push({ kind: 'language', lang })
+    return done()
+  }
 
   // 3. Dose question: fixed card, no answer model.
   if (triage.doseIntent && enforceDose) {

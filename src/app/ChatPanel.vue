@@ -18,6 +18,7 @@ import { buildCardIndex, type TopicCard } from '../lib/chat/cards'
 import { openRouterModels, type CostMeter } from '../lib/chat/models'
 import { ConversationLog, cardsToText } from '../lib/chat/persist'
 import { NO_INFO_REPLY, SOCIAL_REPLY } from '../lib/chat/social'
+import { detectLanguage, LANGUAGE_NOTE } from '../lib/chat/language'
 import { runTurn, type Card, type TurnOutcome } from '../lib/chat/turn'
 import { maxTier, triageRules, TIER_RANK, type Profile, type Tier } from '../lib/chat/triage'
 import { OpenRouterError } from '../lib/openrouter'
@@ -94,7 +95,9 @@ function rulesOnly(message: string, failed: boolean): TurnOutcome {
   const r = triageRules(message, props.profile)
   const t = failed ? maxTier(r.tier, 'checkin') : r.tier
   const cards: Card[] = t === 'none' ? [] : [{ kind: 'escalation', tier: t, criteria: r.criteria }]
-  if (r.doseIntent) cards.push({ kind: 'dose_refusal' })
+  const lang = detectLanguage(message) // ADR-0017: the floor holds when the models are off too
+  if (lang !== 'en') cards.push({ kind: 'language', lang })
+  else if (r.doseIntent) cards.push({ kind: 'dose_refusal' })
   return {
     triage: { tier: t, criteria: [...r.criteria, failed ? 'model_unavailable' : 'allowance_used'], doseIntent: r.doseIntent, softened: false, classifierFailed: true },
     tier: t, cards, doseSession, guard: null, monitor: 'none', monitorVerdict: null, background: null, modelCalls: 0, card: null,
@@ -216,8 +219,17 @@ const docTitles = (sources: KbPassage[], label: KbPassage['source_label']) =>
                   <a class="call nurse" href="#demo-nurse">Call the nurse line</a>
                 </div>
               </div>
+              <!-- ADR-0017 (QST-LANG-FLOOR: A): not English, so help and an "English only" note. -->
+              <div v-else-if="c.kind === 'language'" class="bubble esc urgent" role="alert">
+                <p class="esc-title">{{ LANGUAGE_NOTE.title }}</p>
+                <p>{{ LANGUAGE_NOTE.text }}</p>
+                <div class="esc-buttons">
+                  <a class="call c911" href="#demo-911">Call 911</a>
+                  <a class="call nurse" href="#demo-nurse">Call the nurse line</a>
+                </div>
+              </div>
             </template>
-            <div v-if="item.cards?.some((c) => c.kind !== 'escalation' || c.tier === 'checkin')" class="bubble bot">
+            <div v-if="item.cards?.some((c) => (c.kind !== 'escalation' && c.kind !== 'language') || (c.kind === 'escalation' && c.tier === 'checkin'))" class="bubble bot">
             <template v-for="(c, j) in item.cards" :key="j">
               <div v-if="c.kind === 'passage'">
                 <p v-if="c.why === 'dose'" class="dose-head">Talk to your care team before changing any dose.</p>

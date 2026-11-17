@@ -22,6 +22,8 @@ export function cardsToText(cards: Card[]): string {
           return "[no information on that in the knowledge base]"
         case 'social':
           return `[small talk: fixed ${c.intent} reply]`
+        case 'language':
+          return `[not English (${c.lang}): help and "English only" note shown]`
         case 'answer':
           return `${c.text} [sources: ${c.sources.map((s) => s.id).join(', ')}]`
         case 'topic_card':
@@ -70,6 +72,7 @@ export class ConversationLog {
         model_calls: outcome.modelCalls,
         card: outcome.card, // ADR-0013: which card answered, or why none did
         social: outcome.cards.flatMap((c) => (c.kind === 'social' ? [c.intent] : []))[0] ?? null, // ADR-0016: which fixed small-talk reply, if any
+        language: outcome.cards.flatMap((c) => (c.kind === 'language' ? [c.lang] : []))[0] ?? 'en', // ADR-0017
         calls, // per-call finish reason, tokens, timing (models.ts CallNote)
       },
     })
