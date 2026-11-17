@@ -9,8 +9,8 @@ adr teaching map: the example is not the teaching — these are the up-links fro
 # ADR-0008: Diabetes education bot — intake, conversation summary, and nurse handoff
 
 - **Date**: 2026-11-14
-- **Iteration**: 4
-- **Status**: Accepted
+- **Iteration**: 5
+- **Status**: Partially Implemented
 - **Deciders**: Kay, Nibble (Claude Opus 5.5)
 
 **TL;DR**: Decided: the bot asks a few targeted follow-up questions drawn from the clinic's triage flowchart. At the end, it builds a structured summary: each field cites the turn it came from, and the transcript is attached. The patient gets a plain-language version, and the care team gets the structured one. This adds a second reader of the data, the nurse, so where the data lives becomes a real decision (QST-HANDOFF-STORAGE).
@@ -46,6 +46,8 @@ adr teaching map: the example is not the teaching — these are the up-links fro
 **Confirm**: Kay. Does "for clinical team's review **or** the patient's reference" mean the patient chooses whether to send it, or both always get it? See QST-HANDOFF-CONSENT.
 
 ---
+
+**Built so far (2026-11-17)**: only the storage. The `summaries` and `replies` tables and their access rules exist and are tested (`db/migrations/0001`, `0002`; ADR-0011). Nothing in the app asks follow-ups, builds a summary, or shows an inbox yet; the work is in `KANBAN.md` under "Conversation summary and nurse handoff".
 
 ## Proposed design
 
@@ -268,6 +270,12 @@ The design above stands as proposed.
 - Contributors: Kay, Nibble (Claude Opus 5.5)
 - Changes: QST-HANDOFF-STORAGE marked superseded, with Kay's original answer A kept. The Decision now points to Neon for summaries, the inbox, and replies.
 - Outcome: Accepted
+
+### Iteration 5 (2026-11-17)
+- Trigger: handoff (`docs/HANDOFF-2026-11-17.md`): "Accepted" was being read as "built".
+- Contributors: Nibble (Claude Opus 5.5)
+- Changes: Status set to Partially Implemented, with a note on what exists (tables and access rules) and what doesn't (everything the patient or nurse sees).
+- Outcome: Accepted → Partially Implemented
 
 ---
 
