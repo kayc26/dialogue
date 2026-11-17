@@ -32,7 +32,6 @@ Nothing in the app writes to `summaries` or `replies` today; the tables and thei
 - [ ] **Care-team inbox view:** replaces "Coming next" in `src/app/HomeScreen.vue`; shared summaries with their transcripts; says plainly that the nurse decides, not the bot.
 - [ ] **Nurse replies:** typed in the inbox, shown to the patient next visit in large type, read aloud.
 - [ ] **Turnaround wording** for the patient summary (when to expect a reply).
-- [ ] **Mark ADR-0008 as decided but not yet implemented**, so "Accepted" isn't read as "built".
 
 ### Knowledge base
 
@@ -101,5 +100,6 @@ Nothing in the app writes to `summaries` or `replies` today; the tables and thei
 - [x] Proxy CORS preflight fixed (`X-Title` allowed), with a regression test. ADR-0014
 - [x] Signed-in call verified live: allowance line, answers, cost rows in `llm_spend`. ADR-0014
 - [x] Project renamed to DIAlogue; site moved to `kayc26.github.io/dialogue/`. ADR-0015
+- [x] ADR-0008 marked Partially Implemented, so "Accepted" isn't read as "built". ADR-0008
 - [x] Fixed replies for small talk ("hi", "thanks", "who are you"), and a no-information reply that says what the assistant can help with. ADR-0016
 - [x] README rewritten to describe the current code base, including the shared-key proxy.
