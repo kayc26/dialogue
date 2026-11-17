@@ -1,6 +1,6 @@
 # CLAUDE.md - Project Guidance
 
-- **Project**: Harness
+- **Project**: DIAlogue (called Harness until 2026-11-16, ADR-0015)
 - **Human**: Kay
 - **AI**: Nibble (Claude Opus 5.5, in Claude Code). It is the founding and coordinating seat; the roster is in `docs/inbox/agent-sessions.json`.
 - **Last Updated**: 2026-11-12
@@ -252,10 +252,10 @@ If the script was successfully used, append as comments how, and what the outcom
 ## Project Context
 
 ### What we're building:
-Harness is a simple chat page that runs entirely in the browser, hosted on GitHub Pages with no backend. It calls OpenRouter's API directly from the page (CORS) using the user's own key, and keeps its data in `localStorage`. This repo holds both the deliberation record (`docs/adr/`) and the implementation.
+DIAlogue is a diabetes education assistant inside a mock patient-portal Message Center, built for testing with invited testers and synthetic patients. It runs in the browser on GitHub Pages; sign-in, data and the knowledge base live in Neon (Postgres with row-level security, the Data API, Neon Auth), and model calls go through a Neon Function that holds the shared OpenRouter key and caps each tester at $1 (ADR-0014). It grew from Harness v1, a general OpenRouter chat client still served at `#/harness`. This repo holds both the deliberation record (`docs/adr/`) and the implementation. See `README.md` for the current shape.
 
 ### Current focus:
-Building v1: a Vue chat client with an agent loop and browser-side tools, deployed to GitHub Pages.
+Getting the diabetes assistant ready for testers: the answer path (ADR-0013) and the shared key (ADR-0014). See `KANBAN.md`.
 
 ### Key decisions made:
 - API key: pasted by the user and kept in `localStorage`, never in the repo or the build. See `docs/adr/0001-api-key-handling-*.md`
