@@ -8,7 +8,6 @@ Columns: **Waiting** (blocked on a person's answer or material), **To do** (read
 
 ## Waiting
 
-- [ ] **Kay: answer QST-KEY-SHARING** (shared OpenRouter account, $1 cap per tester). Blocks the key and cost cards below. [ADR-0014](docs/adr/0014-shared-openrouter-account-with-a-1-dollar-cap-per-tester.md)
 - [ ] **Kay: clinician requirements for the summary fields.** They replace ADR-0008's field table; the summary mechanism can be built before they arrive. [ADR-0008](docs/adr/0008-diabetes-education-bot-intake-conversation-summary-and-nurse-handoff.md)
 - [ ] **Clinical sponsor: review and approve topic cards** (`npm run kb:cards:approve`). [ADR-0013](docs/adr/0013-knowledge-base-shape-raw-passages-or-synthesized-topic-cards.md)
 - [ ] **Clinical sponsor: more nutrition material.** 7 of the 13 FAQ questions are nutrition and the current sources answer them thinly. [ADR-0013](docs/adr/0013-knowledge-base-shape-raw-passages-or-synthesized-topic-cards.md)
@@ -46,14 +45,13 @@ Nothing in the app writes to `summaries` or `replies` today; the tables and thei
 - [ ] **Test protocol for moderated sessions:** tasks (nutrition question, high reading, dose question), what to observe, consent wording. [ADR-0010](docs/adr/0010-diabetes-education-bot-how-test-users-reach-it.md)
 - [ ] **Public-site notice for strangers** that the link alone is a non-working preview. The sign-in screen already asks not to type real health information. [ADR-0010](docs/adr/0010-diabetes-education-bot-how-test-users-reach-it.md)
 
-### After QST-KEY-SHARING is answered
+### Shared key (ADR-0014)
 
-- [ ] **Build the chosen key path** (C: a Neon Function that verifies the sign-in token, first on rls-dev; B: check a $1-limited key reports its usage). [ADR-0014](docs/adr/0014-shared-openrouter-account-with-a-1-dollar-cap-per-tester.md)
-- [ ] **Show "N% of your allowance used"** instead of a dollar amount in the chat. [ADR-0014](docs/adr/0014-shared-openrouter-account-with-a-1-dollar-cap-per-tester.md)
+- [ ] **Verify a real signed-in call on production:** the allowance line shows, a question gets an answer, and a row lands in `public.llm_spend`. Only preflight and unsigned calls have been checked so far. [ADR-0014](docs/adr/0014-shared-openrouter-account-with-a-1-dollar-cap-per-tester.md)
+- [ ] **Redeploy `llm` to rls-dev**: it still runs the version without the `X-Title` fix, so browsers are blocked there. [ADR-0014](docs/adr/0014-shared-openrouter-account-with-a-1-dollar-cap-per-tester.md)
 
 ### Housekeeping
 
-- [ ] **Commit the rewritten `README.md`** (and this board).
 - [ ] **TD-1: install Node 24 locally** to match CI, then bump jsdom. [TECHNICAL-DEBT](docs/TECHNICAL-DEBT.md)
 - [ ] **Fix the stale comment in `src/lib/chat/retrieve.ts`** ("136 passages"; production has 472).
 
@@ -88,4 +86,8 @@ Nothing in the app writes to `summaries` or `replies` today; the tables and thei
 - [x] Knowledge base build and load, with source priority care-team FAQ, then ADA, then the book; book text never shown word for word. ADR-0013
 - [x] Topic-card pipeline: drafts, checks (guard, sources, reading level), load, sponsor approval by name, automatic return to draft when sources change, FAQ comparison. ADR-0013
 - [x] Models chosen under the $15 budget, with a running cost total. ADR-0012
-- [x] README rewritten to describe the current code base.
+- [x] QST-KEY-SHARING answered (C: a Neon Function holding the shared key). ADR-0014
+- [x] Model proxy `llm` built and deployed to rls-dev and production: sign-in and membership check, model allow-list, $1 cap per tester (admin metered, not capped), cost recorded in `llm_spend` (migration 0004). ADR-0014
+- [x] Chat shows "N% of your test allowance" instead of dollars; no key form for testers. ADR-0014
+- [x] Proxy CORS preflight fixed (`X-Title` allowed), with a regression test. ADR-0014
+- [x] README rewritten to describe the current code base, including the shared-key proxy.

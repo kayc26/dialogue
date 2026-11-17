@@ -4,10 +4,10 @@ A browser-only web app, hosted on GitHub Pages, that puts an AI diabetes educati
 
 **Try it: <https://kayc26.github.io/harness/>** (sign-in required; accounts are created by an admin).
 
-There is no backend of our own. The page talks directly to:
+There is no server of our own. Everything runs in Neon or the browser:
 
 - **Neon** (Postgres with row-level security, the Neon Data API, and Neon's managed Better Auth) for sign-in, membership, demo patients, the knowledge base, and conversation logs.
-- **OpenRouter** for the language models, using the tester's own API key, which is kept only in that tester's browser.
+- **OpenRouter** for the language models, reached only through a **Neon Function** (`llm`, [ADR-0014](docs/adr/0014-shared-openrouter-account-with-a-1-dollar-cap-per-tester.md)). The function holds the project's shared OpenRouter key, so testers never need a key and the browser never sees one. It checks the tester's sign-in and membership, allows only the assistant's models, and stops each tester at $1 of spending.
 
 The same site also still serves **Harness v1**, the general-purpose OpenRouter chat client this repo started as, at `#/harness` (see [below](#harness-v1-the-general-chat-client)).
 
@@ -17,7 +17,7 @@ The same site also still serves **Harness v1**, the general-purpose OpenRouter c
 
 1. **Sign in.** Accounts are created by an admin. A new tester sets a password with an emailed code. Being signed in grants nothing by itself: access comes from a row in `public.members`.
 2. **The portal home.** An unbranded copy of a patient portal's Message Center. Parts of the portal that aren't part of the demo say so when clicked. A working High Contrast Theme switch is in the footer.
-3. **The assistant window.** One button opens a docked "New message" window with a yellow "not for emergencies" banner. The tester picks one of six demo patients, sees that patient's recorded insulin regimen and recent glucose (read-back only), and chats.
+3. **The assistant window.** One button opens a docked "New message" window with a yellow "not for emergencies" banner. The tester picks one of six demo patients, sees that patient's recorded insulin regimen and recent glucose (read-back only), and chats. Below the Ask box, a line shows how much of the tester's test allowance is used, as a percentage ("You've used 25% of your test allowance"), never in dollars. At 100%, answers turn off and the help path stays.
 4. **"Get help now"** is always on screen. It is plain HTML and CSS in `index.html`, outside the Vue app, so it works even if the app or the models fail.
 
 Each assistant reply is one of: an escalation card (nurse line or 911), a dose-refusal card, an approved passage shown word for word, a short model-written answer with source chips ("American Diabetes Association", "Your care team", or the book by name), or "I don't have information on that."
@@ -45,7 +45,7 @@ Each turn, its triage events, and a note on every model call (model, timing, fin
 
 - Dose-tagged passages are never given to a model.
 - Book passages can inform a written answer but are never shown word for word, and their numbers never count for the guard.
-- Without an OpenRouter key, or when a model call fails, triage still runs and still shows help. The help path never depends on the key.
+- When a model call fails or the tester's allowance is used up, triage still runs and still shows help. The help path never depends on the models.
 
 ### Current switches
 
@@ -65,7 +65,7 @@ Set in [`src/lib/chat/prompts.ts`](src/lib/chat/prompts.ts):
 | Classifier | `openai/gpt-oss-20b` | 400 tokens |
 | Monitor | `openai/gpt-oss-20b` | 400 tokens |
 
-The project works to a $15 OpenRouter budget; the chat panel keeps a running cost total. A shared account with a $1 cap per tester is proposed in ADR-0014 (draft, open question).
+The project works to a $15 OpenRouter budget. Every tester call goes through the `llm` function, which records its cost in `public.llm_spend` and refuses a tester past $1 (`CAP_DOLLARS`); the admin is metered but not capped. Spending is checked before a call and recorded after it, so a tester can overshoot $1 by at most one turn's cost.
 
 ---
 
@@ -78,6 +78,7 @@ SQL migrations are in [`db/migrations/`](db/migrations/):
 - `0001_schema_and_rls.sql`: members, patients, glucose readings, knowledge-base passages, sessions, messages, triage events, summaries, and nurse replies, all with row-level security and least-privilege grants. The care team sees a session only once its summary is shared; a summary the patient keeps stays private.
 - `0002_role_names.sql`: the `patient_tester` / `careteam_tester` / `admin` roles.
 - `0003_kb_cards_and_sources.sql`: source labels, year and diabetes type on passages, and the `kb_cards` table. A card goes back to draft automatically if its text, its sources, or its source passages change.
+- `0004_llm_spend.sql`: `llm_spend`, one row per model call through the proxy, with its cost. Written only by the `llm` function; not reachable through the Data API.
 
 Content tables are written only with the owner connection string (from the scripts below). The browser only reads them. The public endpoints in [`src/config.ts`](src/config.ts) are safe to publish because sign-in and row-level security decide what they return.
 
@@ -133,8 +134,10 @@ src/
   lib/kb/            passage chunking and tagging (shared with kb/build.ts)
   lib/neon/          auth and Data API clients
   lib/patients/      read-back of regimens and glucose
+  lib/proxy/         the model proxy's logic: sign-in check, model policy, cost, allowance (tested offline)
   lib/*.ts           Harness v1 core: OpenRouter client, SSE, agent loop, tools, storage, markdown
   App.vue, components/, composables/   Harness v1 UI
+functions/llm/      the Neon Function that holds the shared OpenRouter key (declared in neon.ts)
 db/                  SQL migrations and live-database tests
 kb/                  knowledge-base build, load, card review, and evaluation scripts
 patients/            demo-patient personas, build and load scripts, fixtures
@@ -164,6 +167,15 @@ Never put a key or connection string in the repo or the build: `.env` files are 
 
 [`.github/workflows/deploy.yml`](.github/workflows/deploy.yml) runs the gate and publishes `dist/` to GitHub Pages on every push to `main`. A red gate never deploys. The build uses relative asset paths, so it works under any Pages subpath.
 
+The `llm` function is deployed separately, with the Neon CLI, per branch:
+
+```bash
+npx -y neon@latest config plan --branch <branch> --env .env.local
+npx -y neon@latest deploy --branch <branch> --env .env.local --no-env-pull
+```
+
+`--no-env-pull` matters: without it the CLI rewrites `.env.local`'s `DATABASE_URL` to that branch. After a deploy, the old copy can keep answering for about a minute. To smoke-test it, send a browser-style CORS preflight (`-X OPTIONS` with `Access-Control-Request-Headers: authorization,content-type,x-title`); a plain curl skips the preflight and can pass when browsers are blocked.
+
 ---
 
 ## Decision record
@@ -185,7 +197,7 @@ Every design decision is written down in [`docs/adr/`](docs/adr/), with the ques
 | [0011](docs/adr/0011-database-schema-and-access-rules.md) | Database schema and access rules | Accepted |
 | [0012](docs/adr/0012-model-choice-under-a-15-dollar-openrouter-budget.md) | Model choice under a $15 budget | Accepted |
 | [0013](docs/adr/0013-knowledge-base-shape-raw-passages-or-synthesized-topic-cards.md) | Knowledge base: raw passages or topic cards | Accepted |
-| [0014](docs/adr/0014-shared-openrouter-account-with-a-1-dollar-cap-per-tester.md) | Shared OpenRouter account, $1 cap per tester | Draft |
+| [0014](docs/adr/0014-shared-openrouter-account-with-a-1-dollar-cap-per-tester.md) | Shared OpenRouter account, $1 cap per tester | Implemented |
 
 Known compromises are tracked in [`docs/TECHNICAL-DEBT.md`](docs/TECHNICAL-DEBT.md).
 

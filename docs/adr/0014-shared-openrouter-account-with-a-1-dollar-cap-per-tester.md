@@ -99,9 +99,11 @@ c
 
 ## Action Items
 
-- [ ] Kay answers QST-KEY-SHARING. Owner: Kay
-- [ ] If C: deploy a first Neon Function to rls-dev that verifies the sign-in token, before building the rest. If B: check that a $1-limited key reports its usage and limit (`GET /api/v1/key`). Owner: Nibble
-- [ ] Replace the dollar amount in the chat with "N% of your allowance used". Owner: Nibble
+- [x] Kay answers QST-KEY-SHARING (C, iteration 3). Owner: Kay
+- [x] C: deploy the Neon Function to rls-dev, then production (iteration 4). Owner: Nibble
+- [x] Replace the dollar amount in the chat with "N% of your allowance used" (`a3e9fd6`). Owner: Nibble
+- [ ] Verify a real signed-in call on production: the allowance line shows, a question is answered, and a row lands in `public.llm_spend`. Owner: Kay
+- [ ] Redeploy `llm` to rls-dev; it still runs the version without the `X-Title` fix (iteration 5). Owner: Nibble
 
 ---
 
@@ -159,4 +161,4 @@ c
 ## Links
 
 - Related ADRs: [ADR-0001](0001-api-key-handling-how-the-openrouter-key-gets-in-and-where-it-lives.md) (the key never goes in the build), [ADR-0010](0010-diabetes-education-bot-how-test-users-reach-it.md) (no server of our own; capped keys per tester), [ADR-0011](0011-database-schema-and-access-rules.md) (access rules), [ADR-0012](0012-model-choice-under-a-15-dollar-openrouter-budget.md) (the $15 budget; per-key limits as the first spending guard)
-- Related code: `src/app/ChatPanel.vue` (the key form and the "this chat has used about $…" line), `src/lib/chat/models.ts` (the cost meter)
+- Related code: `functions/llm/index.ts` and `neon.ts` (the function), `src/lib/proxy/` (its logic and the chat-side client), `db/migrations/0004_llm_spend.sql`, `src/app/ChatPanel.vue` (the allowance line; before this ADR, the key form and the dollar line)
