@@ -1,0 +1,182 @@
+<!-- adr template version: "adr 3.12.0" -->
+<!--
+adr teaching map: the example is not the teaching — these are the up-links from this file to what teaches its form; load them rather than winging it. (Sibling: the template-version marker dates the mold this file was minted from.)
+  skill: adr-authoring
+  mcp: adrs4ai
+  plugin: adr@adrs4ai
+-->
+
+# Patient plans: the long-term regimen plus a dated special plan from the provider
+
+- **Date**: 2026-11-17
+- **Iteration**: 1
+- **Status**: Draft
+- **Deciders**: Kay; input from the clinical sponsor
+
+**TL;DR**: A demo patient's record holds two plans: the long-term regimen (as today) and a **special plan** from the provider with dated steps, such as insulin changes during a steroid taper. The data and the patient's screen come first; whether the bot reads it is a separate decision.
+
+---
+
+## Originating Context
+
+**Source**:
+- The clinical sponsor's reply (ADR-0008, iteration 7): "Handle patient-specific regimens, especially insulin instructions that change during a steroid taper. The bot could retrieve a provider-updated treatment plan; only providers should change the stored dosing information."
+- Kay, 2026-11-17: "i think jorge is saying the steroid and taper affected regime should be recorded in the patient data, instead of generic answer from education material right? can we make up some in patient data ie have a field for long-term regime and a special case"
+
+**Agency Grant**: Propose the shape and the demo content; Kay decides.
+
+---
+
+## Explicitation
+
+**What I understand**:
+
+1. **A taper plan is specific to each patient and dated.** Education material can explain why steroids raise blood sugar. It can never say "your insulin this week", which depends on the steroid dose, the patient's insulin, and the day of the taper. Only the provider can write that, so it belongs in the record.
+2. **Two kinds of plan.** The **long-term regimen** (`patients.regimen`, today a fixed snapshot summarized from the ShanghaiT1DM/T2DM dose records, ADR-0009), and a **special plan** that holds for a period and then ends (a steroid taper; later perhaps sick-day rules or a pump backup plan).
+3. **Robert (demo) is the natural first case.** He's 66 with type 2, on premixed insulin aspart 70/30 (about 12 units, morning and evening, per the dataset), and his story already has a fictional steroid start 5 days ago (`days_since_steroid_start: 5`, HIGH-TOUCH flag). His record has no plan for it.
+
+**Assumptions**:
+
+- **The plan content is invented** for testing, labeled as fictional, and goes on the existing Waiting item for a clinician to check the demo patients' regimens (ADR-0009). This ADR doesn't claim the numbers are clinically right.
+- **No model reads the plan in this ADR.** Like the regimen today, it's shown on screen and never sent to a model (ADR-0005, rule 1). Reading it back in chat is the KANBAN item "ADR: the bot reads the patient's treatment plan".
+- **No provider-edit screen yet.** Plans are loaded from the fixtures (`patients/load.ts`), as now. Provider-only edits are a separate KANBAN item.
+
+**Confirm**: Kay.
+
+---
+
+## Questions
+
+### QST-PLAN-STORE: Where does the special plan live?
+- Status: unanswered
+- Why asking: The long-term regimen is a JSON column on `patients`, loaded from the fixtures and readable by members, with no writes through the API (ADR-0011). The special plan could sit inside that JSON, or in a new table of dated plans. The sponsor wants only providers to change plans, which will later need a write rule for the care-team role.
+- Need: pick a letter (or override; any shape answers)
+
+Options:
+- **A — Inside the regimen JSON**: `patients.regimen.special_plan`, with the reason, start and end, the steps, who set it and when. No database migration; the loader and patient screen change, nothing else. Moving it to a table later means a migration then.
+- **B — A new `care_plans` table**: one row per plan (patient, kind, reason, start, end, steps, set by, set at), with read access for members and no API writes. Needs migration 0005, the access tests on rls-dev, and then production. A history of plan changes and provider edits later fit naturally.
+
+**Recommendation**: (by Nibble, Claude Opus 5.5, 2026-11-17)
+
+**A — Inside the regimen JSON.** *Rationale*: Kay asked for "a field for long-term regime and a special case", and A gives exactly that today with no production migration. The access tests (`npm run test:db`) also need credentials that aren't in `.env.local` yet (handoff, 2026-11-16). The shape is written so it lifts into a table unchanged when provider edits are built. *Confidence*: 0.7 — because the only thing B buys now is a home for edits that aren't decided yet. *If wrong*: if Kay wants the provider-edit screen soon, or the sponsor wants a history of plan changes, this flips to **B**.
+
+**ANS:** (by Kay)
+[Fill this in]   <!-- literal placeholder — parser-significant, do not paraphrase -->
+
+---
+
+### QST-PLAN-DATES: How are the plan's dates stored?
+- Status: unanswered
+- Why asking: Demo glucose readings are re-anchored so the last one falls at load time (ADR-0009). A taper with fixed calendar dates would be over within two weeks, after which every tester sees a finished plan.
+- Need: pick a letter
+
+Options:
+- **A — Days from the steroid start, anchored at load**: steps are stored as day ranges ("days 1–5"), and the screen works out today's step from `days_since_steroid_start`. Robert is always partway through his taper.
+- **B — Calendar dates**: steps carry real dates written at load time. More like a real record, but the demo goes stale unless it's reloaded.
+
+**Recommendation**: (by Nibble, Claude Opus 5.5, 2026-11-17)
+
+**A — Days from the start, anchored at load.** *Rationale*: it matches how the readings already work, and Robert's "day 6" stays day 6 whenever a tester opens him. The screen can still show real dates by counting from today. *Confidence*: 0.8 — because the alternative only adds a reload chore. *If wrong*: if the sponsor wants plans that look exactly like a printed provider note with dates, this flips to **B**, with a reload before each test session.
+
+**ANS:** (by Kay)
+[Fill this in]   <!-- literal placeholder — parser-significant, do not paraphrase -->
+
+---
+
+### QST-PLAN-WHO: Which demo patients get a special plan now?
+- Status: unanswered
+- Why asking: Kay asked for "a special case". The sponsor named steroid changes and "inability to eat" among the common scenarios. Every invented plan adds numbers a clinician has to check.
+- Need: pick a letter
+
+Options:
+- **A — Robert only, a steroid taper**: prednisone stepping down over 14 days, with his morning insulin dose stepping back to usual alongside it (draft content below).
+- **B — Robert, plus a sick-day plan for one more patient**: for example Helen's "if you can't eat" instructions from her care team, covering the sponsor's inability-to-eat scenario too.
+- **C — Robert, plus a pump backup plan for George**: what to inject if the pump fails (his story already includes a pump failure).
+
+**Recommendation**: (by Nibble, Claude Opus 5.5, 2026-11-17)
+
+**A — Robert only.** *Rationale*: it's the case the sponsor named, it fits a story that already exists, and it keeps the invented numbers to one plan until the clinician check (KANBAN Waiting) has happened. The shape takes more plan kinds without change. *Confidence*: 0.65 — because B is close: inability to eat was also on the sponsor's list. *If wrong*: if Kay wants the sponsor's testers to see the can't-eat scenario soon, this flips to **B**.
+
+**ANS:** (by Kay)
+[Fill this in]   <!-- literal placeholder — parser-significant, do not paraphrase -->
+
+---
+
+### QST-PLAN-SHOW: Does the patient screen show the special plan?
+- Status: unanswered
+- Why asking: The patient screen shows the regimen as read-only lines today (`src/app/PatientView.vue`). A special plan is most useful when it's clear which step applies today.
+- Need: pick a letter
+
+Options:
+- **A — Shown, with today's step highlighted**: a "Special plan from your care team" box above the usual regimen: the reason, who set it and when, every step, today's step marked ("Today: day 6 of 14"), and "Afterwards: back to your usual plan". Labeled as demo content.
+- **B — Stored only**: data in the record, nothing on screen until the bot-reads-the-plan ADR is decided.
+
+**Recommendation**: (by Nibble, Claude Opus 5.5, 2026-11-17)
+
+**A — Shown, with today's step highlighted.** *Rationale*: it's what a patient on a taper needs to see, it uses the existing read-only path (no model involved), and testers and the sponsor can react to it before we decide anything about chat. *Confidence*: 0.8 — because showing a provider's plan word for word is how the regimen already works. *If wrong*: if the sponsor says patients shouldn't see a plan step without a nurse confirming it first, this flips to **B**.
+
+**ANS:** (by Kay)
+[Fill this in]   <!-- literal placeholder — parser-significant, do not paraphrase -->
+
+---
+
+## Supporting Materials
+
+### COD: special-plan shape (draft, for Robert)
+
+Invented for testing. A clinician checks it (KANBAN Waiting, ADR-0009). Robert's usual dose of 12 units of 70/30, morning and evening, comes from his dataset summary. The morning dose goes up during the higher steroid doses because a morning prednisone dose mostly raises afternoon and evening sugar, which the morning premixed dose covers.
+
+```json
+"special_plan": {
+  "kind": "steroid_taper",
+  "reason": "Prednisone for a COPD flare",
+  "set_by": "Your care team (demo)",
+  "set_on_day": 0,
+  "steps": [
+    { "days": [1, 5],   "steroid": "prednisone 40 mg each morning", "insulin": "70/30: 18 units before breakfast, 12 units before dinner" },
+    { "days": [6, 8],   "steroid": "prednisone 30 mg each morning", "insulin": "70/30: 16 units before breakfast, 12 units before dinner" },
+    { "days": [9, 11],  "steroid": "prednisone 20 mg each morning", "insulin": "70/30: 14 units before breakfast, 12 units before dinner" },
+    { "days": [12, 14], "steroid": "prednisone 10 mg each morning", "insulin": "70/30: 12 units before breakfast, 12 units before dinner (your usual)" }
+  ],
+  "after": "Stop prednisone after day 14. Keep taking your usual insulin.",
+  "check": "Check your sugar before meals and at bedtime while you take prednisone. Call the clinic if it is below 70, or above 300 twice in a row.",
+  "demo_note": "Made up for testing. Not clinical guidance."
+}
+```
+
+### FIL: what changes
+- `patients/personas.json`, `patients/build.py` (or the fixture directly): Robert's `special_plan`.
+- `patients/load.ts`: carries it into `patients.regimen` (option A).
+- `src/lib/...` `regimenLines` and `src/app/PatientView.vue`: the special-plan box and today's step (option A of QST-PLAN-SHOW), with tests for the day arithmetic (day 5 → step 1, day 6 → step 2, past day 14 → "finished").
+- Loading the fixtures into production is a production write: ask Kay first.
+
+---
+
+## Decision
+
+Pending Kay's answers.
+
+---
+
+## Open Follow-ups
+
+- [ ] The bot reading the plan in chat ("what's my insulin today?"): KANBAN To do, "ADR: the bot reads the patient's treatment plan". This ADR's data is what it would read.
+- [ ] Provider-only edits: KANBAN To do. Under QST-PLAN-STORE A, this is when the plan moves to its own table.
+- [ ] Clinician check of the invented plan (KANBAN Waiting, ADR-0009).
+
+---
+
+## Iterations
+
+### Iteration 1 (2026-11-17)
+- Trigger: the sponsor's reply (ADR-0008, iteration 7) and Kay's request for "a field for long-term regime and a special case".
+- Contributors: Kay, Nibble (Claude Opus 5.5)
+- Changes: initial draft; four questions with recommendations; a draft taper for Robert.
+- Outcome: Draft
+
+---
+
+## Links
+
+- Related ADRs: [ADR-0005](0005-diabetes-education-bot-architecture-and-answer-path.md) (rule 1: regimen never sent to a model), [ADR-0008](0008-diabetes-education-bot-intake-conversation-summary-and-nurse-handoff.md) (sponsor's reply, iteration 7), [ADR-0009](0009-diabetes-education-bot-synthetic-patients-glucose-data-and-insulin-regimens.md) (demo patients, re-anchoring), [ADR-0011](0011-database-schema-and-access-rules.md) (access rules)
+- Related code: `patients/`, `src/app/PatientView.vue`
