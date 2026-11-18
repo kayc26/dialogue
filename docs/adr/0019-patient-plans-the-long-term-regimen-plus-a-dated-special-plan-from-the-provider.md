@@ -35,6 +35,18 @@ adr teaching map: the example is not the teaching — these are the up-links fro
 2. **Two kinds of plan.** The **long-term regimen** (`patients.regimen`, today a fixed snapshot summarized from the ShanghaiT1DM/T2DM dose records, ADR-0009), and a **special plan** that holds for a period and then ends (a steroid taper; later perhaps sick-day rules or a pump backup plan).
 3. **Robert (demo) is the natural first case.** He's 66 with type 2, on premixed insulin aspart 70/30 (about 12 units, morning and evening, per the dataset), and his story already has a fictional steroid start 5 days ago (`days_since_steroid_start: 5`, HIGH-TOUCH flag). His record has no plan for it.
 
+**Background: steroids and tapers** (explained to Kay, 2026-11-17; kept here so the reason for this ADR survives):
+
+- **What they are.** In the sponsor's reply, "steroids" means **corticosteroids**: anti-inflammatory medicines such as prednisone, dexamethasone and methylprednisolone (Medrol). They're not the muscle-building steroids athletes misuse. They're used for flare-ups of asthma or COPD, arthritis, autoimmune diseases, some cancer treatments, after some surgeries, and sometimes in serious infections. Older adults get them often, usually as a short course.
+- **Why they matter for diabetes.** They **raise blood sugar**, sometimes a lot, even when diabetes is usually well controlled: the body resists insulin and the liver releases more sugar. The effect follows the dose. With a morning prednisone dose, the rise usually peaks in the afternoon and evening.
+- **What a taper is.** A course is usually stepped down over days or weeks rather than stopped at once, because stopping suddenly can be dangerous. So the insulin side changes too:
+  1. When the steroid starts, the patient may need **more insulin**.
+  2. As the steroid dose steps down, the patient needs **less insulin**, often on a schedule the provider writes out.
+  3. If the patient keeps taking the higher insulin dose after the steroid drops, they can go **low**.
+- **Why this belongs in the patient record, not the knowledge base.** The right insulin dose depends on which day of the taper the patient is on and on their own insulin. That's patient-specific and provider-written, and it's exactly the dose arithmetic the bot must never do. Education material can explain *why* steroids raise sugar. Only the provider's plan can say what to take this week. Hence the sponsor's "only providers should change the stored dosing information", and Kay's reading of it: the taper plan is recorded in the patient data.
+- **Already in the clinic's flowchart.** A new steroid start is a HIGH-TOUCH criterion (ADR-0006, ADR-0009), which is why Robert (demo) has `days_since_steroid_start`.
+- **Knowledge-base gap.** The current sources barely cover steroids (1 book passage, 0 from ADA or the FAQ). General steroid education needs sponsor material (KANBAN Waiting).
+
 **Assumptions**:
 
 - **The plan content is invented** for testing, labeled as fictional, and goes on the existing Waiting item for a clinician to check the demo patients' regimens (ADR-0009). This ADR doesn't claim the numbers are clinically right.
@@ -173,6 +185,16 @@ Pending Kay's answers.
 - Contributors: Kay, Nibble (Claude Opus 5.5)
 - Changes: initial draft; four questions with recommendations; a draft taper for Robert.
 - Outcome: Draft
+
+---
+
+## Glossary
+
+- **Corticosteroid ("steroid")**: an anti-inflammatory medicine such as prednisone. It raises blood sugar in proportion to its dose.
+- **Taper**: stepping a steroid dose down over days or weeks instead of stopping at once. The insulin plan steps down alongside it.
+- **Long-term regimen**: the patient's usual insulin or medicines (`patients.regimen`).
+- **Special plan**: a provider-written plan with dated steps that holds for a period and then ends (here, a steroid taper).
+- **Card / item**: in this project's documents, a **card** is a reply the app shows on screen (an escalation card, the dose refusal card, a topic card), and an **item** is a to-do line on `KANBAN.md`.
 
 ---
 
