@@ -203,7 +203,7 @@ Known compromises are tracked in [`docs/TECHNICAL-DEBT.md`](docs/TECHNICAL-DEBT.
 
 ### How this repo is worked on
 
-The project is built by a human (Kay) with Claude, using the [ADRs4AI human-AI collaboration template](https://github.com/ADRs4AI/human-ai-collaboration-template-A). [`CLAUDE.md`](CLAUDE.md) holds the working rules (record decisions as ADRs right away, a regression test for every fixed bug, the gate before every commit), and [`docs/METHODOLOGY.md`](docs/METHODOLOGY.md) explains the method. `just adr "<title>"` creates the next ADR. The template's own quick start is kept in [`QUICK-START.md`](QUICK-START.md).
+The project is built by a human (Kay) with Claude, using the [ADRs4AI human-AI collaboration template](https://github.com/ADRs4AI/human-ai-collaboration-template-A). [`CLAUDE.md`](CLAUDE.md) holds the working rules (record decisions as ADRs right away, a regression test for every fixed bug, the gate before every commit), and [`docs/METHODOLOGY.md`](docs/METHODOLOGY.md) explains the method. `just adr "<title>"` creates the next ADR.
 
 ---
 
