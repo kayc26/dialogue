@@ -39,7 +39,7 @@ What he asked for, mapped to the work. Kay decides the order (see Waiting).
 2. **Red flags prepare the clinic contact.**
    - [ ] **Call checklist:** when the bot says to call, it also shows the patient's answers as a short list to read out on the phone, next to the message for the care team. New; extends the "Patient's copy" card below. [ADR-0008](docs/adr/0008-diabetes-education-bot-intake-conversation-summary-and-nurse-handoff.md), [ADR-0006](docs/adr/0006-diabetes-education-bot-urgent-situation-triage-and-escalation.md)
 3. **Reinforce the patient's own plan.** He endorses the Backlog idea of reading the saved regimen, provided only providers change it:
-   - The bot reading the patient's plan back in chat: moved to **In progress** (ADR-0020).
+   - ✅ Done: the plan is read back on screen and in chat (ADR-0019, ADR-0020).
    - [ ] **Provider-only plan edits:** a care-team screen to update a patient's plan, with who changed it and when. The database already blocks writes to `patients` through the API; this needs a new access rule for the care-team role. [ADR-0011](docs/adr/0011-database-schema-and-access-rules.md)
 4. **Patient-specific regimens that change over time.**
    - [ ] **Clinician check of Robert's taper numbers** (invented): part of the demo-patient check in Waiting; Jorge is the natural reviewer. [ADR-0019](docs/adr/0019-patient-plans-the-long-term-regimen-plus-a-dated-special-plan-from-the-provider.md)
