@@ -3,8 +3,10 @@
 // regimen is read back by template and never reaches the model).
 
 import { describe, expect, it } from 'vitest'
-import { minutesAgo, regimenLines, REGIMEN_DISCLAIMER, summarizeGlucose, type Regimen } from './readback'
+import { minutesAgo, regimenLines, REGIMEN_DISCLAIMER, specialPlanView, summarizeGlucose, type Regimen, type SpecialPlan } from './readback'
 import helen from '../../../patients/fixtures/demo-helen.json'
+import robert from '../../../patients/fixtures/demo-robert.json'
+import personas from '../../../patients/personas.json'
 import george from '../../../patients/fixtures/demo-george.json'
 import dorothy from '../../../patients/fixtures/demo-dorothy.json'
 
@@ -35,6 +37,57 @@ describe('regimen read-back', () => {
     expect(REGIMEN_DISCLAIMER).toMatch(/not advice/)
     expect(REGIMEN_DISCLAIMER).toMatch(/care team's latest instructions always come first/)
     expect(REGIMEN_DISCLAIMER).not.toMatch(IMPERATIVE)
+  })
+})
+
+describe('special plan read-back (ADR-0019)', () => {
+  // Robert's provider plan is a prednisone taper; the insulin dose that applies depends
+  // on the day, so code (never a model) marks today's step. A wrong day here would show
+  // the wrong insulin line as "today".
+  const robertRegimen = robert.regimen as unknown as Regimen // JSON arrays stand in for the [start, end] tuples
+  const plan = robertRegimen.special_plan!
+  const withStart = (daysAgo: number): Regimen => ({ ...robertRegimen, special_plan: { ...plan, started_days_ago: daysAgo } })
+
+  it("marks Robert's day 6 step (started 5 days ago) as today", () => {
+    const v = specialPlanView(robertRegimen)!
+    expect(v.today).toBe(6)
+    expect(v.lastDay).toBe(14)
+    expect(v.status).toBe('on')
+    expect(v.steps.filter((s) => s.current).map((s) => s.label)).toEqual(['Days 6–8'])
+    expect(v.steps.find((s) => s.current)!.text).toMatch(/30 mg.*16 units before breakfast/)
+  })
+
+  it.each([
+    [0, 'Days 1–5'], // the start day itself is day 1
+    [4, 'Days 1–5'], // last day of the first step
+    [5, 'Days 6–8'], // first day of the next step
+    [13, 'Days 12–14'], // the last day of the taper
+  ])('started %i days ago → today is in %s', (daysAgo, label) => {
+    const v = specialPlanView(withStart(daysAgo))!
+    expect(v.status).toBe('on')
+    expect(v.steps.filter((s) => s.current).map((s) => s.label)).toEqual([label])
+  })
+
+  it('after the last day, no step is marked and the plan reads as finished', () => {
+    const v = specialPlanView(withStart(14))!
+    expect(v.status).toBe('finished')
+    expect(v.steps.some((s) => s.current)).toBe(false)
+    expect(v.after).toMatch(/back to the usual plan/)
+  })
+
+  it('agrees with the patient record it belongs to', () => {
+    // The fixture is hand-edited until the next build.py run; both copies must match,
+    // and the plan's start must match the clinic history the triage flags read.
+    const persona = personas.personas.find((p) => p.id === 'demo-robert') as { special_plan: Record<string, unknown> }
+    const { $comment: _ignored, ...fromPersona } = persona.special_plan
+    expect(plan).toEqual(fromPersona)
+    expect(plan.started_days_ago).toBe(robert.clinic_history.days_since_steroid_start)
+  })
+
+  it('shows nothing for patients without a plan, and nothing for a plan it cannot place', () => {
+    expect(specialPlanView(helen.regimen as Regimen)).toBeNull()
+    const bad = { ...plan, steps: [{ days: ['6', 8] }] } as unknown as SpecialPlan
+    expect(specialPlanView({ ...robertRegimen, special_plan: bad })).toBeNull()
   })
 })
 

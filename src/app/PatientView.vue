@@ -12,6 +12,7 @@ import {
   minutesAgo,
   regimenLines,
   REGIMEN_DISCLAIMER,
+  specialPlanView,
   summarizeGlucose,
   type Reading,
   type Regimen,
@@ -72,9 +73,13 @@ function changePatient(): void {
 
 const summary = computed(() => summarizeGlucose(readings.value))
 const regimen = computed(() => (chosen.value ? regimenLines(chosen.value.regimen) : []))
+// ADR-0019: the provider's dated plan, today's step worked out by code. Screen only;
+// the chat never receives the regimen (ADR-0005, rule 1).
+const plan = computed(() => (chosen.value ? specialPlanView(chosen.value.regimen) : null))
 
 function badges(p: Patient): string[] {
   const b: string[] = []
+  if (specialPlanView(p.regimen)?.status === 'on') b.push('Special plan')
   if (p.flags.uses_pump) b.push('Insulin pump')
   if (p.flags.pregnant) b.push('Pregnant')
   if (p.flags.history_of_dka) b.push('Past DKA')
@@ -138,6 +143,7 @@ onMounted(async () => {
           {{ minutesAgo(summary.latest.minutes_before_load) }}<span v-if="summary.latest.source === 'fingerstick'"> (finger stick)</span>
         </span>
         <span v-else class="glu">No glucose readings in the past 24 hours</span>
+        <span v-if="plan?.status === 'on'" class="planflag">{{ plan.title }}: day {{ plan.today }} of {{ plan.lastDay }}</span>
       </div>
       <div class="pactions">
         <button type="button" class="secondary" :aria-expanded="showInsulin" aria-controls="insulin" @click="showInsulin = !showInsulin">
@@ -150,6 +156,21 @@ onMounted(async () => {
     <p v-if="error" class="error" role="alert">{{ error }}</p>
 
     <div v-if="showInsulin" id="insulin" class="insulin">
+      <section v-if="plan" class="plan" aria-labelledby="plan-title">
+        <h4 id="plan-title">Special plan from {{ plan.setBy ?? 'your care team' }}: {{ plan.title }}</h4>
+        <p v-if="plan.reason">{{ plan.reason }}.</p>
+        <p v-if="plan.status === 'on'" class="today">Today is day {{ plan.today }} of {{ plan.lastDay }}.</p>
+        <p v-else-if="plan.status === 'finished'" class="today">This plan has ended.</p>
+        <p v-else class="today">This plan hasn't started yet.</p>
+        <ol>
+          <li v-for="s in plan.steps" :key="s.label" :class="{ current: s.current }" :aria-current="s.current ? 'step' : undefined">
+            <strong>{{ s.label }}<span v-if="s.current"> (today)</span>:</strong> {{ s.text }}
+          </li>
+        </ol>
+        <p v-if="plan.after">{{ plan.after }}</p>
+        <p v-if="plan.check">{{ plan.check }}</p>
+        <p v-if="plan.note" class="note">{{ plan.note }}</p>
+      </section>
       <h4>My insulin (as recorded)</h4>
       <ul>
         <li v-for="line in regimen" :key="line">{{ line }}</li>
@@ -274,6 +295,33 @@ h4 {
 }
 .insulin p {
   margin: 0.25rem 0;
+}
+.planflag {
+  color: var(--accent);
+  font-weight: 600;
+  font-size: 0.9rem;
+}
+.plan {
+  border: 2px solid var(--accent);
+  border-radius: var(--radius);
+  padding: 0.6rem 0.9rem;
+  margin-bottom: 0.75rem;
+}
+.plan ol {
+  margin: 0.25rem 0;
+  padding-left: 1.25rem;
+}
+.plan li {
+  margin: 0.2rem 0;
+}
+.plan li.current {
+  background: var(--soft);
+  outline: 2px solid var(--accent);
+  border-radius: 4px;
+  padding: 0.15rem 0.35rem;
+}
+.today {
+  font-weight: 700;
 }
 .note {
   color: var(--muted);

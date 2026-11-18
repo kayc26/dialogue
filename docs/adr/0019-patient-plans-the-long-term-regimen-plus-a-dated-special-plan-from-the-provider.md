@@ -9,8 +9,8 @@ adr teaching map: the example is not the teaching — these are the up-links fro
 # Patient plans: the long-term regimen plus a dated special plan from the provider
 
 - **Date**: 2026-11-17
-- **Iteration**: 1
-- **Status**: Draft
+- **Iteration**: 2
+- **Status**: Partially Implemented
 - **Deciders**: Kay; input from the clinical sponsor
 
 **TL;DR**: A demo patient's record holds two plans: the long-term regimen (as today) and a **special plan** from the provider with dated steps, such as insulin changes during a steroid taper. The data and the patient's screen come first; whether the bot reads it is a separate decision.
@@ -60,7 +60,7 @@ adr teaching map: the example is not the teaching — these are the up-links fro
 ## Questions
 
 ### QST-PLAN-STORE: Where does the special plan live?
-- Status: unanswered
+- Status: answered
 - Why asking: The long-term regimen is a JSON column on `patients`, loaded from the fixtures and readable by members, with no writes through the API (ADR-0011). The special plan could sit inside that JSON, or in a new table of dated plans. The sponsor wants only providers to change plans, which will later need a write rule for the care-team role.
 - Need: pick a letter (or override; any shape answers)
 
@@ -73,12 +73,12 @@ Options:
 **A — Inside the regimen JSON.** *Rationale*: Kay asked for "a field for long-term regime and a special case", and A gives exactly that today with no production migration. The access tests (`npm run test:db`) also need credentials that aren't in `.env.local` yet (handoff, 2026-11-16). The shape is written so it lifts into a table unchanged when provider edits are built. *Confidence*: 0.7 — because the only thing B buys now is a home for edits that aren't decided yet. *If wrong*: if Kay wants the provider-edit screen soon, or the sponsor wants a history of plan changes, this flips to **B**.
 
 **ANS:** (by Kay)
-[Fill this in]   <!-- literal placeholder — parser-significant, do not paraphrase -->
+a
 
 ---
 
 ### QST-PLAN-DATES: How are the plan's dates stored?
-- Status: unanswered
+- Status: answered
 - Why asking: Demo glucose readings are re-anchored so the last one falls at load time (ADR-0009). A taper with fixed calendar dates would be over within two weeks, after which every tester sees a finished plan.
 - Need: pick a letter
 
@@ -91,12 +91,12 @@ Options:
 **A — Days from the start, anchored at load.** *Rationale*: it matches how the readings already work, and Robert's "day 6" stays day 6 whenever a tester opens him. The screen can still show real dates by counting from today. *Confidence*: 0.8 — because the alternative only adds a reload chore. *If wrong*: if the sponsor wants plans that look exactly like a printed provider note with dates, this flips to **B**, with a reload before each test session.
 
 **ANS:** (by Kay)
-[Fill this in]   <!-- literal placeholder — parser-significant, do not paraphrase -->
+a
 
 ---
 
 ### QST-PLAN-WHO: Which demo patients get a special plan now?
-- Status: unanswered
+- Status: answered
 - Why asking: Kay asked for "a special case". The sponsor named steroid changes and "inability to eat" among the common scenarios. Every invented plan adds numbers a clinician has to check.
 - Need: pick a letter
 
@@ -110,12 +110,12 @@ Options:
 **A — Robert only.** *Rationale*: it's the case the sponsor named, it fits a story that already exists, and it keeps the invented numbers to one plan until the clinician check (KANBAN Waiting) has happened. The shape takes more plan kinds without change. *Confidence*: 0.65 — because B is close: inability to eat was also on the sponsor's list. *If wrong*: if Kay wants the sponsor's testers to see the can't-eat scenario soon, this flips to **B**.
 
 **ANS:** (by Kay)
-[Fill this in]   <!-- literal placeholder — parser-significant, do not paraphrase -->
+a
 
 ---
 
 ### QST-PLAN-SHOW: Does the patient screen show the special plan?
-- Status: unanswered
+- Status: answered
 - Why asking: The patient screen shows the regimen as read-only lines today (`src/app/PatientView.vue`). A special plan is most useful when it's clear which step applies today.
 - Need: pick a letter
 
@@ -128,7 +128,7 @@ Options:
 **A — Shown, with today's step highlighted.** *Rationale*: it's what a patient on a taper needs to see, it uses the existing read-only path (no model involved), and testers and the sponsor can react to it before we decide anything about chat. *Confidence*: 0.8 — because showing a provider's plan word for word is how the regimen already works. *If wrong*: if the sponsor says patients shouldn't see a plan step without a nurse confirming it first, this flips to **B**.
 
 **ANS:** (by Kay)
-[Fill this in]   <!-- literal placeholder — parser-significant, do not paraphrase -->
+a
 
 ---
 
@@ -166,7 +166,22 @@ Invented for testing. A clinician checks it (KANBAN Waiting, ADR-0009). Robert's
 
 ## Decision
 
-Pending Kay's answers.
+Kay answered A to all four (2026-11-17), as recommended:
+
+- **QST-PLAN-STORE: A.** The special plan lives in `patients.regimen.special_plan`. No migration.
+- **QST-PLAN-DATES: A.** Steps are day ranges counted from the start; `started_days_ago` is fixed at load (Robert: 5, matching `clinic_history.days_since_steroid_start`), so today is always day 6.
+- **QST-PLAN-WHO: A.** Robert only: the prednisone taper drafted below.
+- **QST-PLAN-SHOW: A.** Shown on the patient screen, today's step marked.
+
+**What was built** (iteration 2):
+- `patients/personas.json`: Robert's `special_plan`. `patients/build.py` copies it into `regimen.special_plan`, so a rebuild keeps it. `patients/fixtures/demo-robert.json` was edited to match (the dataset isn't needed for that), and a test keeps the two copies equal.
+- `src/lib/patients/readback.ts`: `specialPlanView` marks today's step with code, never a model. A plan it can't place safely (malformed day ranges) shows nothing rather than a guess.
+- `src/app/PatientView.vue`: "Special plan from your care team" at the top of **My insulin**, with today's step highlighted; "Prednisone taper: day 6 of 14" in the patient bar; a "Special plan" badge in the picker.
+- The plan text is written as a record, like the regimen read-back ("Prednisone 30 mg each morning. Insulin aspart 70/30: 16 units before breakfast…"), with "Made up for testing. Not clinical guidance."
+- The chat still never receives the regimen (ADR-0005, rule 1).
+- Tests: 8 new (304 total): Robert's day 6, the step boundaries (days 1, 5, 6, 14), the finished state, the fixture matching the persona, and "no plan" or a malformed plan showing nothing.
+
+**Loading into production.** `npm run patients:load` deletes and reloads every demo patient, which would clash with stored sessions once testers have used the app. A single `UPDATE` of Robert's `regimen` is the narrower write. Kay approves it before it runs.
 
 ---
 
@@ -185,6 +200,12 @@ Pending Kay's answers.
 - Contributors: Kay, Nibble (Claude Opus 5.5)
 - Changes: initial draft; four questions with recommendations; a draft taper for Robert.
 - Outcome: Draft
+
+### Iteration 2 (2026-11-17)
+- Trigger: Kay: "answered" (A, A, A, A).
+- Contributors: Kay, Nibble (Claude Opus 5.5)
+- Changes: built as described in the Decision: Robert's plan in the persona and fixture, `specialPlanView` with 8 tests, the patient-screen box. Gate green (304 tests).
+- Outcome: Draft → Partially Implemented (not yet in production: the one-row update waits for Kay)
 
 ---
 

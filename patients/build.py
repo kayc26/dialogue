@@ -164,7 +164,11 @@ def main() -> None:
             "uses_cgm": True,
             "path": p["path"],
             "story": p["story"],
-            "regimen": summarize_regimen(r),
+            # ADR-0019: a provider's dated special plan (invented for testing) rides
+            # alongside the long-term regimen summarized from the dataset.
+            "regimen": {**summarize_regimen(r),
+                        **({"special_plan": {k: v for k, v in p["special_plan"].items() if k != "$comment"}}
+                           if "special_plan" in p else {})},
             "flags": p["flags"],
             "clinic_history": p["clinic_history"],
             "data_source": {**spec["dataset"], "recording": rec},

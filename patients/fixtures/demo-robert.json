@@ -23,7 +23,23 @@
    }
   ],
   "pump": null,
-  "note": "Summarized from the dataset subject's dose records. Read back only; never sent to the model. Not clinical guidance."
+  "note": "Summarized from the dataset subject's dose records. Read back only; never sent to the model. Not clinical guidance.",
+  "special_plan": {
+   "kind": "steroid_taper",
+   "title": "Prednisone taper",
+   "reason": "Prednisone for a COPD flare-up",
+   "set_by": "Your care team (demo)",
+   "started_days_ago": 5,
+   "steps": [
+    { "days": [1, 5], "steroid": "Prednisone 40 mg each morning", "insulin": "Insulin aspart 70/30: 18 units before breakfast, 12 units before dinner" },
+    { "days": [6, 8], "steroid": "Prednisone 30 mg each morning", "insulin": "Insulin aspart 70/30: 16 units before breakfast, 12 units before dinner" },
+    { "days": [9, 11], "steroid": "Prednisone 20 mg each morning", "insulin": "Insulin aspart 70/30: 14 units before breakfast, 12 units before dinner" },
+    { "days": [12, 14], "steroid": "Prednisone 10 mg each morning", "insulin": "Insulin aspart 70/30: 12 units before breakfast, 12 units before dinner (the usual plan)" }
+   ],
+   "after": "After day 14, prednisone ends and insulin goes back to the usual plan.",
+   "check": "While on prednisone, sugar checks before meals and at bedtime. The plan says to call the clinic if sugar is below 70, or above 300 twice in a row.",
+   "demo_note": "Made up for testing (ADR-0019). Not clinical guidance."
+  }
  },
  "flags": {
   "history_of_dka": false,
