@@ -205,7 +205,7 @@ Kay answered A to all four (2026-11-17), as recommended:
 - Trigger: Kay: "answered" (A, A, A, A).
 - Contributors: Kay, Nibble (Claude Opus 5.5)
 - Changes: built as described in the Decision: Robert's plan in the persona and fixture, `specialPlanView` with 8 tests, the patient-screen box. Gate green (304 tests).
-- Outcome: Draft → Partially Implemented (not yet in production: the one-row update waits for Kay)
+- Outcome: Draft → Partially Implemented. Live 2026-11-18 02:48 UTC with Kay's OK: one `UPDATE` of `demo-robert`'s regimen on production (insulins kept, `started_days_ago` 5 = clinic history), and the deploy. The plan exists only in the demo data; the chat doesn't read it yet (the regimen-reading ADR on the KANBAN).
 
 ---
 
