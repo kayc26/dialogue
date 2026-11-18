@@ -9,8 +9,8 @@ adr teaching map: the example is not the teaching — these are the up-links fro
 # The bot reads the patient's plan back in chat
 
 - **Date**: 2026-11-17
-- **Iteration**: 1
-- **Status**: Draft
+- **Iteration**: 2
+- **Status**: Partially Implemented
 - **Deciders**: Kay; input from the clinical sponsor
 
 **TL;DR**: When a patient asks what their plan says ("what's my insulin today?"), the app answers with the provider's plan word for word, today's step first, written by code and never by a model. Any question about changing a dose, or one with a reading or symptom, still gets the dose refusal.
@@ -52,7 +52,7 @@ adr teaching map: the example is not the teaching — these are the up-links fro
 ## Questions
 
 ### QST-READ-WHO: Who writes the answer to a plan question?
-- Status: unanswered
+- Status: answered
 - Why asking: This decides whether a model ever sees dose numbers. Rule 1 (ADR-0005) keeps the regimen away from every model today. The guard only catches dose advice written with digits (TD-7, on hold), so a model that has seen the plan could rephrase it into advice the guard misses; the monitor would be the only check.
 - Need: pick a letter (or override; any shape answers)
 
@@ -66,12 +66,12 @@ Options:
 **A — Code, fixed template.** *Rationale*: it's how the escalation and dose refusal cards already work (ADR-0005, ADR-0006), it needs neither TD-7 nor the monitor to be safe, and it is literally "the provider's words, unchanged", which is what the sponsor asked for. The screen already renders the same plan with `specialPlanView` (ADR-0019), so the card reuses tested code. *Confidence*: 0.85 — because the cost of A is only that replies sound fixed, and testers already accept that from the other cards. *If wrong*: if testers or the sponsor find the fixed card too stiff for follow-ups like "when does it go down?", this flips to **C**, keeping numbers in code.
 
 **ANS:** (by Kay)
-[Fill this in]   <!-- literal placeholder — parser-significant, do not paraphrase -->
+a
 
 ---
 
 ### QST-READ-WHEN: How does the app tell a plan question from a dose-change question?
-- Status: unanswered
+- Status: answered
 - Why asking: Both kinds set today's dose flag. Getting this wrong in one direction refuses a fair question; in the other, it reads a plan back to someone whose situation has changed ("my sugar is 300, what's my dose?"), which could read as "take your usual dose anyway".
 - Need: pick a letter
 
@@ -85,12 +85,12 @@ Options:
 **A — Classifier field plus fixed checks.** *Rationale*: the classifier already reads meaning for tiers, dose intent and topics (ADR-0006, ADR-0018) and catches phrasings a list would miss, while the exclusions that matter for safety (a number, a symptom, a change word, any red flag) are fixed rules that can't be talked out of it. When in doubt it falls back to today's refusal, never to the plan. *Confidence*: 0.75 — because the exclusion list needs testing against real phrasings before it can be trusted (a test file like `kb/routing-questions.txt`). *If wrong*: if the routing-style test shows the classifier field misfiring on dose-change questions, this flips to **B**.
 
 **ANS:** (by Kay)
-[Fill this in]   <!-- literal placeholder — parser-significant, do not paraphrase -->
+a
 
 ---
 
 ### QST-READ-WHAT: What does the plan card show, and for whom?
-- Status: unanswered
+- Status: answered
 - Why asking: Only Robert has a provider's special plan. The other five patients have a regimen summarized from research dose records ("usually recorded around 8 p.m."), which is what they did, not what a provider prescribed. Presenting that as "your plan from your care team" would be untrue.
 - Need: pick a letter
 
@@ -104,7 +104,7 @@ Options:
 **A — Special plans only.** *Rationale*: the sponsor asked for the *provider's* plan to be reinforced, and only a special plan is provider-written. The recorded regimens are observations from a dataset (ADR-0009), and repeating them in chat as an answer to "what's my dose?" gives them an authority they don't have. Today's step plus the next change answers the question asked; the full plan is one tap away. *Confidence*: 0.7 — because B is reasonable if Kay sees the recorded regimen as the demo's stand-in for a plan. *If wrong*: if Kay or the sponsor want every demo patient's regimen treated as their plan on file, this flips to **B**.
 
 **ANS:** (by Kay)
-[Fill this in]   <!-- literal placeholder — parser-significant, do not paraphrase -->
+b
 
 ---
 
@@ -135,7 +135,23 @@ unwell, call the clinic.
 
 ## Decision
 
-Pending Kay's answers.
+Kay answered (2026-11-17): **QST-READ-WHO: A** (code, fixed template), **QST-READ-WHEN: A** (classifier field plus fixed checks), **QST-READ-WHAT: B** (special plans, plus the insulin as recorded for everyone else, labeled as a record).
+
+**What was built** (iteration 2):
+- **Classifier**: a new `plan_question` field (`prompts.ts`, `combine.ts`). It only proposes; it can't show a plan by itself.
+- **Fixed checks** (`src/lib/chat/plan.ts`, `planBlocker`): no read-back if the message has a reading (a glucose number the triage rules parse, or any 2–3 digit number of 40 or more that isn't "70/30" or "day 9"), a symptom (shaky, sick, can't eat, high, low, feel…), a change word (more, less, skip, forgot, adjust…), or a request for advice (should I, can I, is it OK…).
+- **Turn step 3-plan** (`turn.ts`), before the dose refusal: the plan is shown only if the classifier says `plan_question`, triage is `none`, the patient's regimen was passed in, and no fixed check fires. Otherwise everything runs as before, so a dose question still gets the refusal.
+- **The reply** (`planReply` in `readback.ts`):
+  - Robert (special plan in force): "Your plan from Your care team (demo) says (Prednisone taper):", then today's step and the next change, in the plan's own words, then the footer ("The full plan is under My insulin. If your care team has told you something different since, follow what they said. If your sugar is out of range or you feel unwell, call the clinic.").
+  - Everyone else: "Your insulin as recorded (not a plan from your care team):", the regimen lines, and the usual disclaimer.
+  - After a special plan ends: "Your prednisone taper on file ended after day 14", then the record.
+- **No model ever sees the plan:**
+  - The regimen goes from `PatientView` to `ChatPanel` to `runTurn` and is read only by code.
+  - The chat history records "[plan question: the provider's plan on file was shown by the app]", never the plan text, because the history goes to the next turn's models.
+  - Tests check both.
+- **Logged** in `triage_events.detail.plan`: `{ blocker, mode }` for every turn the classifier called a plan question.
+- **Tests**: 26 new (330 total). They cover 17 real phrasings against the fixed checks, the reply text, the history leak, and the turn ordering (no answer model; a reading, a red flag, no `plan_question` or no regimen each keep the refusal).
+- **Live test, not yet run**: `npm run kb:eval-plan -- --yes` runs the 21 questions in `kb/plan-questions.txt` through the live classifier and the same decision. One classifier call each, under $0.01. Its key number is "plan shown when it shouldn't be", which must be 0.
 
 ---
 
@@ -154,6 +170,12 @@ Pending Kay's answers.
 - Contributors: Kay, Nibble (Claude Opus 5.5)
 - Changes: initial draft; three questions with recommendations; a draft card.
 - Outcome: Draft
+
+### Iteration 2 (2026-11-17)
+- Trigger: Kay: "answered" (A, A, B).
+- Contributors: Kay, Nibble (Claude Opus 5.5)
+- Changes: built as described in the Decision. Found while building: `cardsToText` becomes the chat history the next turn's models read, so a plan reply that wrote the plan into it would have leaked the doses to a model one turn later. It records only that the plan was shown, and a test checks that no digit gets through.
+- Outcome: Draft → Partially Implemented (not live: the classifier test and the push wait for Kay)
 
 ---
 

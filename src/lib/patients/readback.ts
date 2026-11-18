@@ -134,6 +134,40 @@ export function specialPlanView(r: Regimen | null | undefined): SpecialPlanView 
   }
 }
 
+/** What the chat shows for a plan question (ADR-0020). Built by code; no model writes it. */
+export interface PlanReply {
+  /** A provider's special plan in force, or the insulin as recorded (QST-READ-WHAT: B). */
+  mode: 'special' | 'recorded'
+  heading: string
+  lines: string[]
+  footer: string
+}
+
+export const PLAN_FOOTER =
+  'The full plan is under "My insulin". If your care team has told you something different since, follow what they said. If your sugar is out of range or you feel unwell, call the clinic.'
+
+/**
+ * The plan read-back for chat (ADR-0020, QST-READ-WHO: A; QST-READ-WHAT: B).
+ *   - A special plan in force: today's step and the next change, in the provider's words.
+ *   - Otherwise: the insulin as recorded, labeled as a record, not as a plan from the
+ *     care team. The demo regimens are summaries of research dose records (ADR-0009),
+ *     and calling them "your plan" would give them an authority they don't have.
+ */
+export function planReply(r: Regimen): PlanReply {
+  const plan = specialPlanView(r)
+  if (plan?.status === 'on') {
+    const i = plan.steps.findIndex((s) => s.current)
+    const next = plan.steps[i + 1]
+    const lines = [`Today (day ${plan.today} of ${plan.lastDay}): ${plan.steps[i].text}`]
+    if (next) lines.push(`From ${next.label.replace(/^Days? (\d+).*/, 'day $1')}: ${next.text}`)
+    else if (plan.after) lines.push(plan.after)
+    return { mode: 'special', heading: `Your plan from ${plan.setBy ?? 'your care team'} says (${plan.title}):`, lines, footer: PLAN_FOOTER }
+  }
+  const lines = regimenLines(r)
+  if (plan?.status === 'finished') lines.unshift(`Your ${plan.title.toLowerCase()} on file ended after day ${plan.lastDay}.`)
+  return { mode: 'recorded', heading: 'Your insulin as recorded (not a plan from your care team):', lines, footer: REGIMEN_DISCLAIMER }
+}
+
 export function minutesAgo(m: number): string {
   if (m < 1) return 'just now'
   if (m < 60) return `${m} minute${m === 1 ? '' : 's'} ago`

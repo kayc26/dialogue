@@ -18,6 +18,13 @@ export function cardsToText(cards: Card[]): string {
           return `[approved passage ${c.passage.id}, shown verbatim (${c.why})]`
         case 'dose_refusal':
           return '[dose question: referred to the care team]'
+        // ADR-0020: never the plan's text. This string becomes the chat history that the
+        // next turn's classifier and answer model read, and the plan's doses must never
+        // reach a model (ADR-0005, rule 1). The care team sees the plan on the record.
+        case 'plan':
+          return c.reply.mode === 'special'
+            ? "[plan question: the provider's plan on file was shown by the app]"
+            : '[plan question: the insulin on record was shown by the app]'
         case 'no_info':
           return "[no information on that in the knowledge base]"
         case 'social':
@@ -77,6 +84,7 @@ export class ConversationLog {
         topics: outcome.topics ?? [], // ADR-0018: the knowledge-base topics the classifier chose
         retrieval: outcome.retrieval ?? null, // ADR-0018: "topics" (whole sections) or "search" (word search fallback)
         language: outcome.cards.flatMap((c) => (c.kind === 'language' ? [c.lang] : []))[0] ?? 'en', // ADR-0017
+        plan: outcome.plan ?? null, // ADR-0020: a plan question; why it wasn't read back, or which reply was shown
         calls, // per-call finish reason, tokens, timing (models.ts CallNote)
       },
     })

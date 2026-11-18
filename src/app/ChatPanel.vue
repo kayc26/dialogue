@@ -20,6 +20,7 @@ import { ConversationLog, cardsToText } from '../lib/chat/persist'
 import { NO_INFO_REPLY, SOCIAL_REPLY } from '../lib/chat/social'
 import { detectLanguage, LANGUAGE_NOTE } from '../lib/chat/language'
 import { runTurn, type Card, type TurnOutcome } from '../lib/chat/turn'
+import type { Regimen } from '../lib/patients/readback'
 import { maxTier, triageRules, TIER_RANK, type Profile, type Tier } from '../lib/chat/triage'
 import { OpenRouterError } from '../lib/openrouter'
 
@@ -32,6 +33,8 @@ const props = defineProps<{
   cards: TopicCard[]
   /** The demo patient's diabetes type: search ranks their type's guide first (ADR-0013, QST-KB-RAG-FIXES: B). */
   diabetesType: DiabetesType
+  /** For the plan read-back (ADR-0020): read by code, never sent to a model. */
+  regimen?: Regimen
 }>()
 
 // The tester's sign-in token, fresh for each call (tokens last 15 minutes).
@@ -128,7 +131,7 @@ async function send(): Promise<void> {
     usedModels = true
     try {
       outcome = await runTurn({
-        message, history, profile: props.profile, index: index.value, passages: props.passages, cards: cardIndex.value, diabetesType: props.diabetesType, doseSession,
+        message, history, profile: props.profile, index: index.value, passages: props.passages, cards: cardIndex.value, diabetesType: props.diabetesType, doseSession, regimen: props.regimen,
         models: openRouterModels(getJwt, meter, { baseUrl: LLM_PROXY_URL }),
       })
     } catch (e) {
@@ -239,6 +242,14 @@ const docTitles = (sources: KbPassage[], label: KbPassage['source_label']) =>
               </div>
               <div v-else-if="c.kind === 'dose_refusal'">
                 <p>I can't give advice about insulin or medicine doses. Your care team can help with that. Call the nurse line if you need an answer today.</p>
+              </div>
+              <!-- ADR-0020: the patient's plan, read back by code from the record. -->
+              <div v-else-if="c.kind === 'plan'" class="plan-reply">
+                <p><strong>{{ c.reply.heading }}</strong></p>
+                <ul>
+                  <li v-for="line in c.reply.lines" :key="line">{{ line }}</li>
+                </ul>
+                <p class="meta">{{ c.reply.footer }}</p>
               </div>
               <div v-else-if="c.kind === 'no_info'">
                 <p>{{ NO_INFO_REPLY }}</p>

@@ -13,6 +13,8 @@ export interface ClassifierResult {
   tier: Tier
   happening_now: boolean
   dose_intent: boolean
+  /** Asks what their own plan or schedule says (ADR-0020); fixed checks in plan.ts still veto. */
+  plan_question: boolean
   reason: string
   /** Up to two knowledge-base topics for the answer (ADR-0018); empty when none fits. */
   topics: Topic[]
@@ -31,6 +33,7 @@ export function parseClassifier(text: string | null | undefined): ClassifierResu
       tier: o.tier as Tier,
       happening_now: o.happening_now,
       dose_intent: o.dose_intent === true,
+      plan_question: o.plan_question === true,
       reason: typeof o.reason === 'string' ? o.reason.slice(0, 200) : '',
       topics: validTopics(o.topics),
     }

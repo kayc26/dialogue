@@ -15,6 +15,7 @@
     "src/lib/neon/auth.ts",
     "src/lib/neon/data.ts",
     "src/lib/chat/**/*.ts",
+    "src/lib/patients/readback.ts",
     "src/lib/agent.ts",
     "src/lib/types.ts",
     "src/lib/openrouter.ts",

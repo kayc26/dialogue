@@ -179,7 +179,7 @@ onMounted(async () => {
       <p class="note">{{ REGIMEN_DISCLAIMER }}</p>
     </div>
 
-    <ChatPanel :data="data" :patient-id="chosen.id" :profile="chosen.flags" :diabetes-type="chosen.diabetes_type" :passages="passages" :cards="cards" />
+    <ChatPanel :data="data" :patient-id="chosen.id" :profile="chosen.flags" :diabetes-type="chosen.diabetes_type" :regimen="chosen.regimen" :passages="passages" :cards="cards" />
   </section>
 </template>
 

@@ -20,6 +20,7 @@
     "kb:faq-compare": "node kb/faq-compare.ts",
     "kb:eval-faq": "node --env-file=.env.local node_modules/jiti/lib/jiti-cli.mjs kb/eval-faq.ts",
     "kb:eval-routing": "node --env-file=.env.local node_modules/jiti/lib/jiti-cli.mjs kb/eval-routing.ts",
+    "kb:eval-plan": "node --env-file=.env.local node_modules/jiti/lib/jiti-cli.mjs kb/eval-plan.ts",
     "patients:load": "node --env-file=.env.local patients/load.ts"
   },
   "dependencies": {

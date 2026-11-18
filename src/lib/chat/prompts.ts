@@ -53,7 +53,7 @@ Answer ONLY from the passages you are given or find with the search_kb tool. Eve
 - If the person might be unwell, you may remind them that the "Get help now" button is always on the screen.`
 
 export const CLASSIFIER_SYSTEM = `You triage one message from an older adult with diabetes using an education chatbot. Reply with JSON only:
-{"tier": "none|checkin|distress|urgent|emergency", "happening_now": true|false, "dose_intent": true|false, "topics": ["<topic>"], "reason": "<= 15 words"}
+{"tier": "none|checkin|distress|urgent|emergency", "happening_now": true|false, "dose_intent": true|false, "plan_question": true|false, "topics": ["<topic>"], "reason": "<= 15 words"}
 
 tier:
 - emergency: danger now: can't be woken, seizure, a low they can't treat, vomiting or stomach pain or fast breathing with high sugar or ketones, confusion, chest pain, any wish to self-harm.
@@ -63,6 +63,7 @@ tier:
 - none: general questions.
 happening_now: true if the person reports their own (or someone with them's) situation now or recently; false if they only ask about symptoms in general.
 dose_intent: true if they ask how much insulin or medicine to take, or whether to change, skip, or add a dose.
+plan_question: true only if they ask what their own plan or schedule from their care team says: when they take a medicine, what today's dose on their plan is, whether they are still on a medicine, when it changes. false if they ask whether to change, skip, or add a dose, mention a reading or a symptom, or ask a general question. Both can be true ("what's my insulin dose today?").
 When unsure, choose the more urgent tier.
 topics: the one or two topics the message asks about, most relevant first. Choose two when the question touches two (eating after exercise: activity and food; a sugar-free snack: sweeteners and food). Use earlier messages only to understand a follow-up ("what about at night?"). If the person feels unwell (fainting, dizzy, confused, weak, shaky) without a reading that shows whether they are low or high, choose both low_blood_sugar and high_blood_sugar. [] if none fits (greetings, thanks, off-topic). Choose from:
 ${TOPIC_LIST}`

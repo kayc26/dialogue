@@ -89,6 +89,7 @@ const shown = (c: Card): string => {
     case 'clarify': return `**[clarifying question]** ${c.text}`
     case 'language': return `**[not English (${c.lang}): help shown]**`
     case 'social': return `**[small talk: fixed ${c.intent} reply]** ${SOCIAL_REPLY[c.intent]}`
+    case 'plan': return `**[plan read back by code (${c.reply.mode})]** ${c.reply.heading} ${c.reply.lines.join(' ')}`
   }
 }
 

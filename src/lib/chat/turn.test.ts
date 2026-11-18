@@ -13,6 +13,8 @@ import { doseAdviceIn } from './guard'
 import { buildCardIndex, CARD_FALLBACK_SCORE, CARD_MIN_SCORE, loadApprovedCards, parsePick, type CardIndex, type TopicCard } from './cards'
 import { DataError, type DataClient } from '../neon/data'
 import type { Profile } from './triage'
+import type { Regimen } from '../patients/readback'
+import robertFixture from '../../../patients/fixtures/demo-robert.json'
 
 const NONE: Profile = { history_of_dka: false, pregnant: false, uses_pump: false }
 const P = (id: string, section: string, body: string, tags: string[] = []): KbPassage => ({
@@ -259,6 +261,56 @@ describe('messages that are not English (ADR-0017)', () => {
     const o = await turn('What fruit can I eat with jalapeños?', m)
     expect(o.cards[0]).toMatchObject({ kind: 'answer' })
     expect(calls.complete).toBe(1)
+  })
+})
+
+describe('plan read-back in chat (ADR-0020)', () => {
+  // A plan question is answered by code from the record; the plan never enters a model
+  // call. Anything that turns it into "what should I do now?" keeps today's refusal.
+  const robertRegimen = robertFixture.regimen as unknown as Regimen
+  const planCls = (tier = 'none', dose_intent = true) =>
+    JSON.stringify({ tier, happening_now: false, dose_intent, plan_question: true, reason: 'test' })
+  const planTurn = (message: string, m: TurnModels, regimen: Regimen = robertRegimen) =>
+    runTurn({ message, history: [], profile: NONE, index, doseSession: false, models: m, timeoutMs: 50, monitorEnabled: true, regimen })
+
+  it("reads Robert's plan back with no answer model, and no model call ever sees it", async () => {
+    const seen: string[] = []
+    const { m, calls } = models({ classify: planCls() })
+    const spy: TurnModels = { ...m, classify: async (msg, hist) => (seen.push(msg, JSON.stringify(hist)), m.classify(msg, hist)) }
+    const o = await planTurn("What's my insulin dose today?", spy)
+    expect(o.cards.map((c) => c.kind)).toEqual(['plan'])
+    expect(o.plan).toEqual({ blocker: null, mode: 'special' })
+    expect(calls).toMatchObject({ complete: 0, monitor: 0 })
+    expect(seen.join(' ')).not.toMatch(/16 units|prednisone 30/i)
+  })
+
+  it('a reading in the message keeps the refusal, even when the classifier calls it a plan question', async () => {
+    const { m, calls } = models({ classify: planCls() })
+    const o = await planTurn('My sugar is 300, what is my dose today?', m)
+    expect(o.cards.map((c) => c.kind)).not.toContain('plan')
+    expect(o.plan?.blocker).toBeTruthy()
+    expect(calls.complete).toBe(0)
+  })
+
+  it('any triage concern escalates as before and never shows the plan', async () => {
+    const { m } = models({ classify: planCls('checkin') })
+    const o = await planTurn("What's my insulin today?", m)
+    expect(o.cards.map((c) => c.kind)).toEqual(['escalation', 'dose_refusal'])
+    expect(o.plan).toEqual({ blocker: 'tier_checkin', mode: null })
+  })
+
+  it('without the classifier saying "plan question", a dose question is refused as before', async () => {
+    const { m } = models({ classify: cls('none', true, true) })
+    const o = await planTurn("What's my insulin dose today?", m)
+    expect(o.cards.map((c) => c.kind)).toEqual(['dose_refusal'])
+    expect(o.plan).toBeNull()
+  })
+
+  it('no regimen passed in (the rules-only path, an older screen): refused as before', async () => {
+    const { m } = models({ classify: planCls() })
+    const o = await runTurn({ message: "What's my insulin today?", history: [], profile: NONE, index, doseSession: false, models: m, timeoutMs: 50 })
+    expect(o.cards.map((c) => c.kind)).toEqual(['dose_refusal'])
+    expect(o.plan).toEqual({ blocker: 'no_regimen', mode: null })
   })
 })
 

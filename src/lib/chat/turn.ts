@@ -25,11 +25,15 @@ import { detectLanguage, type Lang } from './language'
 import { socialIntent, type SocialIntent } from './social'
 import { sectionPassages, type Topic } from './topics'
 import { maxTier, triageRules, type Profile, type Tier } from './triage'
+import { planBlocker } from './plan'
+import { planReply, type PlanReply, type Regimen } from '../patients/readback'
 
 export type Card =
   | { kind: 'escalation'; tier: Tier; criteria: string[] }
   | { kind: 'passage'; passage: KbPassage; why: 'urgent' | 'dose' | 'fallback' }
   | { kind: 'dose_refusal' }
+  /** ADR-0020: the patient's plan read back by code, never by a model. */
+  | { kind: 'plan'; reply: PlanReply }
   | { kind: 'no_info' }
   /** A fixed reply to small talk (ADR-0016); no model wrote it. */
   | { kind: 'social'; intent: SocialIntent }
@@ -93,6 +97,9 @@ export interface TurnInput {
   hideDosePassages?: boolean
   /** Rules 2 and 3 (dose-advice block, dose refusal card). Default true; only test runs set false. */
   enforceDoseRules?: boolean
+  /** The patient's regimen, for the plan read-back (ADR-0020). Read by code only: it is
+   *  never put into a model call (ADR-0005, rule 1). Absent: plan questions are refused. */
+  regimen?: Regimen
 }
 
 export interface TurnOutcome {
@@ -106,6 +113,9 @@ export interface TurnOutcome {
   blockedDraft?: string
   /** The classifier's topics (ADR-0018). */
   topics?: Topic[]
+  /** ADR-0020: set when the classifier called it a plan question. `blocker` says why the
+   *  plan was not read back (null: it was), `mode` which reply was shown. */
+  plan?: { blocker: string | null; mode: PlanReply['mode'] | null } | null
   /** How the answer's material was found: whole topic sections, or word search. Null when no answer was attempted. */
   retrieval?: 'topics' | 'search' | null
   monitor: 'none' | 'blocking' | 'background' | 'paused'
@@ -243,8 +253,9 @@ export async function runTurn(input: TurnInput): Promise<TurnOutcome> {
   let retrieval: TurnOutcome['retrieval'] = null
   // Set when a book-number sentence was trimmed from an answer that is still shown.
   let trimNote: Pick<TurnOutcome, 'guard' | 'blockedDraft'> = { guard: null }
+  let plan: TurnOutcome['plan'] = null
   const done = (extra: Partial<TurnOutcome> = {}): TurnOutcome => ({
-    triage, tier, cards, doseSession, monitor: 'none', monitorVerdict: null, background: null, modelCalls, card: cardStep, topics, retrieval, ...trimNote, ...extra,
+    triage, tier, cards, doseSession, monitor: 'none', monitorVerdict: null, background: null, modelCalls, card: cardStep, topics, retrieval, plan, ...trimNote, ...extra,
   })
 
   // 2b. Not English (ADR-0017, QST-LANG-FLOOR: A). The fixed rules above are English
@@ -254,6 +265,21 @@ export async function runTurn(input: TurnInput): Promise<TurnOutcome> {
   if (lang !== 'en') {
     cards.push({ kind: 'language', lang })
     return done()
+  }
+
+  // 3-plan. A question about what the patient's own plan says (ADR-0020). Read back by
+  // code from the record, no model. Only when the classifier says it's a plan question,
+  // nothing in triage, and no fixed check finds a reading, symptom, change word or
+  // request for advice; otherwise a dose question still gets the refusal below.
+  if (classified?.plan_question) {
+    const blocker = tier !== 'none' ? `tier_${tier}` : !input.regimen ? 'no_regimen' : planBlocker(message, rules.glucose)
+    plan = { blocker, mode: null }
+    if (blocker === null && input.regimen) {
+      const reply = planReply(input.regimen)
+      plan = { blocker: null, mode: reply.mode }
+      cards.push({ kind: 'plan', reply })
+      return done()
+    }
   }
 
   // 3. Dose question: fixed card, no answer model.
