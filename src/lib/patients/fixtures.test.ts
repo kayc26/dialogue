@@ -56,8 +56,9 @@ describe('demo-patient fixtures', () => {
     const fx = fixtures[id]
     expect(fx.data_source.license).toBe('CC BY 4.0')
     expect(fx.data_source.doi).toBe('10.6084/m9.figshare.c.6310860')
+    // Names no longer carry "(demo)" (Kay, 2026-11-17: every patient is a demo patient).
+    // The picker's "made-up names and details" and this note mark them as fictional.
     expect(fx.data_source.changes).toMatch(/fictional/)
-    expect(fx.display_name).toMatch(/\(demo\)$/)
     expect(fx.readings.every((r) => r.minutes_before_load >= 0 && r.value_mgdl > 0)).toBe(true)
     expect(cgm(fx).length).toBeGreaterThan(200) // at least ~2 days of 15-minute readings
   })

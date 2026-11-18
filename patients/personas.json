@@ -11,7 +11,7 @@
   "personas": [
     {
       "id": "demo-helen",
-      "display_name": "Helen (demo)",
+      "display_name": "Helen",
       "path": "quick advice (no red flag, no high-touch criterion)",
       "story": "Type 2 on long-acting insulin; steady readings.",
       "recording": "2017_1_20201118",
@@ -21,7 +21,7 @@
     },
     {
       "id": "demo-robert",
-      "display_name": "Robert (demo)",
+      "display_name": "Robert",
       "path": "RED FLAG glucose > 350, plus HIGH-TOUCH new steroid start",
       "story": "Type 2 on premixed insulin; many readings above 350. The steroid start is fictional (no steroids appear in the dataset).",
       "recording": "2095_0_20201116",
@@ -48,7 +48,7 @@
     },
     {
       "id": "demo-george",
-      "display_name": "George (demo)",
+      "display_name": "George",
       "path": "RED FLAG history of DKA with high glucose; pump failure via the conversation; HIGH-TOUCH new pump start",
       "story": "Type 1 with a recorded history of diabetic ketoacidosis; insulin pump readings. In the dataset the pump insulin was given in hospital, so the home-pump framing is part of the demo story.",
       "recording": "1002_0_20210504",
@@ -58,7 +58,7 @@
     },
     {
       "id": "demo-dorothy",
-      "display_name": "Dorothy (demo)",
+      "display_name": "Dorothy",
       "path": "RED FLAG severe low / more than 2 lows in 48 hours",
       "story": "Type 2 on long-acting and mealtime insulin; several lows within 48 hours, at least one severe (below 54). Recording changed from 2069_2 (85) because its lows and its severe low did not fall in the same 48 hours.",
       "recording": "2094_0_20211109",
@@ -68,7 +68,7 @@
     },
     {
       "id": "demo-mei",
-      "display_name": "Mei (demo)",
+      "display_name": "Mei",
       "path": "RED FLAG pregnancy",
       "story": "Type 2 on long-acting insulin and metformin; pregnant (fictional flag). Changed from type 1 because the dataset has no young woman with type 1.",
       "recording": "2014_1_20210317",
@@ -78,7 +78,7 @@
     },
     {
       "id": "demo-walter",
-      "display_name": "Walter (demo)",
+      "display_name": "Walter",
       "path": "HIGH-TOUCH from history only (last visit > 6 months, > 4 calls in 2 months)",
       "story": "Type 2, 84, on premixed insulin; steady readings. Only the clinic history makes him high-touch.",
       "recording": "2059_0_20210525",
