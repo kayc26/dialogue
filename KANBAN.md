@@ -15,8 +15,6 @@ Columns: **Waiting** (blocked on a person's answer or material), **To do** (read
   - approval of ADR-0016's small-talk texts and review of ADR-0017's language design;
   - more after-exercise eating material.
   - Record the answers in ADR-0013, ADR-0016 and ADR-0017.
-- [ ] **Does `kayc26/diabetes_chatbot` (the earlier prototype) stay public?** It contains ADA text and the team FAQ. [ADR-0018](docs/adr/0018-retrieval-whole-curated-topic-sections-chosen-by-the-classifier.md)
-- [ ] **Should a plain greeting in another language (你好) still get the full alert styling?** Today any non-English message gets the help alert. [ADR-0017](docs/adr/0017-multi-language-support.md)
 
 ### On the clinical sponsor or others
 
@@ -124,6 +122,8 @@ Nothing in the app writes to `summaries` or `replies` today; the tables and thei
 - [x] Monitor back on after an offline measurement (0 blocks on 33 good answers; catches dose advice in words). ADR-0007
 - [x] Monitor no longer reads carbohydrate amounts as doses (the 15-15 rule, snack grams); verified live. ADR-0007
 - [x] First four testers added as `patient_tester` ($1 cap each); sign-in emails moved to Gmail SMTP after Neon's shared sender stopped reaching Penn. ADR-0011
+- [x] Clinical sponsor's account added as `admin` (both views; metered, not capped). ADR-0011
+- [x] Kay's calls: `kayc26/diabetes_chatbot` stays public (ADR-0018); a non-English greeting keeps the full help alert (ADR-0017).
 - [x] ADR-0008 marked Partially Implemented, so "Accepted" isn't read as "built". ADR-0008
 - [x] README rewritten to describe the current code base, including the shared-key proxy.
 - [x] Repo cleanup: superseded handoff and the template's citation, changelog and quick start removed; handoff refreshed.

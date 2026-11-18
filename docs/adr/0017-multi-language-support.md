@@ -131,6 +131,7 @@ In every case:
 - [x] Kay answers QST-LANG-FLOOR, QST-LANG-WHICH, QST-LANG-MODE. Owner: Kay
 - [x] Build the floor (QST-LANG-FLOOR: A), iteration 3. Owner: Nibble
 - [x] Deploy the floor (push) with Kay's OK, then try a non-English message on the live site: "你好" → `language: zh`, one model call, English-only alert (2026-11-17). Owner: Kay, Nibble
+- [x] A plain greeting in another language ("你好") keeps the full English-only help alert, the same as any other non-English message: no lighter style for greetings (Kay, 2026-11-17). The floor stays as built in iteration 3. Owner: Kay
 - [ ] Find a reviewer for each language's fixed texts (Spanish, Chinese in both scripts, Korean): fixed texts are shown word for word, so a person who reads the language approves them. Owner: Kay
 - [ ] Ask the clinical sponsor to review the translate-at-the-edges design (QST-LANG-MODE confidence 0.55). Owner: Kay
 - [ ] Build QST-LANG-MODE: A once reviewers exist. Owner: Nibble

@@ -86,6 +86,9 @@ Kay: "can we call patient_tester, careteam_tester, and admin (see both)". The ta
 * Codes still expire after 5 minutes, and each new request replaces the previous code.
 * rls-dev still uses the shared sender. Switch it the same way before relying on emails there.
 
+**The clinical sponsor's account (same day).** Kay asked for an account for the clinical sponsor, as **`admin`**: both views, so they can try the assistant now and see the care-team inbox once it's built. Metered in `llm_spend` but not capped. It was created the same way (`create_auth_user`, then a `members` row). Neon Auth stores the email in lowercase. Name and email stay out of this record.
+* Note for ADR-0008's QST-ADMIN-PRIVATE: there are now two `admin` members, Kay and the sponsor. Consent still binds admin (a kept summary stays private), and since summaries aren't built yet, nothing is exposed today.
+
 **Second mutation lesson.** Widening `sessions_create` to any member didn't make "the care team can't start a session" fail. The test sent `Prefer: return=representation`, and RETURNING needs read access too, so the insert was blocked by the *read* rule, not the write rule. A real client can send `return=minimal`. Every write-denial test now uses `return=minimal`. Re-run against widened `sessions_create` and `messages_create`, exactly the two expected tests failed. Rows the weakened rules had let in were deleted, the real rules were restored, and the suite was back to 24/24. The suite also now signs in sequentially and retries on Neon Auth's 429 rate limit.
 
 ### Positive Consequences

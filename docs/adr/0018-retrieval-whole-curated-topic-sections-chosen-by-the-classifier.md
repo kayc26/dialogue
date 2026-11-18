@@ -120,7 +120,7 @@ Plan: build the sections (reviewable files, outside git like the rest of the sou
 ## Action Items
 
 - [x] Kay answers QST-RETRIEVAL-SHAPE (A) and QST-RETRIEVAL-BOOK (C). Owner: Kay
-- [ ] Kay decides whether `kayc26/diabetes_chatbot` should stay public with the ADA text and team FAQ in it. Owner: Kay
+- [x] Kay decides whether `kayc26/diabetes_chatbot` should stay public with the ADA text and team FAQ in it: it stays public (Kay, 2026-11-17). DIAlogue's own rule is unchanged: source text is never committed here. Owner: Kay
 
 ---
 
