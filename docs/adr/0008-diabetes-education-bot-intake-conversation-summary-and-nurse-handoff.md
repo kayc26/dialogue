@@ -9,7 +9,7 @@ adr teaching map: the example is not the teaching — these are the up-links fro
 # ADR-0008: Diabetes education bot — intake, conversation summary, and nurse handoff
 
 - **Date**: 2026-11-14
-- **Iteration**: 6
+- **Iteration**: 7
 - **Status**: Partially Implemented
 - **Deciders**: Kay, Nibble (Claude Opus 5.5)
 
@@ -282,6 +282,24 @@ The design above stands as proposed.
 - Contributors: Kay, Nibble (Claude Opus 5.5)
 - Changes: Kay: "wait for clinical sponsor's reply". Building is on hold until the sponsor answers; the clinician field requirements are expected with that reply. KANBAN updated.
 - Outcome: Partially Implemented (on hold)
+
+---
+
+### Iteration 7 (2026-11-17)
+- Trigger: the clinical sponsor's reply, relayed by Kay (Kay's summary of what he said):
+  - **Ask follow-up questions before routing a patient.** For an insulin-change question, find out whether blood sugar is high or low, then collect the information the clinic needs.
+  - **Triage red flags and prepare clinic contact.** Prompt patients to call when appropriate, while gathering their answers into a message or call checklist.
+  - **Reinforce the patient's existing treatment plan, not invent dose changes.** Check what the patient is taking against the team's instructions, and summarize situations that may need more guidance.
+  - **Handle patient-specific regimens**, especially insulin instructions that change during a steroid taper. The bot could retrieve a provider-updated treatment plan; only providers change the stored dosing information.
+  - **Cover common scenarios:** high or low blood sugar, inability to eat, new medications that affect blood sugar, and steroid-dose changes.
+- Contributors: Kay, the clinical sponsor, Nibble (Claude Opus 5.5)
+- Changes (no decision yet; recorded so the reply isn't lost):
+  - **Confirms this ADR's direction:** follow-up questions, a structured summary, red flags leading to a call. **Adds** a call checklist next to the message.
+  - **Changes the dose path:** today a dose question gets the fixed refusal at once (ADR-0005, rule 3). The sponsor wants follow-up questions first (high or low? then the clinic's fields), then routing. The refusal stays (the bot still never says how much to take), but it becomes the start of an intake rather than the end of the turn.
+  - **Still missing: the field list.** "Collect the information the clinic needs" doesn't say which fields, so this ADR's field table stays a placeholder. Ask the sponsor for the fields for an insulin-change question, and for each scenario.
+  - **Regimen read-back and provider-only edits** go beyond this ADR (KANBAN Backlog: "reads the saved dose regimen"; needs its own ADR). Stored regimens are a fixed JSON snapshot today (`patients.regimen`), with no dates, so a steroid taper can't be represented yet, and nothing lets a provider edit it.
+  - **Knowledge-base gaps** for his scenarios (checked against `kb/out/passages.json`): steroids, 1 passage (book only); new medications, 0; sick days, 1 ADA passage; not eating, 3. The bot can't answer these from sources yet.
+- Outcome: Partially Implemented (on hold until Kay decides what to build first)
 
 ---
 

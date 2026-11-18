@@ -18,7 +18,9 @@ Columns: **Waiting** (blocked on a person's answer or material), **To do** (read
 
 ### On the clinical sponsor or others
 
-- [ ] **Clinical sponsor's reply, then Kay: clinician requirements for the summary fields.** Kay (2026-11-17): the summary work waits for the sponsor's reply, so the whole "Conversation summary and nurse handoff" group below is on hold until then. The replies replace ADR-0008's field table. [ADR-0008](docs/adr/0008-diabetes-education-bot-intake-conversation-summary-and-nurse-handoff.md)
+- [ ] **Kay: what to build first from the sponsor's reply** (received 2026-11-17, recorded in ADR-0008 iteration 7). See "From the clinical sponsor" in To do. [ADR-0008](docs/adr/0008-diabetes-education-bot-intake-conversation-summary-and-nurse-handoff.md)
+- [ ] **Clinical sponsor: the field list.** His reply says to "collect the information the clinic needs" but doesn't name the fields. Ask, for each scenario (insulin change, high, low, can't eat, new medicine, steroid change), what the nurse needs: for example the reading and when, symptoms, last dose taken, food intake, the medicine and its start date. The answers replace ADR-0008's placeholder field table. [ADR-0008](docs/adr/0008-diabetes-education-bot-intake-conversation-summary-and-nurse-handoff.md)
+- [ ] **Clinical sponsor: material for his scenarios.** The knowledge base has almost nothing on steroids (1 book passage), new medicines that affect blood sugar (0), and sick days (1 ADA passage). Clinic handouts would fill these. [ADR-0013](docs/adr/0013-knowledge-base-shape-raw-passages-or-synthesized-topic-cards.md)
 - [ ] **TD-7: catch dose advice written in words in the guard** ("take two units", "a few extra units", "a bit more insulin"). Kay (2026-11-16): "do not do td-7 yet"; it waits on the sponsor's answer about medicine wording. Meanwhile the monitor catches these offline (ADR-0007 iteration 7: 12/12), but the guard, which runs on every answer, still sees only digits. When unblocked, add a regression test with the three example sentences. [TECHNICAL-DEBT](docs/TECHNICAL-DEBT.md), `src/lib/chat/guard.ts`
 - [ ] **Translations (ADR-0017):** Spanish, Chinese (Simplified), Chinese (Traditional), Korean. Needs translators for the fixed texts, and the sponsor's review. The safety floor for non-English messages is already live. [ADR-0017](docs/adr/0017-multi-language-support.md)
 - [ ] **Clinical sponsor: review and approve topic cards** (`npm run kb:cards:approve`). Cards are paused (`CARDS_PAUSED`), so this is needed only if cards come back. [ADR-0013](docs/adr/0013-knowledge-base-shape-raw-passages-or-synthesized-topic-cards.md)
@@ -27,6 +29,23 @@ Columns: **Waiting** (blocked on a person's answer or material), **To do** (read
 - [ ] **Course staff: does user testing with older adults need an IRB exempt determination?** Ask before testing with older adults. The current testers are classmates. [ADR-0005](docs/adr/0005-diabetes-education-bot-architecture-and-answer-path.md)
 
 ## To do
+
+### From the clinical sponsor (2026-11-17; ADR-0008 iteration 7)
+
+What he asked for, mapped to the work. Kay decides the order (see Waiting).
+
+1. **Ask before routing.** A dose or insulin-change question starts an intake instead of ending the turn:
+   - [ ] **Dose questions start an intake.** Keep the fixed refusal (the bot never says how much to take), then ask whether the sugar is high or low, then the clinic's fields, then route. Changes ADR-0005's rule 3 path and the "Follow-up questions" card below; needs the field list (Waiting). [ADR-0005](docs/adr/0005-diabetes-education-bot-architecture-and-answer-path.md), [ADR-0008](docs/adr/0008-diabetes-education-bot-intake-conversation-summary-and-nurse-handoff.md)
+2. **Red flags prepare the clinic contact.**
+   - [ ] **Call checklist:** when the bot says to call, it also shows the patient's answers as a short list to read out on the phone, next to the message for the care team. New; extends the "Patient's copy" card below. [ADR-0008](docs/adr/0008-diabetes-education-bot-intake-conversation-summary-and-nurse-handoff.md), [ADR-0006](docs/adr/0006-diabetes-education-bot-urgent-situation-triage-and-escalation.md)
+3. **Reinforce the patient's own plan.** He endorses the Backlog idea of reading the saved regimen, provided only providers change it:
+   - [ ] **ADR: the bot reads the patient's treatment plan.** Moved up from Backlog with the sponsor's support. Decide: code with a fixed template versus a model; what happens when the record is stale; how "check what the patient is taking against the team's instructions" works without the bot ever advising a dose. Letting the answer model see dose numbers would reverse rule 1, leaving the guard (digits only, TD-7) and the monitor as the barrier. A likely safer shape is for code to answer with a fixed template ("Your plan from your care team says: … If something is different, call the clinic."), the way the escalation cards work. [ADR-0005](docs/adr/0005-diabetes-education-bot-architecture-and-answer-path.md), [ADR-0009](docs/adr/0009-diabetes-education-bot-synthetic-patients-glucose-data-and-insulin-regimens.md)
+   - [ ] **Provider-only plan edits:** a care-team screen to update a patient's plan, with who changed it and when. The database already blocks writes to `patients` through the API; this needs a new access rule for the care-team role. [ADR-0011](docs/adr/0011-database-schema-and-access-rules.md)
+4. **Patient-specific regimens that change over time.**
+   - [ ] **Plans with dates** (a steroid taper: the insulin instructions change as the steroid dose steps down). Today `patients.regimen` is one fixed JSON snapshot, so a schedule needs a new shape. [ADR-0009](docs/adr/0009-diabetes-education-bot-synthetic-patients-glucose-data-and-insulin-regimens.md)
+   - [ ] **A demo patient on a steroid taper.** One persona already has a fictional new steroid start (a HIGH-TOUCH flag); give it a provider plan with dated steps. [ADR-0009](docs/adr/0009-diabetes-education-bot-synthetic-patients-glucose-data-and-insulin-regimens.md)
+5. **Common scenarios: high, low, can't eat, new medicines, steroid changes.**
+   - [ ] **Triage and routing check for his scenarios:** add cases to `kb/routing-questions.txt` and the triage tests ("I started prednisone", "I can't keep food down", "my doctor added a new pill"). Highs and lows are already covered; the other three need knowledge-base material first (Waiting). [ADR-0006](docs/adr/0006-diabetes-education-bot-urgent-situation-triage-and-escalation.md), [ADR-0018](docs/adr/0018-retrieval-whole-curated-topic-sections-chosen-by-the-classifier.md)
 
 ### Testing with users (testers are in as of 2026-11-17)
 
@@ -43,7 +62,7 @@ Columns: **Waiting** (blocked on a person's answer or material), **To do** (read
   - follow-ups like "what about at night?" lose the earlier topic.
   - Add each fixed case to `kb/routing-questions.txt`. [ADR-0018](docs/adr/0018-retrieval-whole-curated-topic-sections-chosen-by-the-classifier.md)
 
-### Conversation summary and nurse handoff (ADR-0008: decided, not built; on hold for the sponsor's reply, see Waiting)
+### Conversation summary and nurse handoff (ADR-0008: decided, not built; the sponsor has replied and confirmed the direction; the field list is still pending, see Waiting)
 
 Nothing in the app writes to `summaries` or `replies` today; the tables and their access rules exist (`db/migrations/0001`, `0002`) and are tested.
 
@@ -82,11 +101,6 @@ Nothing in the app writes to `summaries` or `replies` today; the tables and thei
 - [ ] After an escalation, check in on the next turn ("Are you feeling better?"). [ADR-0006](docs/adr/0006-diabetes-education-bot-urgent-situation-triage-and-escalation.md)
 - [ ] Caregiver wording for reports about someone else ("my wife won't wake up"). [ADR-0006](docs/adr/0006-diabetes-education-bot-urgent-situation-triage-and-escalation.md)
 - [ ] Have a clinician confirm which ADA passages are used for the urgent cards (low treatment, "while you wait", DKA). [ADR-0006](docs/adr/0006-diabetes-education-bot-urgent-situation-triage-and-escalation.md)
-- [ ] **The assistant reads the patient's saved dose regimen** (Kay, 2026-11-17), so it can answer questions like "when do I take my long-acting insulin?" from the record in the database. Today the regimen is only shown on screen and is never sent to a model (ADR-0005, ADR-0009). Needs an ADR first:
-  - it reverses a safety rule: the answer model would see dose numbers, and the guard (rule 2) and TD-7 (dose advice written in words) become the only barrier between those numbers and a dosing instruction;
-  - a read-back can act as dose advice if the record is stale (the card below);
-  - a likely safer shape: code, not the model, answers regimen questions with a fixed template ("Your record says: … Check with your care team before changing anything."), the way escalation cards work. [ADR-0005](docs/adr/0005-diabetes-education-bot-architecture-and-answer-path.md), [ADR-0009](docs/adr/0009-diabetes-education-bot-synthetic-patients-glucose-data-and-insulin-regimens.md)
-- [ ] Regimen read-back can act as dose advice if the record is stale: decide how to handle "what should I take tonight?". [ADR-0005](docs/adr/0005-diabetes-education-bot-architecture-and-answer-path.md)
 - [ ] Revisit QST-TRIAGE-CGM now that readings are re-anchored to load time. [ADR-0009](docs/adr/0009-diabetes-education-bot-synthetic-patients-glucose-data-and-insulin-regimens.md)
 - [ ] Under real patient data, monitor-verdict logs would be protected health information too. [ADR-0007](docs/adr/0007-diabetes-education-bot-a-second-model-that-monitors-the-conversation.md)
 
