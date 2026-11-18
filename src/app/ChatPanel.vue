@@ -292,7 +292,6 @@ const docTitles = (sources: KbPassage[], label: KbPassage['source_label']) =>
             id="ask"
             v-model="draft"
             rows="1"
-            placeholder="Ask about diabetes…"
             :disabled="busy"
             @keydown.enter.exact.prevent="send"
           />
