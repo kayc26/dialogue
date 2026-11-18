@@ -91,7 +91,7 @@ Nothing in the app writes to `summaries` or `replies` today; the tables and thei
 
 ## In progress
 
-- [ ] **The bot reads the patient's plan back in chat** (from the sponsor; Kay, 2026-11-17). [ADR-0020](docs/adr/0020-the-bot-reads-the-patients-plan-back-in-chat.md) drafted, waiting on Kay's answers: who writes the answer (code or a model), how a plan question is told from a dose-change question, and what the card shows. Recommended: code with a fixed template, so rule 1 stays and TD-7 isn't needed. [ADR-0005](docs/adr/0005-diabetes-education-bot-architecture-and-answer-path.md), [ADR-0019](docs/adr/0019-patient-plans-the-long-term-regimen-plus-a-dated-special-plan-from-the-provider.md)
+(nothing)
 
 ## Backlog
 
@@ -137,6 +137,7 @@ Nothing in the app writes to `summaries` or `replies` today; the tables and thei
 - [x] Monitor no longer reads carbohydrate amounts as doses (the 15-15 rule, snack grams); verified live. ADR-0007
 - [x] First four testers added as `patient_tester` ($1 cap each); sign-in emails moved to Gmail SMTP after Neon's shared sender stopped reaching Penn. ADR-0011
 - [x] Patient plans: a long-term regimen plus a dated special plan from the provider; Robert's prednisone taper shown on his screen with today's step marked (code, not a model); live on production 2026-11-18. ADR-0019
+- [x] The bot reads the patient's plan back in chat: written by code, shown only for a plan question with no reading, symptom, change word or red flag; the plan never reaches a model. Live classifier test: 0 plans shown wrongly in two runs. ADR-0020
 - [x] Clinical sponsor's account added as `admin` (both views; metered, not capped). ADR-0011
 - [x] Kay's calls: `kayc26/diabetes_chatbot` stays public (ADR-0018); a non-English greeting keeps the full help alert (ADR-0017).
 - [x] ADR-0008 marked Partially Implemented, so "Accepted" isn't read as "built". ADR-0008
