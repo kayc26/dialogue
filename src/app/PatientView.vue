@@ -11,7 +11,6 @@ import ChatPanel from './ChatPanel.vue'
 import {
   minutesAgo,
   regimenLines,
-  REGIMEN_DISCLAIMER,
   specialPlanView,
   summarizeGlucose,
   type Reading,
@@ -176,7 +175,6 @@ onMounted(async () => {
         <li v-for="line in regimen" :key="line">{{ line }}</li>
       </ul>
       <p v-if="summary">Glucose, past 24 hours: lowest {{ summary.lowest24h }}, highest {{ summary.highest24h }} mg/dL.</p>
-      <p class="note">{{ REGIMEN_DISCLAIMER }}</p>
     </div>
 
     <ChatPanel :data="data" :patient-id="chosen.id" :profile="chosen.flags" :diabetes-type="chosen.diabetes_type" :regimen="chosen.regimen" :passages="passages" :cards="cards" />

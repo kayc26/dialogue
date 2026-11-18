@@ -6,7 +6,7 @@
 import { describe, expect, it } from 'vitest'
 import { planBlocker } from './plan'
 import { triageRules } from './triage'
-import { planReply, REGIMEN_DISCLAIMER, type Regimen } from '../patients/readback'
+import { planReply, type Regimen } from '../patients/readback'
 import { cardsToText } from './persist'
 import robert from '../../../patients/fixtures/demo-robert.json'
 import helen from '../../../patients/fixtures/demo-helen.json'
@@ -58,7 +58,6 @@ describe('what the plan reply says (code, not a model)', () => {
     const r = planReply(helen.regimen as unknown as Regimen)
     expect(r.mode).toBe('recorded')
     expect(r.heading).toMatch(/as recorded \(not a plan from your care team\)/)
-    expect(r.footer).toBe(REGIMEN_DISCLAIMER)
   })
 
   it('after the taper ends, says so and falls back to the record', () => {

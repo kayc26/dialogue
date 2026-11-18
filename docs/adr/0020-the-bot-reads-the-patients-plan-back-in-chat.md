@@ -9,7 +9,7 @@ adr teaching map: the example is not the teaching — these are the up-links fro
 # The bot reads the patient's plan back in chat
 
 - **Date**: 2026-11-17
-- **Iteration**: 2
+- **Iteration**: 4
 - **Status**: Partially Implemented
 - **Deciders**: Kay; input from the clinical sponsor
 
@@ -143,7 +143,7 @@ Kay answered (2026-11-17): **QST-READ-WHO: A** (code, fixed template), **QST-REA
 - **Turn step 3-plan** (`turn.ts`), before the dose refusal: the plan is shown only if the classifier says `plan_question`, triage is `none`, the patient's regimen was passed in, and no fixed check fires. Otherwise everything runs as before, so a dose question still gets the refusal.
 - **The reply** (`planReply` in `readback.ts`):
   - Robert (special plan in force): "Your plan from Your care team (demo) says (Prednisone taper):", then today's step and the next change, in the plan's own words, then the footer ("The full plan is under My insulin. If your care team has told you something different since, follow what they said. If your sugar is out of range or you feel unwell, call the clinic.").
-  - Everyone else: "Your insulin as recorded (not a plan from your care team):", the regimen lines, and the usual disclaimer.
+  - Everyone else: "Your insulin as recorded (not a plan from your care team):", then the regimen lines. (The disclaimer that followed was removed in iteration 4.)
   - After a special plan ends: "Your prednisone taper on file ended after day 14", then the record.
 - **No model ever sees the plan:**
   - The regimen goes from `PatientView` to `ChatPanel` to `runTurn` and is read only by code.
@@ -185,6 +185,12 @@ Kay answered (2026-11-17): **QST-READ-WHO: A** (code, fixed template), **QST-REA
   - **Defense in depth, seen live:** the classifier called three dangerous questions plan questions ("My sugar is 300, what is my dose today?", "It's 280, what's my insulin today?", "I can't eat today, what's my dose?"). Triage stopped all three (check-in), and the fixed checks would have stopped them too (a reading; a symptom). The classifier alone can't be trusted with this, which is why QST-READ-WHEN chose the fixed checks.
   - **Two misses, both safe:** "When does my prednisone go down?" got the normal answer path, and "How much prednisone am I taking now?" got the refusal. The classifier doesn't treat prednisone questions as plan questions as readily as insulin ones. A possible prompt tweak, not needed for safety. Kay (2026-11-17): "leave it". No fix and no board item; revisit only if testers hit it.
 - Outcome: pushed and live (Partially Implemented: the sponsor's wording review and the prednisone misses remain)
+
+### Iteration 4 (2026-11-17)
+- Trigger: Kay, about "This is what's on file for this demo patient. It is not advice. Your care team's latest instructions always come first.": "i don't think this is needed".
+- Contributors: Kay, Nibble (Claude Opus 5.5)
+- Changes: `REGIMEN_DISCLAIMER` removed from the My insulin panel and from the chat's recorded-insulin reply. The headings already label it ("My insulin (as recorded)"; "Your insulin as recorded (not a plan from your care team)"), and the window's banner says "No medical advice or doses". The special-plan footer stays: it is the one line that says to follow newer instructions from the care team and to call the clinic. The test that only checked the disclaimer's wording was removed with it. The header's iteration number, which still said 2 after iteration 3, is corrected.
+- Outcome: Partially Implemented (unchanged)
 
 ---
 

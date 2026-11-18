@@ -3,7 +3,7 @@
 // regimen is read back by template and never reaches the model).
 
 import { describe, expect, it } from 'vitest'
-import { minutesAgo, regimenLines, REGIMEN_DISCLAIMER, specialPlanView, summarizeGlucose, type Regimen, type SpecialPlan } from './readback'
+import { minutesAgo, regimenLines, specialPlanView, summarizeGlucose, type Regimen, type SpecialPlan } from './readback'
 import helen from '../../../patients/fixtures/demo-helen.json'
 import robert from '../../../patients/fixtures/demo-robert.json'
 import personas from '../../../patients/personas.json'
@@ -31,12 +31,6 @@ describe('regimen read-back', () => {
 
   it('names the dose times in everyday clock words', () => {
     expect(regimenLines(helen.regimen as Regimen)[0]).toMatch(/around 8 p\.m\. and 9 p\.m\./)
-  })
-
-  it('carries the disclaimer that the care team comes first', () => {
-    expect(REGIMEN_DISCLAIMER).toMatch(/not advice/)
-    expect(REGIMEN_DISCLAIMER).toMatch(/care team's latest instructions always come first/)
-    expect(REGIMEN_DISCLAIMER).not.toMatch(IMPERATIVE)
   })
 })
 

@@ -42,9 +42,6 @@ export interface Reading {
   source: 'cgm' | 'fingerstick'
 }
 
-export const REGIMEN_DISCLAIMER =
-  "This is what's on file for this demo patient. It is not advice. Your care team's latest instructions always come first."
-
 const clock = (hhmm: string): string => {
   const h = Number(hhmm.slice(0, 2))
   const suffix = h < 12 ? 'a.m.' : 'p.m.'
@@ -140,7 +137,8 @@ export interface PlanReply {
   mode: 'special' | 'recorded'
   heading: string
   lines: string[]
-  footer: string
+  /** Special plans only. The record's heading already says what it is (Kay, 2026-11-17). */
+  footer?: string
 }
 
 export const PLAN_FOOTER =
@@ -165,7 +163,7 @@ export function planReply(r: Regimen): PlanReply {
   }
   const lines = regimenLines(r)
   if (plan?.status === 'finished') lines.unshift(`Your ${plan.title.toLowerCase()} on file ended after day ${plan.lastDay}.`)
-  return { mode: 'recorded', heading: 'Your insulin as recorded (not a plan from your care team):', lines, footer: REGIMEN_DISCLAIMER }
+  return { mode: 'recorded', heading: 'Your insulin as recorded (not a plan from your care team):', lines }
 }
 
 export function minutesAgo(m: number): string {

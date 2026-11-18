@@ -249,7 +249,7 @@ const docTitles = (sources: KbPassage[], label: KbPassage['source_label']) =>
                 <ul>
                   <li v-for="line in c.reply.lines" :key="line">{{ line }}</li>
                 </ul>
-                <p class="meta">{{ c.reply.footer }}</p>
+                <p v-if="c.reply.footer" class="meta">{{ c.reply.footer }}</p>
               </div>
               <div v-else-if="c.kind === 'no_info'">
                 <p>{{ NO_INFO_REPLY }}</p>
