@@ -10,6 +10,7 @@ import { computed, ref } from 'vue'
 import type { User } from '../lib/neon/auth'
 import { viewsFor, type DataClient, type Membership } from '../lib/neon/data'
 import NewMessageWindow from './NewMessageWindow.vue'
+import { currentTheme, toggleTheme } from './theme'
 
 const props = defineProps<{ user: User; membership: Membership; data: Required<DataClient> }>()
 const emit = defineEmits<{ signOut: [] }>()
@@ -62,6 +63,12 @@ function toggleHc(): void {
   } catch {
     /* lasts for this page */
   }
+}
+
+// Light / dark switch: the button names the theme it switches TO.
+const theme = ref(currentTheme())
+function switchTheme(): void {
+  theme.value = toggleTheme()
 }
 </script>
 
@@ -147,6 +154,7 @@ function toggleHc(): void {
         <button type="button" class="link" @click="staticPart('Frequently Asked Questions')">Frequently Asked Questions</button>
         <button type="button" class="link" @click="staticPart('Terms & Conditions')">Terms &amp; Conditions</button>
         <button type="button" class="link" @click="staticPart('Contact Us')">Contact Us</button>
+        <button type="button" class="hc" @click="switchTheme">{{ theme === 'dark' ? '☀ Light mode' : '☾ Dark mode' }}</button>
         <button type="button" class="hc" :aria-pressed="highContrast" @click="toggleHc">High Contrast Theme</button>
       </footer>
     </div>
@@ -429,7 +437,7 @@ footer {
   align-items: center;
   flex-wrap: wrap;
   gap: 0.25rem 0.75rem;
-  padding: 0.3rem 13rem 0.3rem 1rem; /* right side left clear for the fixed help button */
+  padding: 0.3rem 1rem;
   background: var(--panel);
   border-top: 1px solid var(--border);
   font-size: 0.85rem;
@@ -455,7 +463,7 @@ footer {
   }
   footer {
     width: 100%;
-    padding: 0.3rem 1rem 4.75rem;
+    padding: 0.3rem 1rem;
   }
   .me-text small {
     display: none;

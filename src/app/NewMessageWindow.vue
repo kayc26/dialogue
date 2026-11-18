@@ -126,20 +126,14 @@ onMounted(async () => {
   background: var(--window);
 }
 .disclaimer {
-  background: #fff6df;
-  color: #6b4e00;
+  background: var(--banner-bg);
+  color: var(--banner-text);
   padding: 0.45rem 0.9rem;
   font-size: 0.85rem;
 }
 .disclaimer .help {
   color: inherit;
   font-weight: 700;
-}
-@media (prefers-color-scheme: dark) {
-  .disclaimer {
-    background: #3a3220;
-    color: #f5dc9a;
-  }
 }
 /* phones: the window is the whole screen */
 @media (max-width: 700px) {

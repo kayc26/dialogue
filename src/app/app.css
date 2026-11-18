@@ -20,13 +20,18 @@
   --ok: #1b6b2f;
   --ok-bg: #e8f5ea;
   --focus: #e8a400;
+  --banner-bg: #fff6df;
+  --banner-text: #6b4e00;
   --radius: 12px;
   --font: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
   color-scheme: light dark;
 }
 
+/* Dark tokens: from the system setting unless the footer's Light/Dark switch saved a
+   choice (theme.ts puts .theme-light or .theme-dark on <html>). The two blocks below
+   must stay identical. */
 @media (prefers-color-scheme: dark) {
-  :root {
+  :root:not(.theme-light) {
     --bg: #111318;
     --panel: #191c22;
     --soft: #20242c;
@@ -41,7 +46,31 @@
     --ok: #9ad8a8;
     --ok-bg: #16301d;
     --focus: #ffcc4d;
+    --banner-bg: #3a3220;
+    --banner-text: #f5dc9a;
   }
+}
+:root.theme-dark {
+  --bg: #111318;
+  --panel: #191c22;
+  --soft: #20242c;
+  --window: #20242c;
+  --text: #eef0f4;
+  --muted: #b9becb;
+  --border: #4a505c;
+  --accent: #9db7ef;
+  --accent-text: #0e1a33;
+  --danger: #ffb4ab;
+  --danger-bg: #3b1a17;
+  --ok: #9ad8a8;
+  --ok-bg: #16301d;
+  --focus: #ffcc4d;
+  --banner-bg: #3a3220;
+  --banner-text: #f5dc9a;
+  color-scheme: dark;
+}
+:root.theme-light {
+  color-scheme: light;
 }
 
 /* "High Contrast Theme" (footer switch): pure black on white, black borders, a thick

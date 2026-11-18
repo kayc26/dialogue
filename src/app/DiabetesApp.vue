@@ -7,6 +7,9 @@ import { AuthError, createAuthClient, type User } from '../lib/neon/auth'
 import { createDataClient, getMembership, type Membership } from '../lib/neon/data'
 import HomeScreen from './HomeScreen.vue'
 import SignInScreen from './SignInScreen.vue'
+import { applyTheme, readSaved } from './theme'
+
+applyTheme(readSaved()) // a saved Light/Dark choice holds on the sign-in screen too
 
 const auth = createAuthClient(NEON_AUTH_URL)
 const data = createDataClient(NEON_DATA_API_URL, () => auth.getJwt())
