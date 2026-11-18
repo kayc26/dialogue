@@ -120,7 +120,7 @@ onMounted(async () => {
 
   <section v-else-if="!chosen" class="scroll" aria-labelledby="pick">
     <h3 id="pick">Choose a demo patient</h3>
-    <p>You'll use the assistant as this person. Their readings come from a public research dataset; their name and details are made up.</p>
+    <p>Real research glucose readings; made-up names and details.</p>
     <ul class="cards">
       <li v-for="p in patients" :key="p.id">
         <button type="button" class="card" @click="choose(p)">

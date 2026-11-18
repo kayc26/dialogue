@@ -87,13 +87,13 @@ const savePassword = () =>
       <input id="password" v-model="password" type="password" autocomplete="current-password" required />
       <button class="primary" type="submit" :disabled="busy">{{ busy ? 'Signing in…' : 'Sign in' }}</button>
       <button class="link" type="button" @click="go('request-code')">
-        First time here, or forgot your password? Set a password
+        First time, or forgot password?
       </button>
     </form>
 
     <form v-else-if="mode === 'request-code'" @submit.prevent="sendCode">
       <h2>Set a password</h2>
-      <p>We'll email you a code. Then you can choose a password.</p>
+      <p>We'll email you a code.</p>
       <label for="email2">Your email</label>
       <input id="email2" v-model="email" type="email" autocomplete="username" required />
       <button class="primary" type="submit" :disabled="busy">{{ busy ? 'Sending…' : 'Email me a code' }}</button>

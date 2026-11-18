@@ -39,8 +39,7 @@ onMounted(async () => {
 
     <div v-show="!minimized" class="body">
       <div class="disclaimer">
-        This assistant is AI and can be wrong. It does not give medical advice or insulin doses. Messages are not for
-        emergencies: use <strong>Get help now</strong> or call 911.
+        AI can be wrong. No medical advice or doses. Not for emergencies: use <strong>Get help now</strong> or call 911.
       </div>
       <PatientView :data="data" />
     </div>

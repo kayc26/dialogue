@@ -9,7 +9,7 @@ adr teaching map: the example is not the teaching — these are the up-links fro
 # ADR-0004: Portal assistant — an AI chatbot inside a patient-portal message center
 
 - **Date**: 2026-11-12
-- **Iteration**: 3
+- **Iteration**: 4
 - **Status**: Accepted
 - **Deciders**: Kay, Nibble (Claude Opus 5.5)
 
@@ -131,6 +131,8 @@ c
 
 NOT: Built (2026-11-14). The Message Center has one button, "✦ Ask a non-urgent question". It opens the Diabetes Assistant window directly. The Send a message menu, the disclaimer step, and the question-type list were removed. Without the disclaimer step, "not for emergencies" lives in the window's yellow banner, which is shown on every visit: "Messages are not for emergencies: use Get help now or call 911." This differs from my recommendation (B), which kept the disclaimer step on the shortcut. Kay chose fewer steps over that confirmation click.
 
+NOT: Shortened (2026-11-17, Kay: "the current ui is a bit too wordy"). The banner is still the one place that carries the safety message. It now reads: "AI can be wrong. No medical advice or doses. Not for emergencies: use Get help now or call 911." The welcome bubble no longer repeats the dose and emergency lines. The fine print under the composer is gone: it repeated the banner, and its "can't see your health records" became untrue once the bot started reading the plan back (ADR-0020). Reply labels are shorter: "Quoted word for word", "From N approved passages", "Approved answer". Approved reply texts (escalation, dose refusal, small talk, no information) are unchanged.
+
 ## Decision
 
 **Chosen: A — Design mockup only** (Kay, 2026-11-14). `docs/mockups/portal-assistant.html` stays a static design artifact, and no message-center behavior gets built. Its layout becomes the shell for the diabetes education bot (ADR-0005, QST-DIAB-VS-PORTAL: B). That bot is the only working part (confirmed in ADR-0005, QST-DIAB-PORTAL-SHELL: A).
@@ -164,6 +166,12 @@ NOT: Built (2026-11-14). The Message Center has one button, "✦ Ask a non-urgen
 - Trigger: Kay answered QST-PORTAL-SHORTCUT: C
 - Contributors: Kay, Nibble (Claude Opus 5.5)
 - Changes: One button opens the assistant. The four-step portal path is removed, and the banner carries the emergency message. A dark-mode contrast bug in the portal shell was fixed at the same time (navy text on a dark background).
+- Outcome: Accepted
+
+### Iteration 4 (2026-11-17)
+- Trigger: Kay: "the current ui is a bit too wordy"
+- Contributors: Kay, Nibble (Claude Opus 5.5)
+- Changes: Repeated disclaimers removed from the chat window and the banner shortened. Reply labels, the patient-picker note, and the sign-in links were trimmed.
 - Outcome: Accepted
 
 ---

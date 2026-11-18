@@ -199,8 +199,8 @@ const docTitles = (sources: KbPassage[], label: KbPassage['source_label']) =>
 
     <div ref="msgs" class="msgs">
       <div class="bubble bot">
-        <p>Hi! I can answer questions about diabetes from approved education material.</p>
-        <p>I can't give insulin or medicine doses. In an emergency, use <strong>Get help now</strong>.</p>
+        <!-- Doses and emergencies are in the yellow bar above; not repeated here. -->
+        <p>Hi! Ask me about diabetes.</p>
       </div>
       <div v-if="items.length === 0" class="chips" aria-label="Suggested questions">
         <button v-for="q in SUGGESTIONS" :key="q" type="button" class="chip" :disabled="busy" @click="ask(q)">{{ q }}</button>
@@ -238,7 +238,7 @@ const docTitles = (sources: KbPassage[], label: KbPassage['source_label']) =>
                 <p v-if="c.why === 'dose'" class="dose-head">Talk to your care team before changing any dose.</p>
                 <p class="verbatim">{{ c.passage.body }}</p>
                 <span class="cite" :title="c.passage.doc_title">📄 {{ SOURCE[c.passage.source_label] }}</span>
-                <p class="meta">Shown word for word from approved material</p>
+                <p class="meta">Quoted word for word</p>
               </div>
               <div v-else-if="c.kind === 'dose_refusal'">
                 <p>I can't give advice about insulin or medicine doses. Your care team can help with that. Call the nurse line if you need an answer today.</p>
@@ -265,15 +265,13 @@ const docTitles = (sources: KbPassage[], label: KbPassage['source_label']) =>
               <div v-else-if="c.kind === 'answer'">
                 <p class="answer-text">{{ c.text }}</p>
                 <span v-for="s in uniqueSources(c.sources)" :key="s.source_label" class="cite" :title="docTitles(c.sources, s.source_label)">📄 {{ SOURCE[s.source_label] }}</span>
-                <p class="meta">
-                  Answered from {{ c.sources.length }} approved passage{{ c.sources.length === 1 ? '' : 's' }}
-                </p>
+                <p class="meta">From {{ c.sources.length }} approved passage{{ c.sources.length === 1 ? '' : 's' }}</p>
               </div>
               <!-- ADR-0013 (QST-KB-CARD-USE: A): the approved card, exactly as approved. -->
               <div v-else-if="c.kind === 'topic_card'">
                 <p class="verbatim">{{ c.card.body }}</p>
                 <span v-for="s in uniqueSources(c.sources)" :key="s.source_label" class="cite" :title="docTitles(c.sources, s.source_label)">📄 {{ SOURCE[s.source_label] }}</span>
-                <p class="meta">Approved answer, shown as written</p>
+                <p class="meta">Approved answer</p>
               </div>
             </template>
             <p v-if="item.cards?.some((c) => c.kind === 'escalation' && c.tier === 'checkin')" class="checkin">
@@ -301,10 +299,6 @@ const docTitles = (sources: KbPassage[], label: KbPassage['source_label']) =>
           <button class="primary" type="submit" :disabled="busy || !draft.trim()">Ask</button>
         </div>
       </form>
-      <p class="fine">
-        The assistant answers from approved diabetes education material. It can't see your health records, send
-        messages, or advise on doses.
-      </p>
       <p v-if="saveProblem" class="note-text" role="status">{{ saveProblem }}</p>
       <!-- ADR-0014: a percentage of the tester's allowance, never dollars. -->
       <p v-if="allowance" class="key" role="status">{{ allowanceText(allowance) }}</p>
@@ -515,11 +509,6 @@ button {
   color: var(--accent-text);
   font-weight: 700;
 }
-.fine {
-  margin: 0.4rem 0 0;
-  color: var(--muted);
-  font-size: 0.75rem;
-}
 .key {
   margin-top: 0.3rem;
   font-size: 0.8rem;
@@ -534,9 +523,6 @@ button {
   }
   .row {
     padding-right: 0;
-  }
-  .fine {
-    display: none; /* the yellow AI bar above already says it */
   }
 }
 </style>
