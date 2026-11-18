@@ -79,6 +79,8 @@ function switchTheme(): void {
       <button class="sq" type="button" aria-label="Home" @click="staticPart('Home')">⌂</button>
       <button class="sq navy" type="button" aria-label="Menu" @click="staticPart('Menu')">☰</button>
       <span class="spacer" />
+      <!-- in the top bar so the open assistant window never hides it -->
+      <button class="signout" type="button" @click="switchTheme">{{ theme === 'dark' ? '☀ Light mode' : '☾ Dark mode' }}</button>
       <div class="me">
         <span class="avatar" aria-hidden="true"><span>{{ initial }}</span>▾</span>
         <span class="me-text">
@@ -154,7 +156,6 @@ function switchTheme(): void {
         <button type="button" class="link" @click="staticPart('Frequently Asked Questions')">Frequently Asked Questions</button>
         <button type="button" class="link" @click="staticPart('Terms & Conditions')">Terms &amp; Conditions</button>
         <button type="button" class="link" @click="staticPart('Contact Us')">Contact Us</button>
-        <button type="button" class="hc" @click="switchTheme">{{ theme === 'dark' ? '☀ Light mode' : '☾ Dark mode' }}</button>
         <button type="button" class="hc" :aria-pressed="highContrast" @click="toggleHc">High Contrast Theme</button>
       </footer>
     </div>

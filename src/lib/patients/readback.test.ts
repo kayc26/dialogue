@@ -98,6 +98,21 @@ describe('Regression tests', () => {
   it('falls back to "nothing on file" for an empty or missing regimen', () => {
     expect(regimenLines({} as Regimen)).toEqual(['No insulin is on file for this demo patient.'])
   })
+
+  it('shows glucose in whole mg/dL, as a meter does (122.4 → 122)', () => {
+    // Bug seen 2026-11-17 in Kay's screenshot: Dorothy's patient bar read
+    // "Latest glucose 122.4 mg/dL". Some dataset readings were converted from mmol/L
+    // and keep a decimal; a patient's meter never shows one. Fixed in summarizeGlucose,
+    // which feeds the patient bar and the My insulin 24-hour low/high.
+    const s = summarizeGlucose([
+      { minutes_before_load: 0, value_mgdl: 122.4, source: 'cgm' },
+      { minutes_before_load: 60, value_mgdl: 87.6, source: 'cgm' },
+      { minutes_before_load: 120, value_mgdl: 201.5, source: 'fingerstick' },
+    ])!
+    expect(s.latest.value_mgdl).toBe(122)
+    expect(s.lowest24h).toBe(88)
+    expect(s.highest24h).toBe(202)
+  })
 })
 
 describe('glucose read-back', () => {

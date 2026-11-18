@@ -187,6 +187,14 @@ export function summarizeGlucose(readings: Reading[]): GlucoseSummary | null {
   if (readings.length === 0) return null
   const latest = readings.reduce((a, b) => (b.minutes_before_load < a.minutes_before_load ? b : a))
   const day = readings.filter((r) => r.minutes_before_load <= 24 * 60)
-  const values = (day.length ? day : [latest]).map((r) => r.value_mgdl)
-  return { latest, lowest24h: Math.min(...values), highest24h: Math.max(...values), count24h: day.length }
+  // Whole mg/dL, as a meter shows it: some dataset readings were converted from mmol/L
+  // and carry a decimal ("122.4 mg/dL", Kay's screenshot 2026-11-17).
+  const mgdl = (v: number): number => Math.round(Number(v))
+  const values = (day.length ? day : [latest]).map((r) => mgdl(r.value_mgdl))
+  return {
+    latest: { ...latest, value_mgdl: mgdl(latest.value_mgdl) },
+    lowest24h: Math.min(...values),
+    highest24h: Math.max(...values),
+    count24h: day.length,
+  }
 }

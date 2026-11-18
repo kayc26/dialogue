@@ -24,7 +24,8 @@ onMounted(async () => {
 </script>
 
 <template>
-  <div class="scrim" aria-hidden="true" />
+  <!-- Dim the page only for the large centered view; docked, the portal stays as it is. -->
+  <div v-if="expanded && !minimized" class="scrim" aria-hidden="true" />
   <section :class="['win', { min: minimized, big: expanded }]" role="dialog" aria-labelledby="win-title">
     <header class="bar">
       <h2 id="win-title" ref="title" tabindex="-1">Diabetes Assistant</h2>
