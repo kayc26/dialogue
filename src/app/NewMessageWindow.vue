@@ -39,7 +39,7 @@ onMounted(async () => {
 
     <div v-show="!minimized" class="body">
       <div class="disclaimer">
-        AI can be wrong. No medical advice or doses. Not for emergencies: use <strong>Get help now</strong> or call 911.
+        AI can be wrong. No medical advice. Emergencies: <strong>Get help now</strong> or 911.
       </div>
       <PatientView :data="data" />
     </div>
