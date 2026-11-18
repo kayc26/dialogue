@@ -89,8 +89,10 @@ onMounted(async () => {
   align-items: center;
   gap: 0.25rem;
   padding: 0.25rem 0.4rem 0.25rem 0.75rem;
-  background: var(--accent);
-  color: var(--accent-text);
+  /* navy in every theme, like the portal's own buttons: dark mode's pale --accent made
+     the bar the brightest thing on screen, above the safety banner */
+  background: var(--portal-navy, #011f5b);
+  color: #ffffff;
 }
 .bar h2 {
   margin: 0;

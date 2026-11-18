@@ -106,7 +106,7 @@ onMounted(async () => {
     const again = patients.value.find((p) => p.id === saved)
     if (again) await choose(again)
   } catch {
-    error.value = "We couldn't load the demo patients. Please try again in a minute."
+    error.value = "We couldn't load the patients. Please try again in a minute."
   } finally {
     loading.value = false
   }
@@ -114,18 +114,18 @@ onMounted(async () => {
 </script>
 
 <template>
-  <div v-if="loading" class="scroll"><p role="status">Loading demo patients…</p></div>
+  <div v-if="loading" class="scroll"><p role="status">Loading patients…</p></div>
   <div v-else-if="error && !chosen" class="scroll"><p class="error" role="alert">{{ error }}</p></div>
 
   <section v-else-if="!chosen" class="scroll" aria-labelledby="pick">
-    <h3 id="pick">Choose a demo patient</h3>
-    <p>Real research glucose readings; made-up names and details.</p>
+    <h3 id="pick">Choose a patient</h3>
+    <p>Glucose readings are real research data. Names and details are made up.</p>
     <ul class="cards">
       <li v-for="p in patients" :key="p.id">
         <button type="button" class="card" @click="choose(p)">
           <span class="name">{{ p.display_name }}</span>
-          <span>{{ p.age }} years old · {{ TYPE[p.diabetes_type] }} diabetes</span>
-          <span v-if="badges(p).length" class="badges">{{ badges(p).join(' · ') }}</span>
+          <span class="meta">{{ p.age }} · {{ TYPE[p.diabetes_type] }}</span>
+          <span v-for="b in badges(p)" :key="b" class="tag">{{ b }}</span>
         </button>
       </li>
     </ul>
@@ -194,16 +194,17 @@ h4 {
   list-style: none;
   padding: 0;
   display: grid;
-  gap: 0.75rem;
+  gap: 0.5rem;
 }
+/* one row per patient, so all six fit without scrolling; still a 3rem tap target */
 .card {
   width: 100%;
-  min-height: 4.5rem;
-  padding: 0.9rem 1.1rem;
+  min-height: 3rem;
+  padding: 0.55rem 1rem;
   display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  gap: 0.15rem;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.35rem 0.75rem;
   text-align: left;
   border: 2px solid var(--border);
   border-radius: var(--radius);
@@ -218,9 +219,17 @@ h4 {
   font-weight: 700;
   font-size: 1.2rem;
 }
-.badges {
-  color: var(--accent);
-  font-weight: 600;
+.card .meta {
+  color: var(--muted);
+}
+/* labels, not links: neutral chips instead of the link blue */
+.tag {
+  padding: 0.05rem 0.55rem;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--soft);
+  color: var(--text);
+  font-size: 0.85rem;
 }
 /* the picker scrolls on the soft background; the chat view fills the thread */
 .scroll {

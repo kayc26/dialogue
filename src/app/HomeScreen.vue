@@ -17,7 +17,7 @@ const emit = defineEmits<{ signOut: [] }>()
 const ROLE_LABEL = {
   patient_tester: 'Patient tester',
   careteam_tester: 'Care team tester',
-  admin: 'Admin (patient and care team)',
+  admin: 'Admin',
 } as const
 
 const views = computed(() => viewsFor(props.membership.role))
@@ -130,7 +130,7 @@ function toggleHc(): void {
               <span class="conv-body">
                 <span class="t">Welcome to your patient portal <time>example</time></span>
                 <span class="who">Care Team</span>
-                <span class="pv">To ask a non-urgent question, choose Ask a non-urgent question.</span>
+                <span class="pv">Questions about diabetes? Use Ask a non-urgent question.</span>
               </span>
             </button>
             <p class="end">There are no more conversations to show.</p>
