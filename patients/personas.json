@@ -33,7 +33,7 @@
         "kind": "steroid_taper",
         "title": "Prednisone taper",
         "reason": "Prednisone for a COPD flare-up",
-        "set_by": "Your care team (demo)",
+        "set_by": "your care team",
         "started_days_ago": 5,
         "steps": [
           { "days": [1, 5], "steroid": "Prednisone 40 mg each morning", "insulin": "Insulin aspart 70/30: 18 units before breakfast, 12 units before dinner" },
