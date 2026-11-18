@@ -1,6 +1,6 @@
 # Kanban
 
-The project's work at a glance, built from the ADRs, `docs/TECHNICAL-DEBT.md`, and what the code actually does (checked 2026-11-16). Each card names where its details live. Decisions stay in the ADRs; this board only tracks the work.
+The project's work at a glance, built from the ADRs, `docs/TECHNICAL-DEBT.md`, and what the code actually does (checked 2026-11-17). Each card names where its details live. Decisions stay in the ADRs; this board only tracks the work.
 
 Columns: **Waiting** (blocked on a person's answer or material), **To do** (ready to start, highest priority first), **In progress**, **Backlog** (open ideas, not yet committed to), **Done**.
 
@@ -8,17 +8,42 @@ Columns: **Waiting** (blocked on a person's answer or material), **To do** (read
 
 ## Waiting
 
+### On Kay
+
+- [ ] **Send the clinical sponsor email.** Several cards below wait on its answers. It asks about:
+  - book numbers, T2D fit, ADA precedence, medicine wording (for TD-7), the five handouts;
+  - approval of ADR-0016's small-talk texts and review of ADR-0017's language design;
+  - more after-exercise eating material.
+  - Record the answers in ADR-0013, ADR-0016 and ADR-0017.
+- [ ] **Does `kayc26/diabetes_chatbot` (the earlier prototype) stay public?** It contains ADA text and the team FAQ. [ADR-0018](docs/adr/0018-retrieval-whole-curated-topic-sections-chosen-by-the-classifier.md)
+- [ ] **Should a plain greeting in another language (你好) still get the full alert styling?** Today any non-English message gets the help alert. [ADR-0017](docs/adr/0017-multi-language-support.md)
+
+### On the clinical sponsor or others
+
 - [ ] **Clinical sponsor's reply, then Kay: clinician requirements for the summary fields.** Kay (2026-11-17): the summary work waits for the sponsor's reply, so the whole "Conversation summary and nurse handoff" group below is on hold until then. The replies replace ADR-0008's field table. [ADR-0008](docs/adr/0008-diabetes-education-bot-intake-conversation-summary-and-nurse-handoff.md)
-- [ ] **Clinical sponsor: review and approve topic cards** (`npm run kb:cards:approve`). [ADR-0013](docs/adr/0013-knowledge-base-shape-raw-passages-or-synthesized-topic-cards.md)
+- [ ] **TD-7: catch dose advice written in words in the guard** ("take two units", "a few extra units", "a bit more insulin"). Kay (2026-11-16): "do not do td-7 yet"; it waits on the sponsor's answer about medicine wording. Meanwhile the monitor catches these offline (ADR-0007 iteration 7: 12/12), but the guard, which runs on every answer, still sees only digits. When unblocked, add a regression test with the three example sentences. [TECHNICAL-DEBT](docs/TECHNICAL-DEBT.md), `src/lib/chat/guard.ts`
+- [ ] **Translations (ADR-0017):** Spanish, Chinese (Simplified), Chinese (Traditional), Korean. Needs translators for the fixed texts, and the sponsor's review. The safety floor for non-English messages is already live. [ADR-0017](docs/adr/0017-multi-language-support.md)
+- [ ] **Clinical sponsor: review and approve topic cards** (`npm run kb:cards:approve`). Cards are paused (`CARDS_PAUSED`), so this is needed only if cards come back. [ADR-0013](docs/adr/0013-knowledge-base-shape-raw-passages-or-synthesized-topic-cards.md)
 - [ ] **Clinical sponsor: more nutrition material.** 7 of the 13 FAQ questions are nutrition and the current sources answer them thinly. [ADR-0013](docs/adr/0013-knowledge-base-shape-raw-passages-or-synthesized-topic-cards.md)
 - [ ] **Clinician: check the demo patients' regimens and glucose traces for plausibility.** [ADR-0009](docs/adr/0009-diabetes-education-bot-synthetic-patients-glucose-data-and-insulin-regimens.md)
-- [ ] **Course staff: does user testing with older adults need an IRB exempt determination?** Ask before recruiting anyone. [ADR-0005](docs/adr/0005-diabetes-education-bot-architecture-and-answer-path.md)
+- [ ] **Course staff: does user testing with older adults need an IRB exempt determination?** Ask before testing with older adults. The current testers are classmates. [ADR-0005](docs/adr/0005-diabetes-education-bot-architecture-and-answer-path.md)
 
 ## To do
 
-### Safety (before testers outside the team)
+### Testing with users (testers are in as of 2026-11-17)
 
-- [ ] **TD-7: catch dose advice written in words** ("take two units", "a few extra units", "a bit more insulin"). Priority high: with the monitor paused, the guard is the only check on model-written dose advice. Add a regression test with the three example sentences. [TECHNICAL-DEBT](docs/TECHNICAL-DEBT.md), `src/lib/chat/guard.ts`
+- [ ] **Read the testers' first conversations** in `public.triage_events` and `public.messages`. Look for misroutes (`detail.topics`), guard blocks (`detail.guard`), monitor vetoes, and false alarms. [ADR-0018](docs/adr/0018-retrieval-whole-curated-topic-sections-chosen-by-the-classifier.md), [ADR-0007](docs/adr/0007-diabetes-education-bot-a-second-model-that-monitors-the-conversation.md)
+- [ ] **Test protocol for moderated sessions:** tasks (nutrition question, high reading, dose question), what to observe, consent wording. [ADR-0010](docs/adr/0010-diabetes-education-bot-how-test-users-reach-it.md)
+- [ ] **Public-site notice for strangers** that the link alone is a non-working preview. The sign-in screen already asks not to type real health information. [ADR-0010](docs/adr/0010-diabetes-education-bot-how-test-users-reach-it.md)
+
+### Answer quality
+
+- [ ] **Fix the known misroutes** from the routing test (`npm run kb:eval-routing -- --yes`, 34/38):
+  - swimming → monitoring instead of activity;
+  - glucagon varies between low_blood_sugar and medicines_devices;
+  - "doctor's appointment" → daily_life instead of support;
+  - follow-ups like "what about at night?" lose the earlier topic.
+  - Add each fixed case to `kb/routing-questions.txt`. [ADR-0018](docs/adr/0018-retrieval-whole-curated-topic-sections-chosen-by-the-classifier.md)
 
 ### Conversation summary and nurse handoff (ADR-0008: decided, not built; on hold for the sponsor's reply, see Waiting)
 
@@ -38,33 +63,24 @@ Nothing in the app writes to `summaries` or `replies` today; the tables and thei
 - [ ] **TD-6: the book chunks poorly** (page-break half-sentences and pull quotes read as headings). [TECHNICAL-DEBT](docs/TECHNICAL-DEBT.md)
 - [ ] **Show the source date on chips** ("From ADA, retrieved {date}"); `kb/manifest.json` already has `snapshotDate`. [ADR-0005](docs/adr/0005-diabetes-education-bot-architecture-and-answer-path.md)
 
-### Testing with users
-
-- [ ] **Test protocol for moderated sessions:** tasks (nutrition question, high reading, dose question), what to observe, consent wording. [ADR-0010](docs/adr/0010-diabetes-education-bot-how-test-users-reach-it.md)
-- [ ] **Public-site notice for strangers** that the link alone is a non-working preview. The sign-in screen already asks not to type real health information. [ADR-0010](docs/adr/0010-diabetes-education-bot-how-test-users-reach-it.md)
-
-### Shared key (ADR-0014)
+### Test branch (rls-dev)
 
 - [ ] **Redeploy `llm` to rls-dev**: it still runs the version without the `X-Title` fix, so browsers are blocked there. Kay (2026-11-17): "not now"; nobody tests on rls-dev yet. Do it before the next rls-dev test. [ADR-0014](docs/adr/0014-shared-openrouter-account-with-a-1-dollar-cap-per-tester.md)
+- [ ] **Switch rls-dev's sign-in emails to Gmail SMTP**, as production was. Neon's shared sender stopped reaching Penn addresses. Do it before anyone signs in there. [ADR-0011](docs/adr/0011-database-schema-and-access-rules.md)
 
 ### Housekeeping
 
 - [ ] **TD-1: install Node 24 locally** to match CI, then bump jsdom. [TECHNICAL-DEBT](docs/TECHNICAL-DEBT.md)
-- [ ] **Fix the stale comment in `src/lib/chat/retrieve.ts`** ("136 passages"; production has 472).
 
 ## In progress
 
-- [ ] **Retrieval-only trial:** topic cards paused (`CARDS_PAUSED = true`) to see how raw-passage answers do on their own. [ADR-0013](docs/adr/0013-knowledge-base-shape-raw-passages-or-synthesized-topic-cards.md)
-- [ ] **Answer quality runs** with `npm run kb:eval-faq` (FAQ back in the knowledge base; other test questions via `--questions`). [ADR-0013](docs/adr/0013-knowledge-base-shape-raw-passages-or-synthesized-topic-cards.md)
+(nothing)
 
 ## Backlog
 
-- [ ] **Multi-language support** (Kay, 2026-11-17). Not yet scoped: which languages, and whether testers write in them, read in them, or both. What it touches:
-  - **Safety first:** the fixed triage rules (`src/lib/chat/triage.ts`), the dose-question patterns, and the small-talk list (`social.ts`) are English patterns. Today a non-English emergency relies on the classifier alone; the fixed rules, which are designed never to miss, don't see it.
-  - **Knowledge base:** the FAQ, the ADA material and the book are English, and search matches English words. Either translated, approved sources, or a translated question searched against English and an answer translated back (which the guard would then have to check).
-  - **Fixed text** (escalation, dose refusal, small talk, no-information) needs approved translations; the UI needs a language choice.
-  - ADR written: [ADR-0017](docs/adr/0017-multi-language-support.md), three questions for Kay (a safety floor for non-English messages now; which languages; where translation happens). [ADR-0006](docs/adr/0006-diabetes-education-bot-urgent-situation-triage-and-escalation.md), [ADR-0013](docs/adr/0013-knowledge-base-shape-raw-passages-or-synthesized-topic-cards.md), [ADR-0016](docs/adr/0016-greetings-and-small-talk-in-a-cited-assistant.md)
-- [ ] **Typo tolerance in search:** "I'm hungrym" finds nothing, while "I'm hungry" finds the FAQ answer (score 9.24). Older testers mistype. Options: fuzzy-match unknown words to the knowledge base's vocabulary, or say "I didn't find that. Could you check the spelling or ask another way?" when no word in the message is known. [ADR-0016](docs/adr/0016-greetings-and-small-talk-in-a-cited-assistant.md) iteration 4
+- [ ] **Answers about high blood sugar are thin.** Rule 1 hides dose-tagged passages from the model, and much of the ADA material on highs is dose-tagged. Loosening that needs Kay and the sponsor. [ADR-0018](docs/adr/0018-retrieval-whole-curated-topic-sections-chosen-by-the-classifier.md), [ADR-0005](docs/adr/0005-diabetes-education-bot-architecture-and-answer-path.md)
+- [ ] **Typo tolerance in search:** "I'm hungrym" finds nothing, while "I'm hungry" finds the FAQ answer (score 9.24). Older testers mistype. Topic routing (ADR-0018) now covers many typos, because the classifier reads them; search is the fallback. Options: fuzzy-match unknown words to the knowledge base's vocabulary, or say "I didn't find that. Could you check the spelling or ask another way?" when no word in the message is known. [ADR-0016](docs/adr/0016-greetings-and-small-talk-in-a-cited-assistant.md) iteration 4
+- [ ] **Bring topic cards back, or retire them.** Paused since 2026-11-16 (`CARDS_PAUSED`). The card code and pipeline stay in place. If approved cards cover the common questions, does the answer model still earn its place for them? [ADR-0013](docs/adr/0013-knowledge-base-shape-raw-passages-or-synthesized-topic-cards.md)
 - [ ] After an escalation, check in on the next turn ("Are you feeling better?"). [ADR-0006](docs/adr/0006-diabetes-education-bot-urgent-situation-triage-and-escalation.md)
 - [ ] Caregiver wording for reports about someone else ("my wife won't wake up"). [ADR-0006](docs/adr/0006-diabetes-education-bot-urgent-situation-triage-and-escalation.md)
 - [ ] Have a clinician confirm which ADA passages are used for the urgent cards (low treatment, "while you wait", DKA). [ADR-0006](docs/adr/0006-diabetes-education-bot-urgent-situation-triage-and-escalation.md)
@@ -74,7 +90,6 @@ Nothing in the app writes to `summaries` or `replies` today; the tables and thei
   - a likely safer shape: code, not the model, answers regimen questions with a fixed template ("Your record says: … Check with your care team before changing anything."), the way escalation cards work. [ADR-0005](docs/adr/0005-diabetes-education-bot-architecture-and-answer-path.md), [ADR-0009](docs/adr/0009-diabetes-education-bot-synthetic-patients-glucose-data-and-insulin-regimens.md)
 - [ ] Regimen read-back can act as dose advice if the record is stale: decide how to handle "what should I take tonight?". [ADR-0005](docs/adr/0005-diabetes-education-bot-architecture-and-answer-path.md)
 - [ ] Revisit QST-TRIAGE-CGM now that readings are re-anchored to load time. [ADR-0009](docs/adr/0009-diabetes-education-bot-synthetic-patients-glucose-data-and-insulin-regimens.md)
-- [ ] If approved cards cover the common questions, does the answer model still earn its place for them? [ADR-0013](docs/adr/0013-knowledge-base-shape-raw-passages-or-synthesized-topic-cards.md)
 - [ ] Under real patient data, monitor-verdict logs would be protected health information too. [ADR-0007](docs/adr/0007-diabetes-education-bot-a-second-model-that-monitors-the-conversation.md)
 
 ## Done
@@ -92,6 +107,7 @@ Nothing in the app writes to `summaries` or `replies` today; the tables and thei
 - [x] Six demo patients from ShanghaiT1DM/T2DM, with regimen and glucose read-back. ADR-0009
 - [x] Knowledge base build and load, with source priority care-team FAQ, then ADA, then the book; book text never shown word for word. ADR-0013
 - [x] Topic-card pipeline: drafts, checks (guard, sources, reading level), load, sponsor approval by name, automatic return to draft when sources change, FAQ comparison. ADR-0013
+- [x] Retrieval-only trial (cards paused, 2026-11-16) and answer-quality runs with `npm run kb:eval-faq`; led to ADR-0018. ADR-0013
 - [x] Models chosen under the $15 budget, with a running cost total. ADR-0012
 - [x] QST-KEY-SHARING answered (C: a Neon Function holding the shared key). ADR-0014
 - [x] Model proxy `llm` built and deployed to rls-dev and production: sign-in and membership check, model allow-list, $1 cap per tester (admin metered, not capped), cost recorded in `llm_spend` (migration 0004). ADR-0014
@@ -99,9 +115,15 @@ Nothing in the app writes to `summaries` or `replies` today; the tables and thei
 - [x] Proxy CORS preflight fixed (`X-Title` allowed), with a regression test. ADR-0014
 - [x] Signed-in call verified live: allowance line, answers, cost rows in `llm_spend`. ADR-0014
 - [x] Project renamed to DIAlogue; site moved to `kayc26.github.io/dialogue/`. ADR-0015
-- [x] Answers read whole curated topic sections chosen by the classifier (the hike question now gets the exercise section). ADR-0018
-- [x] Monitor back on after an offline measurement (0 blocks on 33 good answers; catches dose advice in words). ADR-0007
-- [x] Non-English messages always get help and an "English only" note (safety floor). ADR-0017
-- [x] ADR-0008 marked Partially Implemented, so "Accepted" isn't read as "built". ADR-0008
 - [x] Fixed replies for small talk ("hi", "thanks", "who are you"), and a no-information reply that says what the assistant can help with. ADR-0016
+- [x] Non-English messages always get help and an "English only" note (safety floor); languages chosen. ADR-0017
+- [x] Answers read whole curated topic sections chosen by the classifier (the hike question now gets the exercise section). ADR-0018
+- [x] Lessons from the prototype: a routing test (34/38), unwell without a reading → both lows and highs, no examples from the model's own knowledge, the patient's own plan first. ADR-0018
+- [x] The assistant may ask one short clarifying question, uncited and checked by the guard. ADR-0018
+- [x] Answers no longer end with "your care team can help" unless the question is about doses, medicines, or a personal plan. ADR-0013
+- [x] Monitor back on after an offline measurement (0 blocks on 33 good answers; catches dose advice in words). ADR-0007
+- [x] Monitor no longer reads carbohydrate amounts as doses (the 15-15 rule, snack grams); verified live. ADR-0007
+- [x] First four testers added as `patient_tester` ($1 cap each); sign-in emails moved to Gmail SMTP after Neon's shared sender stopped reaching Penn. ADR-0011
+- [x] ADR-0008 marked Partially Implemented, so "Accepted" isn't read as "built". ADR-0008
 - [x] README rewritten to describe the current code base, including the shared-key proxy.
+- [x] Repo cleanup: superseded handoff and the template's citation, changelog and quick start removed; handoff refreshed.

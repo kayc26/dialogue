@@ -1,5 +1,7 @@
 // In-browser BM25 search over the knowledge-base passages (ADR-0005: RAG, not long
-// context; 136 passages load once after sign-in). Everyday words are expanded to the
+// context; the passages, 472 in production on 2026-11-17, load once after sign-in).
+// Since ADR-0018 this is the fallback: answers first read curated topic sections
+// (topics.ts), and search runs when the classifier picks no topic. Everyday words are expanded to the
 // clinical terms the passages use, because older users say "sugar" and "going low",
 // not "glucose" and "hypoglycemia".
 
