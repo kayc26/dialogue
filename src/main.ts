@@ -4,7 +4,6 @@ import { createApp } from 'vue'
 // the general OpenRouter chat client (ADR-0001..0003), stays reachable at #/harness.
 // Each app loads only its own global stylesheet so their tokens never clash.
 if (location.hash === '#/harness') {
-  document.body.classList.add('harness') // hides the diabetes app's help button (index.html)
   void Promise.all([import('./App.vue'), import('./style.css')]).then(([m]) =>
     createApp(m.default).mount('#app'),
   )

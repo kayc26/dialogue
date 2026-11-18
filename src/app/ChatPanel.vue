@@ -291,8 +291,8 @@ const docTitles = (sources: KbPassage[], label: KbPassage['source_label']) =>
           <textarea
             id="ask"
             v-model="draft"
-            rows="2"
-            placeholder="Ask about food, low or high sugar, or your diabetes…"
+            rows="1"
+            placeholder="Ask about diabetes…"
             :disabled="busy"
             @keydown.enter.exact.prevent="send"
           />
@@ -467,8 +467,7 @@ const docTitles = (sources: KbPassage[], label: KbPassage['source_label']) =>
 .thinking {
   color: var(--muted);
 }
-/* the mockup composer, pinned at the bottom of the docked window (which itself sits
-   above the fixed "Get help now" button, so nothing here needs to dodge it) */
+/* the mockup composer, pinned at the bottom of the docked window */
 .composer {
   border-top: 1px solid var(--border);
   background: var(--panel);

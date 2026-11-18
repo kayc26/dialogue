@@ -18,7 +18,7 @@ export type SocialIntent = 'greeting' | 'thanks' | 'goodbye' | 'about'
 export const SOCIAL_REPLY: Record<SocialIntent, string> = {
   greeting: 'Hello! I can answer general questions about diabetes, like eating, blood sugar, and everyday care. What would you like to know?',
   thanks: "You're welcome. Is there anything else you'd like to ask?",
-  goodbye: 'Take care. If you feel unwell, use the red Get help now button or call your care team.',
+  goodbye: 'Take care. If you feel unwell, use Get help now at the top of the chat, or call your care team.',
   about:
     "I'm an AI assistant, not a nurse or doctor. I can answer general questions about diabetes from material your care team approved. I can't give advice about your medicine doses. For that, please call your care team.",
 }

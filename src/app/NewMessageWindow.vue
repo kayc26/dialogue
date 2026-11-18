@@ -3,8 +3,9 @@
 // straight from the Message Center's one button (QST-PORTAL-SHORTCUT: C, Kay): the
 // real portal's Send a message → Contact your care team → disclaimer → question-type
 // steps aren't built. The yellow banner carries the "not for emergencies" message on
-// every visit. It docks above the fixed "Get help now" button so it never covers it,
-// expands to a large centered panel, and fills the screen on phones.
+// every visit, and its "Get help now" link opens the static 911 / nurse-line panel in
+// index.html (ADR-0006). It docks bottom-right, expands to a large centered panel, and
+// fills the screen on phones.
 import { nextTick, onMounted, ref } from 'vue'
 import type { DataClient } from '../lib/neon/data'
 import PatientView from './PatientView.vue'
@@ -39,7 +40,7 @@ onMounted(async () => {
 
     <div v-show="!minimized" class="body">
       <div class="disclaimer">
-        AI can be wrong. No medical advice. Emergencies: <strong>Get help now</strong> or 911.
+        AI can be wrong. No medical advice. Emergencies: <a class="help" href="#help">Get help now</a> or 911.
       </div>
       <PatientView :data="data" />
     </div>
@@ -53,14 +54,14 @@ onMounted(async () => {
   z-index: 900;
   background: rgba(10, 20, 40, 0.35);
 }
-/* docked bottom-right like the portal's window, but ABOVE the fixed help button */
+/* docked bottom-right like the portal's window */
 .win {
   position: fixed;
   z-index: 950;
   right: 1rem;
-  bottom: 5.25rem;
+  bottom: 0;
   width: min(34rem, calc(100vw - 2rem));
-  height: min(46rem, calc(100vh - 10.5rem)); /* clears the top bar above and the help button below */
+  height: min(46rem, calc(100vh - 5.25rem)); /* clears the top bar above */
   display: flex;
   flex-direction: column;
   background: var(--panel);
@@ -69,7 +70,7 @@ onMounted(async () => {
   box-shadow: 0 8px 30px rgba(0, 0, 0, 0.3);
   overflow: hidden;
 }
-/* expanded: a large panel centered over the dimmed page, its bottom edge above the help button */
+/* expanded: a large panel centered over the dimmed page */
 .win.big {
   right: auto;
   left: 50%;
@@ -128,20 +129,24 @@ onMounted(async () => {
   padding: 0.45rem 0.9rem;
   font-size: 0.85rem;
 }
+.disclaimer .help {
+  color: inherit;
+  font-weight: 700;
+}
 @media (prefers-color-scheme: dark) {
   .disclaimer {
     background: #3a3220;
     color: #f5dc9a;
   }
 }
-/* phones: the window is the whole screen, above the help button */
+/* phones: the window is the whole screen */
 @media (max-width: 700px) {
   .win,
   .win.big {
     right: 0;
     left: 0;
     top: 0;
-    bottom: 4.6rem;
+    bottom: 0;
     width: auto;
     height: auto;
     border-radius: 0;

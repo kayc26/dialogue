@@ -9,11 +9,11 @@ adr teaching map: the example is not the teaching — these are the up-links fro
 # ADR-0006: Diabetes education bot — urgent-situation triage and escalation
 
 - **Date**: 2026-11-14
-- **Iteration**: 7
+- **Iteration**: 8
 - **Status**: Accepted
 - **Deciders**: Kay, Nibble (Claude Opus 5.5)
 
-**TL;DR**: Decided: a help button in plain HTML that works even if the app, network, or model fails. On every message, a local rules layer and a model classifier are OR-combined, the higher tier wins, and an error or timeout counts as "maybe urgent". The model can soften a rules hit but never clear it.
+**TL;DR**: Decided: a help panel in plain HTML (911, nurse line), opened from "Get help now" in the chat banner (iteration 8; until then a floating button that worked even if the app failed). On every message, a local rules layer and a model classifier are OR-combined, the higher tier wins, and an error or timeout counts as "maybe urgent". The model can soften a rules hit but never clear it.
 
 ---
 
@@ -325,6 +325,13 @@ New entries go at the bottom of this table. Don't edit rows that are already the
   - A dose-tagged best match (ADR-0005) is shown word for word only in place of an answer, never alongside one.
   - Code: `src/lib/chat/turn.ts`, `src/app/ChatPanel.vue`. Regression test in `turn.test.ts`.
 - NOT: Doubt to keep in view. The CHECK-IN line is now quieter, which serves the alarm-fatigue concern in this ADR. But a real check-in, such as a mild low, now relies on the answer itself to carry the "treat it now" content: the urgent passage is no longer attached. If clinicians want the Rule of 15 shown for every mild low, CHECK-IN turns from rules (not from a failed classifier) should get that passage back.
+- Outcome: Accepted
+
+### Iteration 8 (2026-11-17)
+- Trigger: Kay: "i don't think we need the get help now red bottom if we have the banner". Of three options (link from the banner, remove help entirely, keep the button), Kay chose the banner link.
+- Contributors: Kay, Nibble (Claude Opus 5.5)
+- Changes: **The floating red "Get help now" button is gone.** "Get help now" in the assistant window's yellow banner is now a link to the same `#help` panel (911 and the nurse line). The panel is still plain HTML in `index.html`, opened by CSS `:target` with no script. The window now docks at the bottom of the screen instead of above the button. The approved goodbye reply (ADR-0016) said "use the red Get help now button"; it now says "use Get help now at the top of the chat". The answer prompt was updated the same way. `help.test.ts` now checks that the banner links to `#help`.
+- NOT: What this gives up, on purpose. The help path was meant to survive an app failure. The panel still does, but the link that opens it is now inside the Vue app: if the app crashes, nothing on the page opens the panel. Help is also no longer on the home screen or sign-in screen, only in the assistant window. Inside the chat, urgent and emergency messages still get their own alert card with Call 911 and Call the nurse line. If the sponsor wants help on every screen, or help that works when the app has failed, the button comes back (`git show` this iteration's commit). The goodbye wording change also needs the sponsor's OK, like the other approved texts.
 - Outcome: Accepted
 
 ---
