@@ -4,6 +4,8 @@ The project's work at a glance, built from the ADRs, `docs/TECHNICAL-DEBT.md`, a
 
 Columns: **Waiting** (blocked on a person's answer or material), **To do** (ready to start, highest priority first), **In progress**, **Backlog** (open ideas, not yet committed to), **Done**.
 
+Seeds or cards (2026-11-19): an item that still needs a decision gets a seed in `docs/adr/` (then an ADR with questions), and its card here becomes a one-line link to the seed. Decided work stays as a card that names its ADR. The board stays the one overview; the thinking lives in seeds and ADRs, where the question tooling can find it.
+
 ---
 
 ## Waiting
