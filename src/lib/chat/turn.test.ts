@@ -101,11 +101,18 @@ describe('turn orchestration', () => {
     expect(calls).toEqual({ classify: 1, complete: 1, monitor: 1, pick: 0 })
   })
 
-  it('a red flag puts the escalation card and the approved passage before the answer', async () => {
+  it('a red flag puts the escalation card first, then the written answer, with nothing quoted beside it (ADR-0021)', async () => {
     const { m } = models({ classify: cls('urgent'), answers: ['If it stays very high, seek medical attention. [kb:high]'] })
     const o = await turn('my sugar is 380, what does high blood sugar mean', m)
     expect(o.tier).toBe('urgent')
+    expect(o.cards.map((c) => c.kind)).toEqual(['escalation', 'answer'])
     expect(o.cards[0]).toMatchObject({ kind: 'escalation', tier: 'urgent' })
+  })
+
+  it('an urgent turn with no written answer quotes the "what to do" passage after the help notice (ADR-0021)', async () => {
+    const { m } = models({ classify: cls('urgent'), answers: [''] }) // the answer is blocked
+    const o = await turn('my sugar is 380, what does high blood sugar mean', m)
+    expect(o.cards.map((c) => c.kind)).toEqual(['escalation', 'passage'])
     expect(o.cards[1]).toMatchObject({ kind: 'passage', why: 'urgent', passage: { id: 'high' } })
   })
 
@@ -412,6 +419,67 @@ describe('Regression tests', () => {
     expect(partial.cards.map((c) => c.kind)).toEqual(['answer'])
   })
 
+  describe('"my blood sugar is high, what do i do" (Kay, live site, 2026-11-19; ADR-0021)', () => {
+    // Bug: an urgent high showed the help notice, then a quoted ADA passage, then the
+    // written answer: two texts for one question ("why would the bot return two
+    // messages"). For a type 2 patient the quote was ada-t2-guide-022, a chunk that opens
+    // with how to prevent LOWS and then defines hyperglycemia ("why returning the
+    // definition"): the own-type boost ranked it first, and the care team's own "What do
+    // I do when I have a high blood sugar" (team-faqs-008) was never shown.
+    // Fixed: one message (help notice + written answer); the quote is held back for
+    // replies with no written answer, and prefers the care team's passage.
+    const F = (id: string, section: string, body: string, tags: string[] = []): KbPassage => ({ ...P(id, section, body, tags), source_label: 'care_team', doc_title: 'Care team FAQs' })
+    // Shaped like the real passages (text abridged; the real text isn't in the repo).
+    const shaped = buildIndex([
+      { ...P('t2-chunk', 'After eating', 'How can I prevent low blood glucose? Take medications as prescribed and carry a fast-acting carbohydrate. What is high blood glucose (hyperglycemia)? Hyperglycemia is when your blood glucose is too high. High blood glucose can happen when your body has too little insulin. Signs of high blood glucose include thirst.', ['urgent']), diabetes_type: 'type2' as const },
+      F('faq-high', 'What do I do when I have a high blood sugar (>250 mg/dL)?', 'Drink water and monitor your blood sugar. If it remains very high, you are vomiting, or have positive ketones, seek medical attention immediately.', ['urgent']),
+      P('hypo', 'Treating low blood glucose', 'To treat low blood glucose below 70 mg/dL, use the Rule of 15: eat 15 grams of fast-acting carbohydrate and recheck after 15 minutes.', ['urgent']),
+      P('fruit', 'What fruit can I eat?', 'Berries, apples and pears are good choices. Keep fruit to one cup.'),
+      P('plate', 'Plan your plate', 'Fill half the plate with non-starchy vegetables.'),
+      P('walk', 'Activity', 'A short walk most days helps your heart and mood.'),
+    ])
+    const ask = (message: string, answer: string) =>
+      runTurn({
+        message, history: [], profile: NONE, index: shaped, diabetesType: 'type2', doseSession: false, timeoutMs: 50, monitorEnabled: false,
+        models: models({ classify: cls('urgent'), answers: [answer] }).m,
+      })
+
+    it('precondition: search alone ranks the defining chunk first for a type 2 patient', () => {
+      const urgent = shaped.search('my blood sugar is high, what do i do high blood sugar ketones', 12, { diabetesType: 'type2' }).filter((h) => h.passage.tags.includes('urgent'))
+      expect(urgent[0].passage.id).toBe('t2-chunk')
+    })
+
+    it('with a written answer, the reply is one message: the help notice and the answer', async () => {
+      const o = await ask('my blood sugar is high, what do i do', 'Drink water and monitor your blood sugar. Seek care now if you are vomiting. [kb:faq-high]')
+      expect(o.cards.map((c) => c.kind)).toEqual(['escalation', 'answer'])
+    })
+
+    it("with no written answer, the quote is the care team's short passage, not the definition", async () => {
+      const o = await ask('my blood sugar is high, what do i do', '')
+      expect(o.cards).toEqual([expect.objectContaining({ kind: 'escalation' }), { kind: 'passage', why: 'urgent', passage: expect.objectContaining({ id: 'faq-high' }) }])
+    })
+
+    it("a low never gets the care team's high-sugar passage", async () => {
+      const o = await ask('my blood sugar is low and I feel shaky, what do i do', '')
+      expect(o.cards).toContainEqual({ kind: 'passage', why: 'urgent', passage: expect.objectContaining({ id: 'hypo' }) })
+    })
+  })
+
+  it('a monitor that raises the level replaces the help notice: one alert box, not two (Kay, live site, 2026-11-18; ADR-0021)', async () => {
+    // Bug: "my blood sugar is high and i have large ketones" showed an urgent box and,
+    // above it, an emergency box the monitor added. Fixed: the raise replaces the notice.
+    const { m } = models({
+      classify: cls('urgent'),
+      answers: ['If it stays very high, or you have ketones, seek medical attention. [kb:high]'],
+      monitor: JSON.stringify({ veto: false, raise_tier: 'emergency', reason: 'ketones with a high' }),
+    })
+    const o = await turn('my blood sugar is high and I have ketones, what do i do', m, { doseSession: true })
+    const boxes = o.cards.filter((c) => c.kind === 'escalation')
+    expect(boxes).toHaveLength(1)
+    expect(boxes[0]).toMatchObject({ tier: 'emergency', criteria: expect.arrayContaining(['monitor_raised']) })
+    expect(o.cards.map((c) => c.kind)).toEqual(['escalation', 'answer'])
+  })
+
   it('an empty model reply is its own guard reason, not "no citation"', async () => {
     // All three of Kay's answers on 2026-11-14 were logged as no_citation with no
     // draft kept, so an empty reply and an uncited one looked the same.
@@ -651,8 +719,9 @@ describe('the book is never shown word for word', () => {
     })
   })
 
-  it('the urgent "what to do" passage is always ADA', async () => {
-    const o = await go('my sugar is 45 and I feel shaky', models({ classify: cls('urgent'), answers: ['Use the Rule of 15. [kb:ada-low]'] }).m)
+  it('the urgent "what to do" passage is always ADA, never the book', async () => {
+    // With a written answer nothing is quoted (ADR-0021), so block the answer to see the quote.
+    const o = await go('my sugar is 45 and I feel shaky', models({ classify: cls('urgent'), answers: [''] }).m)
     const shown = o.cards.filter((c) => c.kind === 'passage')
     expect(shown).toEqual([{ kind: 'passage', why: 'urgent', passage: expect.objectContaining({ id: 'ada-low' }) }])
   })

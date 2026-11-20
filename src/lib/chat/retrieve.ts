@@ -97,7 +97,7 @@ export function direction(text: string): Direction {
 }
 
 /** Which way a passage leans, by how often it names lows versus highs. */
-function lean(text: string): Direction {
+export function lean(text: string): Direction {
   const t = text.toLowerCase()
   const lows = (t.match(/hypoglycemia|\blow blood (?:glucose|sugar)/g) ?? []).length
   const highs = (t.match(/hyperglycemia|\bhigh blood (?:glucose|sugar)/g) ?? []).length

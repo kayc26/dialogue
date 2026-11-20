@@ -9,8 +9,8 @@ adr teaching map: the example is not the teaching — these are the up-links fro
 # ADR-0021: Urgent high and low turns — one short care-team passage instead of a searched ADA chunk
 
 - **Date**: 2026-11-19
-- **Iteration**: 1
-- **Status**: Draft
+- **Iteration**: 2
+- **Status**: Implemented
 - **Deciders**: Kay, Nibble (Claude Opus 5.5)
 
 **TL;DR**: "My blood sugar is high, what do I do?" shows a long word-for-word ADA chunk that explains what hyperglycemia (or DKA) *is*, and then a written answer. Decide what an urgent glucose turn shows instead.
@@ -54,7 +54,7 @@ Seen live: Kay's sessions on 2026-11-18 and 2026-11-19 (Dorothy and Mei, both ty
 ## Questions
 
 ### QST-URGENT-REPLY: What should an urgent high or low reply show?
-- Status: unanswered
+- Status: answered
 - Why asking: On an urgent glucose turn (for example "my blood sugar is 400, what do I do"), DIAlogue shows the help banner, then a word-for-word ADA passage picked by word search, then the model's answer. Word search picks a long chunk that explains what hyperglycemia or DKA *is* (type 2 patients get one that starts with how to prevent *lows*), while the care team's own short "what do I do when I have a high blood sugar" answer (`team-faqs-008`) is never shown. Kay finds the reply too long and definitional.
 - Need: pick a letter (or override — an answer in any shape is complete)
 
@@ -69,20 +69,34 @@ Options:
 **A — Fixed care-team passage, no model answer.** *Rationale*: It fixes both complaints at once: `team-faqs-008` is a third the length and is the action, not the definition. It also matches Kay's own "one question, one reply" rule (2026-11-14). The care team wrote that passage for exactly this question, so it is the best-sourced answer there is. A fixed choice also removes the search behavior that showed a "preventing lows" chunk to someone who is high, which no amount of score tuning makes impossible. Emergencies already work this way (no model call), so urgent glucose turns would follow a proven pattern. *Confidence*: 0.7 — because the ranking problem is measured, but whether testers miss the tailored answer is a judgment only live use will show. *If wrong*: if testers' follow-ups show they wanted their number or symptom addressed in the same reply (e.g. "it's 400 and I feel fine"), move to **B**. If Kay prefers no word-for-word text at all, **C**.
 
 **ANS:** (by Kay)
-[Fill this in]   <!-- literal placeholder — parser-significant, do not paraphrase -->
+the current message is fine, but without the definition of high and low blood sugar
 
 ---
 
 ## Decision
 
-Pending QST-URGENT-REPLY.
+### Chosen (Kay, 2026-11-19): one message, written answer only, no definition
+
+Kay's answer: "the current message is fine, but without the definition of high and low blood sugar". Kay then asked "why would the bot return two messages", which made "the current message" ambiguous (the reply bubble held two texts, the quoted passage and the written answer). Asked to choose, Kay picked:
+
+- **Urgent reply: the written answer only.** An urgent turn shows the help notice and the written answer. The quoted "what to do" passage is held back, and shown only when no written answer is: a dose refusal, a blocked answer, "no information", or a monitor veto. In practice this is option **C**, with a safe fallback.
+- **One alert box.** When the monitor raises the level, it replaces the reply's help notice instead of adding a second box.
+
+**Also changed, so no reply quotes a definition**: emergencies call no model, so they always quote a passage (the 412-and-vomiting test quoted `ada-t2-guide-022`), and so do blocked urgent answers. The quoted passage now prefers the care team's own (`team-faqs-008` for highs), and is never one aimed at the opposite problem. Lows are unchanged: their candidates (`ada-t1-guide-016`, `ada-t2-guide-021`, the Rule of 15) define nothing.
+
+**Code**:
+- `src/lib/chat/turn.ts`: `urgentPassage` (care team first, direction-checked via `lean`, now exported from `retrieve.ts`); `settleUrgent` in `runTurn` (the held passage); `raiseEscalation` (one box).
+- `src/app/ChatPanel.vue`: the background monitor's raise replaces the reply's box while that reply is still the newest message. Once the conversation has moved on, the raise is added at the bottom as before, so a late warning can't land out of sight. This exception is Nibble's, made for safety; overrule it if one box always matters more.
+
+**Not changed**: the written answer itself can still mention thresholds (for example "usually below 70 mg/dL"), because it's written from the topic section. The low section still contains `ada-t2-guide-022` (follow-up below).
 
 ---
 
 ## Open Follow-ups
 
 - [ ] `ada-t2-guide-022` mixes two unrelated sections (preventing lows; what a high is). That's a chunking fault in `kb/build.ts`, and it affects every answer that reads it, not just urgent turns. Worth splitting at the next knowledge-base rebuild (the topic-map check from ADR-0018 iteration 6 will flag the id change).
-- [ ] Whatever is chosen: a regression test with "my blood sugar is high, what do i do" for a type 2 patient that fails on today's behavior.
+- [x] A regression test with "my blood sugar is high, what do i do" for a type 2 patient that fails on the old behavior. *(Done: `turn.test.ts`, Regression tests. Four tests fail on the old `turn.ts`.)*
+- [ ] Monitor outages in a dose session are shown (check-in help) but not logged as such: `monitor_unavailable` goes on the card, not into `triage_events.criteria`. Found in the same tester review; small.
 
 ---
 
@@ -93,6 +107,12 @@ Pending QST-URGENT-REPLY.
 - Contributors: Kay, Nibble (Claude Opus 5.5)
 - Changes: Cause measured (ranking script); QST-URGENT-REPLY posed with a recommendation
 - Outcome: Draft
+
+### Iteration 2 (2026-11-19)
+- Trigger: Kay's answer ("the current message is fine, but without the definition"), Kay's question "why would the bot return two messages", and two follow-up choices in the question dialog ("Written answer only", "Replace, one box").
+- Contributors: Kay, Nibble (Claude Opus 5.5)
+- Changes: Decision recorded as above; held urgent passage, care-team-first and direction-checked quote, one alert box. Tests: 6 new or rewritten (346 total); two existing tests updated to the new behavior (the urgent quote now appears only without a written answer).
+- Outcome: Draft → Implemented
 
 ---
 

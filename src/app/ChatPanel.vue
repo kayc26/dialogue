@@ -19,7 +19,7 @@ import { openRouterModels, type CostMeter } from '../lib/chat/models'
 import { ConversationLog, cardsToText } from '../lib/chat/persist'
 import { NO_INFO_REPLY, SOCIAL_REPLY } from '../lib/chat/social'
 import { detectLanguage, LANGUAGE_NOTE } from '../lib/chat/language'
-import { runTurn, type Card, type TurnOutcome } from '../lib/chat/turn'
+import { raiseEscalation, runTurn, type Card, type TurnOutcome } from '../lib/chat/turn'
 import type { Regimen } from '../lib/patients/readback'
 import { maxTier, triageRules, TIER_RANK, type Profile, type Tier } from '../lib/chat/triage'
 import { OpenRouterError } from '../lib/openrouter'
@@ -147,7 +147,11 @@ async function send(): Promise<void> {
   }
   doseSession = outcome.doseSession
   tier = outcome.tier
-  if (outcome.cards.length) items.value.push({ who: 'assistant', cards: outcome.cards })
+  let replyIndex = -1
+  if (outcome.cards.length) {
+    items.value.push({ who: 'assistant', cards: outcome.cards })
+    replyIndex = items.value.length - 1
+  }
   if (note) items.value.push({ who: 'note', text: note })
   history = [...history, { role: 'user', content: message }, { role: 'assistant', content: cardsToText(outcome.cards) }]
   busy.value = false
@@ -163,7 +167,12 @@ async function send(): Promise<void> {
     const turn = log.lastTurn
     if (TIER_RANK[v.raise_tier] > TIER_RANK[tier]) {
       tier = v.raise_tier
-      items.value.push({ who: 'assistant', cards: [{ kind: 'escalation', tier: v.raise_tier, criteria: ['monitor_raised'] }] })
+      // One alert box (ADR-0021): while this reply is still the newest message, the raise
+      // replaces its help notice. Once the conversation has moved on, it is added at the
+      // bottom instead, so a late warning can't land out of sight above the screen.
+      const reply = items.value[replyIndex]
+      if (reply?.cards && replyIndex === items.value.length - 1) reply.cards = raiseEscalation(reply.cards, v.raise_tier, 'monitor_raised')
+      else items.value.push({ who: 'assistant', cards: [{ kind: 'escalation', tier: v.raise_tier, criteria: ['monitor_raised'] }] })
       await scrollDown()
     }
     if (v.veto) {

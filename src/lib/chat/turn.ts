@@ -20,7 +20,7 @@ import { CARD_FALLBACK_SCORE, CARD_MIN_SCORE, CARD_SHORTLIST, parsePick, type Ca
 import { combineTriage, parseClassifier, type CombinedTriage } from './combine'
 import { checkAnswer, clarifyingQuestion, stripCitations, trimBookNumbers } from './guard'
 import { ANSWER_SYSTEM, ANSWER_TOOL_ROUNDS, CARDS_PAUSED, MONITOR_PAUSED } from './prompts'
-import { direction, type DiabetesType, type Hit, type Index, type KbPassage, type SearchOptions } from './retrieve'
+import { direction, lean, type DiabetesType, type Hit, type Index, type KbPassage, type SearchOptions } from './retrieve'
 import { detectLanguage, type Lang } from './language'
 import { socialIntent, type SocialIntent } from './social'
 import { sectionPassages, type Topic } from './topics'
@@ -180,7 +180,29 @@ function urgentPassage(index: Index, message: string, glucose: number | null, op
   const dir = glucose !== null ? (glucose > 180 ? 'high' : glucose < 70 ? 'low' : null) : direction(message)
   if (!dir) return null
   const q = dir === 'high' ? `${message} high blood sugar ketones` : `${message} low blood glucose treat`
-  return index.search(q, 12, opts).map((h) => h.passage).find((p) => p.tags.includes('urgent') && showable(p)) ?? null
+  const found = index
+    .search(q, 12, opts)
+    .map((h) => h.passage)
+    .filter((p) => p.tags.includes('urgent') && showable(p))
+    .filter((p) => {
+      const l = lean(`${p.section ?? ''} ${p.body}`)
+      return l === null || l === dir // never the opposite problem's "what to do"
+    })
+  // ADR-0021 (Kay, 2026-11-19): the care team's own passage first ("faq -> ada -> book").
+  // Search alone picked ADA chunks that explain what hyperglycemia or DKA *is* (for a
+  // type 2 patient, one that opens with how to prevent lows) over the care team's
+  // "What do I do when I have a high blood sugar".
+  return found.find((p) => p.source_label === 'care_team') ?? found[0] ?? null
+}
+
+/** One alert box per reply (ADR-0021, Kay 2026-11-19): raising the level replaces the
+ *  reply's help notice instead of adding a second box. The highest tier wins; criteria
+ *  are kept, plus the one that raised it. */
+export function raiseEscalation(cards: Card[], to: Tier, criterion: string): Card[] {
+  const old = cards.filter((c): c is Extract<Card, { kind: 'escalation' }> => c.kind === 'escalation')
+  const tier = old.reduce<Tier>((t, c) => maxTier(t, c.tier), to)
+  const criteria = [...new Set([...old.flatMap((c) => c.criteria), criterion])]
+  return [{ kind: 'escalation', tier, criteria }, ...cards.filter((c) => c.kind !== 'escalation')]
 }
 
 const SEARCH_TOOL: ToolSpec = {
@@ -238,14 +260,21 @@ export async function runTurn(input: TurnInput): Promise<TurnOutcome> {
   // single approved passage, or a fixed card. Only an urgent red flag adds its "what
   // to do" passage, because there that passage is the point.
   const lang = detectLanguage(message)
-  if (tier !== 'none') {
-    cards.push({ kind: 'escalation', tier, criteria: triage.criteria })
-    // The urgent "what to do" passage is English; it would only be noise to a reader
-    // who wrote in another language (the language card below carries the help).
-    if (tier === 'urgent' && lang === 'en') {
-      const p = urgentPassage(index, message, rules.glucose, byType)
-      if (p) cards.push({ kind: 'passage', passage: p, why: 'urgent' })
-    }
+  if (tier !== 'none') cards.push({ kind: 'escalation', tier, criteria: triage.criteria })
+  // ADR-0021 (Kay, 2026-11-19: "written answer only"): an urgent turn is one message,
+  // the help notice and the written answer. The "what to do" passage is held back and
+  // quoted only when no written answer is shown (a dose refusal, a blocked answer, no
+  // information): see settleUrgent below. It is English, so only for English messages
+  // (the language card carries the help otherwise).
+  const urgentHeld = tier === 'urgent' && lang === 'en' ? urgentPassage(index, message, rules.glucose, byType) : null
+  const settleUrgent = (): void => {
+    if (!urgentHeld || cards.some((c) => c.kind === 'answer' || c.kind === 'topic_card')) return
+    // No written answer: the held passage is the body, in place of "no information" or
+    // a weaker passage (as before ADR-0021), right after the help notice.
+    const rest: Card[] = cards.filter((c) => c.kind !== 'no_info' && c.kind !== 'passage')
+    const at = rest.findIndex((c) => c.kind !== 'escalation')
+    rest.splice(at === -1 ? rest.length : at, 0, { kind: 'passage', passage: urgentHeld, why: 'urgent' })
+    cards.splice(0, cards.length, ...rest)
   }
   const hasPassage = () => cards.some((c) => c.kind === 'passage')
 
@@ -254,9 +283,10 @@ export async function runTurn(input: TurnInput): Promise<TurnOutcome> {
   // Set when a book-number sentence was trimmed from an answer that is still shown.
   let trimNote: Pick<TurnOutcome, 'guard' | 'blockedDraft'> = { guard: null }
   let plan: TurnOutcome['plan'] = null
-  const done = (extra: Partial<TurnOutcome> = {}): TurnOutcome => ({
-    triage, tier, cards, doseSession, monitor: 'none', monitorVerdict: null, background: null, modelCalls, card: cardStep, topics, retrieval, plan, ...trimNote, ...extra,
-  })
+  const done = (extra: Partial<TurnOutcome> = {}): TurnOutcome => {
+    settleUrgent()
+    return { triage, tier, cards, doseSession, monitor: 'none', monitorVerdict: null, background: null, modelCalls, card: cardStep, topics, retrieval, plan, ...trimNote, ...extra }
+  }
 
   // 2b. Not English (ADR-0017, QST-LANG-FLOOR: A). The fixed rules above are English
   // patterns, so here only the classifier could have caught a red flag. Whatever it
@@ -435,7 +465,7 @@ export async function runTurn(input: TurnInput): Promise<TurnOutcome> {
     }
     if (mv.raise_tier && maxTier(tier, mv.raise_tier) !== tier) {
       tier = maxTier(tier, mv.raise_tier)
-      cards.unshift({ kind: 'escalation', tier, criteria: ['monitor_raised'] })
+      cards.splice(0, cards.length, ...raiseEscalation(cards, tier, 'monitor_raised')) // one alert box (ADR-0021)
     }
     if (mv.veto) {
       cards.push({ kind: 'dose_refusal' })
