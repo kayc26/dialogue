@@ -50,7 +50,7 @@ What he asked for, mapped to the work. Kay decides the order (see Waiting).
 ### Testing with users (testers are in as of 2026-11-17)
 
 - [ ] **Read the testers' first conversations** in `public.triage_events` and `public.messages`. Look for misroutes (`detail.topics`), guard blocks (`detail.guard`), monitor vetoes, and false alarms. [ADR-0018](docs/adr/0018-retrieval-whole-curated-topic-sections-chosen-by-the-classifier.md), [ADR-0007](docs/adr/0007-diabetes-education-bot-a-second-model-that-monitors-the-conversation.md)
-- [ ] **Test protocol for moderated sessions:** tasks (nutrition question, high reading, dose question), what to observe, consent wording. [ADR-0010](docs/adr/0010-diabetes-education-bot-how-test-users-reach-it.md)
+- [ ] **Test protocol for moderated sessions**: now a seed with the open choices (tasks, what to observe, consent): [seed](docs/adr/seed-2026-11-19-moderated-test-protocol.md). [ADR-0010](docs/adr/0010-diabetes-education-bot-how-test-users-reach-it.md)
 - [ ] **Public-site notice for strangers** that the link alone is a non-working preview. The sign-in screen already asks not to type real health information. [ADR-0010](docs/adr/0010-diabetes-education-bot-how-test-users-reach-it.md)
 
 ### Answer quality
@@ -61,6 +61,7 @@ What he asked for, mapped to the work. Kay decides the order (see Waiting).
   - "doctor's appointment" → daily_life instead of support;
   - follow-ups like "what about at night?" lose the earlier topic.
   - Add each fixed case to `kb/routing-questions.txt`. [ADR-0018](docs/adr/0018-retrieval-whole-curated-topic-sections-chosen-by-the-classifier.md)
+- [ ] **Off-topic and rude messages get "I don't have information on that"** (half of the first tester's turns): [seed](docs/adr/seed-2026-11-19-off-topic-and-rude-messages.md). [ADR-0016](docs/adr/0016-greetings-and-small-talk-in-a-cited-assistant.md)
 
 ### Conversation summary and nurse handoff (ADR-0008: decided, not built; the sponsor has replied and confirmed the direction; the field list is still pending, see Waiting)
 
@@ -95,11 +96,10 @@ Nothing in the app writes to `summaries` or `replies` today; the tables and thei
 
 ## Backlog
 
-- [ ] **Answers about high blood sugar are thin.** Rule 1 hides dose-tagged passages from the model, and much of the ADA material on highs is dose-tagged. Loosening that needs Kay and the sponsor. [ADR-0018](docs/adr/0018-retrieval-whole-curated-topic-sections-chosen-by-the-classifier.md), [ADR-0005](docs/adr/0005-diabetes-education-bot-architecture-and-answer-path.md)
-- [ ] **Typo tolerance in search:** "I'm hungrym" finds nothing, while "I'm hungry" finds the FAQ answer (score 9.24). Older testers mistype. Topic routing (ADR-0018) now covers many typos, because the classifier reads them; search is the fallback. Options: fuzzy-match unknown words to the knowledge base's vocabulary, or say "I didn't find that. Could you check the spelling or ask another way?" when no word in the message is known. [ADR-0016](docs/adr/0016-greetings-and-small-talk-in-a-cited-assistant.md) iteration 4
-- [ ] **Bring topic cards back, or retire them.** Paused since 2026-11-16 (`CARDS_PAUSED`). The card code and pipeline stay in place. If approved cards cover the common questions, does the answer model still earn its place for them? [ADR-0013](docs/adr/0013-knowledge-base-shape-raw-passages-or-synthesized-topic-cards.md)
-- [ ] After an escalation, check in on the next turn ("Are you feeling better?"). [ADR-0006](docs/adr/0006-diabetes-education-bot-urgent-situation-triage-and-escalation.md)
-- [ ] Caregiver wording for reports about someone else ("my wife won't wake up"). [ADR-0006](docs/adr/0006-diabetes-education-bot-urgent-situation-triage-and-escalation.md)
+- [ ] **Answers about high blood sugar are thin**: the care team's own "what do I do" passage is dose-tagged, so the answer model never sees it; more pressing since ADR-0021. [Seed](docs/adr/seed-2026-11-19-thin-high-blood-sugar-answers.md). [ADR-0005](docs/adr/0005-diabetes-education-bot-architecture-and-answer-path.md), [ADR-0021](docs/adr/0021-urgent-high-and-low-turns-one-short-care-team-passage-instead-of-a-searched-ada-chunk.md)
+- [ ] **Typo tolerance in search**: [seed](docs/adr/seed-2026-11-19-typo-tolerance-in-search.md) (testers' typos mostly worked once topic routing was live). [ADR-0016](docs/adr/0016-greetings-and-small-talk-in-a-cited-assistant.md)
+- [ ] **Bring topic cards back, or retire them**: [seed](docs/adr/seed-2026-11-19-topic-cards-back-or-retire.md). [ADR-0013](docs/adr/0013-knowledge-base-shape-raw-passages-or-synthesized-topic-cards.md)
+- [ ] **After an escalation**: checking in on the next turn, and caregiver wording ("my wife won't wake up"): [seed](docs/adr/seed-2026-11-19-after-an-escalation.md). [ADR-0006](docs/adr/0006-diabetes-education-bot-urgent-situation-triage-and-escalation.md)
 - [ ] Have a clinician confirm which ADA passages are used for the urgent cards (low treatment, "while you wait", DKA). [ADR-0006](docs/adr/0006-diabetes-education-bot-urgent-situation-triage-and-escalation.md)
 - [ ] Revisit QST-TRIAGE-CGM now that readings are re-anchored to load time. [ADR-0009](docs/adr/0009-diabetes-education-bot-synthetic-patients-glucose-data-and-insulin-regimens.md)
 - [ ] Under real patient data, monitor-verdict logs would be protected health information too. [ADR-0007](docs/adr/0007-diabetes-education-bot-a-second-model-that-monitors-the-conversation.md)
