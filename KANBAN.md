@@ -37,6 +37,7 @@ Seeds or cards (2026-11-19): an item that still needs a decision gets a seed in 
 What he asked for, mapped to the work. Kay decides the order (see Waiting).
 
 1. **Ask before routing.** A dose or insulin-change question starts an intake instead of ending the turn:
+   - [ ] **First step, needs Kay's answer**: after the refusal, offer the insulin on file when the question is ambiguous ("how much insulin should I take?"): [ADR-0022](docs/adr/0022-ambiguous-dose-questions-offer-the-insulin-on-file-after-the-refusal.md).
    - [ ] **Dose questions start an intake.** Keep the fixed refusal (the bot never says how much to take), then ask whether the sugar is high or low, then the clinic's fields, then route. Changes ADR-0005's rule 3 path and the "Follow-up questions" card below; needs the field list (Waiting). [ADR-0005](docs/adr/0005-diabetes-education-bot-architecture-and-answer-path.md), [ADR-0008](docs/adr/0008-diabetes-education-bot-intake-conversation-summary-and-nurse-handoff.md)
 2. **Red flags prepare the clinic contact.**
    - [ ] **Call checklist:** when the bot says to call, it also shows the patient's answers as a short list to read out on the phone, next to the message for the care team. New; extends the "Patient's copy" card below. [ADR-0008](docs/adr/0008-diabetes-education-bot-intake-conversation-summary-and-nurse-handoff.md), [ADR-0006](docs/adr/0006-diabetes-education-bot-urgent-situation-triage-and-escalation.md)
