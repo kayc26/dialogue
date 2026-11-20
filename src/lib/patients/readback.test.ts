@@ -9,6 +9,8 @@ import robert from '../../../patients/fixtures/demo-robert.json'
 import personas from '../../../patients/personas.json'
 import george from '../../../patients/fixtures/demo-george.json'
 import dorothy from '../../../patients/fixtures/demo-dorothy.json'
+import mei from '../../../patients/fixtures/demo-mei.json'
+import walter from '../../../patients/fixtures/demo-walter.json'
 
 const IMPERATIVE = /\b(take|inject|give|use|increase|decrease|skip|should|need to|must)\b/i
 
@@ -86,6 +88,24 @@ describe('special plan read-back (ADR-0019)', () => {
 })
 
 describe('Regression tests', () => {
+  it('no read-back line ends in a doubled period after "a.m." or "p.m." (Kay, live site, 2026-11-19)', () => {
+    // Bug: "what's my insulin on file" showed "…usually recorded around 6 a.m., 10 a.m.
+    // and 4 p.m.." — each line added its own period after a time that already ends in one.
+    // Fixed: endSentence adds a period only when the sentence doesn't end with one.
+    for (const p of [helen, robert, george, dorothy, mei, walter]) {
+      for (const line of regimenLines(p.regimen as Regimen)) expect(line, p.id).not.toMatch(/\.\./)
+    }
+    expect(regimenLines(dorothy.regimen as Regimen).join(' ')).toMatch(/ [ap]\.m\.$/) // still one period at the end
+    // A special-plan step whose text brings its own period gets one, not two.
+    const robertRegimen = robert.regimen as unknown as Regimen // JSON arrays stand in for the [start, end] tuples
+    const plan = {
+      ...robertRegimen.special_plan,
+      steps: [{ days: [1, 30], steroid: 'Prednisone 10 mg each morning.', insulin: 'Insulin as usual, last dose by 6 p.m.' }],
+    } as SpecialPlan
+    const view = specialPlanView({ ...robertRegimen, special_plan: plan })
+    expect(view?.steps[0]?.text).toBe('Prednisone 10 mg each morning. Insulin as usual, last dose by 6 p.m.')
+  })
+
   it('does not crash on a stored regimen in another shape (rls-dev placeholder patient)', () => {
     // Bug found 2026-11-14 by a headless-Chrome click-through: the rls-dev fixture
     // stores {"insulins":[{"generic":"placeholder","kind":"basal"}]} with no usual_times,

@@ -48,6 +48,9 @@ const clock = (hhmm: string): string => {
   return `${h % 12 === 0 ? 12 : h % 12} ${suffix}`
 }
 
+/** End a sentence with exactly one period: a time like "4 p.m." already supplies it. */
+const endSentence = (s: string): string => (s.endsWith('.') ? s : `${s}.`)
+
 function joinTimes(times: string[]): string {
   const t = times.map(clock)
   return t.length <= 1 ? (t[0] ?? '') : `${t.slice(0, -1).join(', ')} and ${t[t.length - 1]}`
@@ -67,7 +70,7 @@ export function regimenLines(r: Regimen): string[] {
     const times = Array.isArray(i.usual_times) ? i.usual_times.filter((t) => /^\d{2}:\d{2}$/.test(t)) : []
     const when = times.length ? `, usually recorded around ${joinTimes(times)}` : ''
     const dose = typeof i.usual_units === 'number' ? `about ${i.usual_units} units per dose` : 'dose not recorded'
-    return [`${name}: ${dose}${when}.`]
+    return [endSentence(`${name}: ${dose}${when}`)]
   })
   if (r?.pump) {
     if (r.pump.basal_units_per_hour !== null)
@@ -122,7 +125,9 @@ export function specialPlanView(r: Regimen | null | undefined): SpecialPlanView 
     status: today < firstDay ? 'not_started' : today > lastDay ? 'finished' : 'on',
     steps: steps.map((s) => ({
       label: s.days[0] === s.days[1] ? `Day ${s.days[0]}` : `Days ${s.days[0]}–${s.days[1]}`,
-      text: [str(s.steroid), str(s.insulin)].filter(Boolean).join('. ') + '.',
+      // A part may end in a period of its own ("… before 6 p.m."); drop it before joining
+      // so no step reads "p.m.." (the clock's "p.m." is restored by the join or endSentence).
+      text: endSentence([str(s.steroid), str(s.insulin)].filter((p): p is string => !!p).map((p) => p.replace(/\.$/, '')).join('. ')),
       current: today >= s.days[0] && today <= s.days[1],
     })),
     after: str(p.after),
