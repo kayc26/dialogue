@@ -19,6 +19,7 @@ import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { neon } from '@neondatabase/serverless'
 import type { BuiltPassage } from './build.ts'
+import { checkTopicMap } from '../src/lib/chat/topics.ts'
 
 const here = dirname(fileURLToPath(import.meta.url))
 const url = process.env.DATABASE_URL
@@ -33,6 +34,16 @@ const { snapshotDate, passages } = JSON.parse(readFileSync(join(here, 'out', 'pa
 }
 if (passages.some((p) => p.needsReview)) {
   console.error('passages.json contains passages marked needsReview; rebuild with kb/build.ts.')
+  process.exit(1)
+}
+// The topic map (ADR-0018) names passages by id and book chapters by number range. A
+// build it no longer fits would quietly shrink sections in production, so refuse it.
+// Fix the map in src/lib/chat/topics.ts first; push it in the same sitting as the load,
+// since the live site routes with whatever map it was deployed with.
+const mapProblems = checkTopicMap(passages.map((p) => ({ id: p.id, source_label: p.sourceLabel, section: p.section })))
+if (mapProblems.length) {
+  console.error(`passages.json no longer fits the topic map in src/lib/chat/topics.ts (ADR-0018):\n  ${mapProblems.join('\n  ')}`)
+  console.error('Update the map, then load.')
   process.exit(1)
 }
 

@@ -9,7 +9,7 @@ adr teaching map: the example is not the teaching — these are the up-links fro
 # ADR-0018: Retrieval: whole curated topic sections chosen by the classifier
 
 - **Date**: 2026-11-17
-- **Iteration**: 5
+- **Iteration**: 6
 - **Status**: Implemented
 - **Deciders**: Kay, Nibble (Claude Opus 5.5)
 
@@ -173,6 +173,17 @@ Plan: build the sections (reviewable files, outside git like the rest of the sou
   - Shown as a plain question (`clarify`); the stored reply keeps the question, so the next turn's model sees it.
   - Not the same as ADR-0008's structured follow-up questions (on hold for the sponsor), which collect fields for the nurse summary.
   - Tests: 4 new (296 total).
+- Outcome: Implemented
+
+### Iteration 6 (2026-11-19)
+- Trigger: Kay asked how retrieval works. Explaining it surfaced a silent failure mode: `topics.ts` names passages by id (from the 2026-11-16 build) and the book's chapters by number range, `sectionPassages` skips ids it can't find, and the tests use stand-in passages. A rebuild that renumbered passages would quietly thin sections or send a book chapter to the wrong topic. Kay: "sure" to a check.
+- Contributors: Kay, Nibble (Claude Opus 5.5)
+- Changes:
+  - `checkTopicMap()` in `topics.ts`. It checks that every listed id exists and isn't a book passage, that the "always" passage exists, that every book passage falls in a chapter range, and that every book passage headed `FOOD:` / `MINDSET:` / `EXERCISE:` / `SLEEP:` sits in the range mapped to that chapter's topic. The headings are how a renumbered book gets caught.
+  - `kb:load` refuses a build the map doesn't fit, dry runs included, and lists each problem. Fix the map first, and push it in the same sitting as the load.
+  - The gate checks the real build (`kb/out/passages.json`) when it exists: on Kay's machine, so a typo while editing `topics.ts` fails before commit. CI has no source text, so there it's skipped, and four stand-in tests prove the check catches drift.
+  - Result against today's build: no problems. Every listed id exists, and all 340 book passages fall in the right chapter.
+  - Tests: 5 new (340 total).
 - Outcome: Implemented
 
 ---

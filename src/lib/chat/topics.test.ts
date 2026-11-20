@@ -1,11 +1,12 @@
 // Curated topic sections (ADR-0018). The answer model reads the whole care-team FAQ and
 // ADA material for the classifier's topics, plus the best few book passages from the
 // matching chapters, instead of word search's top four fragments.
+import { existsSync, readFileSync } from 'node:fs'
 import { describe, expect, it } from 'vitest'
 import type { CompleteFn } from '../agent'
 import type { ChatMessage } from '../types'
 import { buildIndex, type KbPassage } from './retrieve'
-import { sectionPassages, validTopics } from './topics'
+import { checkTopicMap, sectionPassages, topicMapIds, validTopics, type MapPassage } from './topics'
 import { runTurn, type TurnModels } from './turn'
 
 const P = (id: string, source_label: KbPassage['source_label'], body: string, extra: Partial<KbPassage> = {}): KbPassage => ({
@@ -26,6 +27,51 @@ const passages = [
 ]
 const index = buildIndex(passages)
 const hidden = (p: KbPassage) => p.tags.includes('dose_related')
+
+// The map names passages by id and book chapters by number range. A knowledge-base
+// rebuild that renumbers passages must be caught before it is loaded, not discovered
+// as thinner answers on the live site (sectionPassages skips unknown ids silently).
+describe('the topic map fits the knowledge base', () => {
+  // The real build is git-ignored source text, so this runs where it exists (Kay's
+  // machine, i.e. the gate before a commit that edits topics.ts) and is skipped in CI.
+  const BUILD = new URL('../../../kb/out/passages.json', import.meta.url)
+  it.skipIf(!existsSync(BUILD))('fits the current build in kb/out/passages.json', () => {
+    const { passages } = JSON.parse(readFileSync(BUILD, 'utf8')) as { passages: Array<{ id: string; sourceLabel: string; section: string | null }> }
+    expect(checkTopicMap(passages.map((p) => ({ id: p.id, source_label: p.sourceLabel, section: p.section })))).toEqual([])
+  })
+
+  // A stand-in build that fits: every listed id, plus a book whose chapter headings sit
+  // where the ranges expect them (Food starts at 36, Mindset 273, Exercise 452, Sleep 677).
+  const fitting = (): MapPassage[] => [
+    ...topicMapIds().map((id) => ({ id, source_label: id.startsWith('team-faqs') ? 'care_team' : 'ADA', section: null })),
+    { id: 'bright-spots-010', source_label: 'book', section: 'Start here' },
+    { id: 'bright-spots-036', source_label: 'book', section: 'FOOD: BRIGHT SPOTS' },
+    { id: 'bright-spots-273', source_label: 'book', section: 'MINDSET: BRIGHT SPOTS' },
+    { id: 'bright-spots-452', source_label: 'book', section: 'EXERCISE: BRIGHT SPOTS' },
+    { id: 'bright-spots-677', source_label: 'book', section: 'SLEEP: BRIGHT SPOTS' },
+  ]
+
+  it('a build that fits reports nothing', () => {
+    expect(checkTopicMap(fitting())).toEqual([])
+  })
+
+  it('a rebuild that drops or renames a listed passage is named, with the topic that loses it', () => {
+    const build = fitting().filter((p) => p.id !== 'ada-sweeteners-003')
+    expect(checkTopicMap(build)).toEqual(['sweeteners: ada-sweeteners-003 is not in the knowledge base'])
+  })
+
+  it('a renumbered book is caught by its chapter headings', () => {
+    // The book re-extracted with its Food chapter starting earlier: passage 30 now opens
+    // Food, but the ranges still send 1-35 to basics.
+    const build = [...fitting(), { id: 'bright-spots-030', source_label: 'book', section: 'FOOD: BRIGHT SPOTS' }]
+    expect(checkTopicMap(build)).toEqual(['book: bright-spots-030 is headed "FOOD: BRIGHT SPOTS" but its range sends it to basics'])
+  })
+
+  it('book passages past the last chapter range are reported, since no answer could use them', () => {
+    const build = [...fitting(), { id: 'bright-spots-740', source_label: 'book', section: 'SLEEP: QUESTIONS' }]
+    expect(checkTopicMap(build)).toEqual(['book: bright-spots-740 falls in no chapter range, so no answer can use it'])
+  })
+})
 
 describe('the classifier\'s topic list is checked before use', () => {
   it('keeps real topics in order, drops unknown ones and duplicates, at most two', () => {
