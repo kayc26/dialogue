@@ -9,7 +9,7 @@ adr teaching map: the example is not the teaching — these are the up-links fro
 # The bot reads the patient's plan back in chat
 
 - **Date**: 2026-11-17
-- **Iteration**: 4
+- **Iteration**: 5
 - **Status**: Partially Implemented
 - **Deciders**: Kay; input from the clinical sponsor
 
@@ -190,6 +190,12 @@ Kay answered (2026-11-17): **QST-READ-WHO: A** (code, fixed template), **QST-REA
 - Trigger: Kay, about "This is what's on file for this demo patient. It is not advice. Your care team's latest instructions always come first.": "i don't think this is needed".
 - Contributors: Kay, Nibble (Claude Opus 5.5)
 - Changes: `REGIMEN_DISCLAIMER` removed from the My insulin panel and from the chat's recorded-insulin reply. The headings already label it ("My insulin (as recorded)"; "Your insulin as recorded (not a plan from your care team)"), and the window's banner says "No medical advice or doses". The special-plan footer stays: it is the one line that says to follow newer instructions from the care team and to call the clinic. The test that only checked the disclaimer's wording was removed with it. The header's iteration number, which still said 2 after iteration 3, is corrected.
+- Outcome: Partially Implemented (unchanged)
+
+### Iteration 5 (2026-11-19)
+- Trigger: Kay, about the chat heading "Your insulin as recorded (not a plan from your care team):": "no need the things in ()".
+- Contributors: Kay, Nibble (Claude Opus 5.5)
+- Changes: The recorded-insulin heading is now "Your insulin as recorded:". It still says it is a record, and a provider's special plan keeps its own heading ("Your plan from … says"), so the two stay distinguishable. The test now checks the heading never uses the word "plan". Also reached from the dose refusal's offer since ADR-0022.
 - Outcome: Partially Implemented (unchanged)
 
 ---

@@ -177,7 +177,7 @@ export function planReply(r: Regimen): PlanReply {
   }
   const lines = regimenLines(r)
   if (plan?.status === 'finished') lines.unshift(`Your ${plan.title.toLowerCase()} on file ended after day ${plan.lastDay}.`)
-  return { mode: 'recorded', heading: 'Your insulin as recorded (not a plan from your care team):', lines }
+  return { mode: 'recorded', heading: 'Your insulin as recorded:', lines } // "(not a plan from your care team)" dropped, Kay 2026-11-19 (ADR-0020 it. 5)
 }
 
 export function minutesAgo(m: number): string {

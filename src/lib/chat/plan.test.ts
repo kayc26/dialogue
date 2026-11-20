@@ -57,7 +57,8 @@ describe('what the plan reply says (code, not a model)', () => {
     // QST-READ-WHAT: B. Helen's regimen is a summary of research dose records (ADR-0009).
     const r = planReply(helen.regimen as unknown as Regimen)
     expect(r.mode).toBe('recorded')
-    expect(r.heading).toMatch(/as recorded \(not a plan from your care team\)/)
+    expect(r.heading).toBe('Your insulin as recorded:')
+    expect(r.heading).not.toMatch(/plan/i) // a record, never presented as the care team's plan
   })
 
   it('after the taper ends, says so and falls back to the record', () => {
