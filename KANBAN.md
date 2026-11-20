@@ -138,6 +138,7 @@ Nothing in the app writes to `summaries` or `replies` today; the tables and thei
 - [x] First four testers added as `patient_tester` ($1 cap each); sign-in emails moved to Gmail SMTP after Neon's shared sender stopped reaching Penn. ADR-0011
 - [x] Patient plans: a long-term regimen plus a dated special plan from the provider; Robert's prednisone taper shown on his screen with today's step marked (code, not a model); live on production 2026-11-18. ADR-0019
 - [x] The bot reads the patient's plan back in chat: written by code, shown only for a plan question with no reading, symptom, change word or red flag; the plan never reaches a model. Live classifier test: 0 plans shown wrongly in two runs. ADR-0020
+- [x] Urgent high/low replies are one message: the alert box and the written answer, with no quoted definition. The "what to do" passage is quoted only when no written answer is shown, and prefers the care team's own; a monitor raise replaces the alert box instead of adding a second. Live on production 2026-11-19. ADR-0021
 - [x] Clinical sponsor's account added as `admin` (both views; metered, not capped). ADR-0011
 - [x] Kay's calls: `kayc26/diabetes_chatbot` stays public (ADR-0018); a non-English greeting keeps the full help alert (ADR-0017).
 - [x] ADR-0008 marked Partially Implemented, so "Accepted" isn't read as "built". ADR-0008
