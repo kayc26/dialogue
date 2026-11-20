@@ -37,7 +37,7 @@ Seeds or cards (2026-11-19): an item that still needs a decision gets a seed in 
 What he asked for, mapped to the work. Kay decides the order (see Waiting).
 
 1. **Ask before routing.** A dose or insulin-change question starts an intake instead of ending the turn:
-   - [ ] **First step, needs Kay's answer**: after the refusal, offer the insulin on file when the question is ambiguous ("how much insulin should I take?"): [ADR-0022](docs/adr/0022-ambiguous-dose-questions-offer-the-insulin-on-file-after-the-refusal.md).
+   - ✅ Done, first step: after the refusal, the insulin on file is offered when the question is ambiguous ("how much insulin should I take?"); the sponsor still to be told ([ADR-0022](docs/adr/0022-ambiguous-dose-questions-offer-the-insulin-on-file-after-the-refusal.md), action item).
    - [ ] **Dose questions start an intake.** Keep the fixed refusal (the bot never says how much to take), then ask whether the sugar is high or low, then the clinic's fields, then route. Changes ADR-0005's rule 3 path and the "Follow-up questions" card below; needs the field list (Waiting). [ADR-0005](docs/adr/0005-diabetes-education-bot-architecture-and-answer-path.md), [ADR-0008](docs/adr/0008-diabetes-education-bot-intake-conversation-summary-and-nurse-handoff.md)
 2. **Red flags prepare the clinic contact.**
    - [ ] **Call checklist:** when the bot says to call, it also shows the patient's answers as a short list to read out on the phone, next to the message for the care team. New; extends the "Patient's copy" card below. [ADR-0008](docs/adr/0008-diabetes-education-bot-intake-conversation-summary-and-nurse-handoff.md), [ADR-0006](docs/adr/0006-diabetes-education-bot-urgent-situation-triage-and-escalation.md)
@@ -141,6 +141,8 @@ Nothing in the app writes to `summaries` or `replies` today; the tables and thei
 - [x] First four testers added as `patient_tester` ($1 cap each); sign-in emails moved to Gmail SMTP after Neon's shared sender stopped reaching Penn. ADR-0011
 - [x] Patient plans: a long-term regimen plus a dated special plan from the provider; Robert's prednisone taper shown on his screen with today's step marked (code, not a model); live on production 2026-11-18. ADR-0019
 - [x] The bot reads the patient's plan back in chat: written by code, shown only for a plan question with no reading, symptom, change word or red flag; the plan never reaches a model. Live classifier test: 0 plans shown wrongly in two runs. ADR-0020
+- [x] The dose refusal offers the insulin on file ("Did you want to see the insulin on file?" plus a button; read back by code) when the question may only be about the plan; never with a reading, symptom, change word, or red flag. Live on production 2026-11-19. ADR-0022
+- [x] Plan read-back lines no longer end in "p.m.." (regression test over all demo patients). ADR-0020
 - [x] Urgent high/low replies are one message: the alert box and the written answer, with no quoted definition. The "what to do" passage is quoted only when no written answer is shown, and prefers the care team's own; a monitor raise replaces the alert box instead of adding a second. Live on production 2026-11-19. ADR-0021
 - [x] Clinical sponsor's account added as `admin` (both views; metered, not capped). ADR-0011
 - [x] Kay's calls: `kayc26/diabetes_chatbot` stays public (ADR-0018); a non-English greeting keeps the full help alert (ADR-0017).
