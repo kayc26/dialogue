@@ -25,13 +25,15 @@ import { detectLanguage, type Lang } from './language'
 import { socialIntent, type SocialIntent } from './social'
 import { sectionPassages, type Topic } from './topics'
 import { maxTier, triageRules, type Profile, type Tier } from './triage'
-import { planBlocker } from './plan'
-import { planReply, type PlanReply, type Regimen } from '../patients/readback'
+import { OFFER_PLAN_AFTER_REFUSAL, planBlocker } from './plan'
+import { hasPlanOnFile, planReply, type PlanReply, type Regimen } from '../patients/readback'
 
 export type Card =
   | { kind: 'escalation'; tier: Tier; criteria: string[] }
   | { kind: 'passage'; passage: KbPassage; why: 'urgent' | 'dose' | 'fallback' }
-  | { kind: 'dose_refusal' }
+  /** `offerPlan`: ADR-0022, the wording may only mean "what's on my plan?", so the refusal
+   *  offers a button that reads the record back by code (planOnRequest). */
+  | { kind: 'dose_refusal'; offerPlan?: boolean }
   /** ADR-0020: the patient's plan read back by code, never by a model. */
   | { kind: 'plan'; reply: PlanReply }
   | { kind: 'no_info' }
@@ -115,7 +117,8 @@ export interface TurnOutcome {
   topics?: Topic[]
   /** ADR-0020: set when the classifier called it a plan question. `blocker` says why the
    *  plan was not read back (null: it was), `mode` which reply was shown. */
-  plan?: { blocker: string | null; mode: PlanReply['mode'] | null } | null
+  /** ADR-0022: `offered` when the refusal offered the record; `via: 'offer'` on the tap's turn. */
+  plan?: { blocker: string | null; mode: PlanReply['mode'] | null; offered?: boolean; via?: 'offer' } | null
   /** How the answer's material was found: whole topic sections, or word search. Null when no answer was attempted. */
   retrieval?: 'topics' | 'search' | null
   monitor: 'none' | 'blocking' | 'background' | 'paused'
@@ -193,6 +196,20 @@ function urgentPassage(index: Index, message: string, glucose: number | null, op
   // type 2 patient, one that opens with how to prevent lows) over the care team's
   // "What do I do when I have a high blood sugar".
   return found.find((p) => p.source_label === 'care_team') ?? found[0] ?? null
+}
+
+/**
+ * The tap on "Show my insulin on file" under a dose refusal (ADR-0022). The record is
+ * read back by code, as in ADR-0020: no classifier, no answer model, no monitor. The
+ * triage source is logged as rules (code), with the criterion naming the tap.
+ */
+export function planOnRequest(regimen: Regimen, doseSession: boolean): TurnOutcome {
+  const reply = planReply(regimen)
+  return {
+    triage: { tier: 'none', criteria: ['plan_offer_tap'], doseIntent: false, softened: false, classifierFailed: true },
+    tier: 'none', cards: [{ kind: 'plan', reply }], doseSession, guard: null, monitor: 'none', monitorVerdict: null, background: null, modelCalls: 0, card: null,
+    plan: { blocker: null, mode: reply.mode, via: 'offer' },
+  }
 }
 
 /** One alert box per reply (ADR-0021, Kay 2026-11-19): raising the level replaces the
@@ -314,7 +331,14 @@ export async function runTurn(input: TurnInput): Promise<TurnOutcome> {
 
   // 3. Dose question: fixed card, no answer model.
   if (triage.doseIntent && enforceDose) {
-    cards.push({ kind: 'dose_refusal' })
+    // ADR-0022: "how much insulin should I take?" may only mean "what's on my plan?".
+    // The refusal offers the record (a button; the tap reads it back by code) only when
+    // nothing in the message makes it a decision for today: no reading, symptom or change
+    // word (planBlocker), no red flag, and something actually on file.
+    const blocker = planBlocker(message, rules.glucose)
+    const offer = OFFER_PLAN_AFTER_REFUSAL && tier === 'none' && hasPlanOnFile(input.regimen) && (blocker === null || blocker === 'advice')
+    cards.push(offer ? { kind: 'dose_refusal', offerPlan: true } : { kind: 'dose_refusal' })
+    if (offer) plan = { blocker: plan?.blocker ?? blocker, mode: null, offered: true }
     return done()
   }
 

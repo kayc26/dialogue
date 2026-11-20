@@ -19,7 +19,7 @@ import { openRouterModels, type CostMeter } from '../lib/chat/models'
 import { ConversationLog, cardsToText } from '../lib/chat/persist'
 import { NO_INFO_REPLY, SOCIAL_REPLY } from '../lib/chat/social'
 import { detectLanguage, LANGUAGE_NOTE } from '../lib/chat/language'
-import { raiseEscalation, runTurn, type Card, type TurnOutcome } from '../lib/chat/turn'
+import { planOnRequest, raiseEscalation, runTurn, type Card, type TurnOutcome } from '../lib/chat/turn'
 import type { Regimen } from '../lib/patients/readback'
 import { maxTier, triageRules, TIER_RANK, type Profile, type Tier } from '../lib/chat/triage'
 import { OpenRouterError } from '../lib/openrouter'
@@ -105,6 +105,20 @@ function rulesOnly(message: string, failed: boolean): TurnOutcome {
     triage: { tier: t, criteria: [...r.criteria, failed ? 'model_unavailable' : 'allowance_used'], doseIntent: r.doseIntent, softened: false, classifierFailed: true },
     tier: t, cards, doseSession, guard: null, monitor: 'none', monitorVerdict: null, background: null, modelCalls: 0, card: null,
   }
+}
+
+/** ADR-0022: the button under a dose refusal. The record is read back by code (no model),
+ *  logged as its own turn, and kept out of the chat history as text (persist.ts). */
+async function showPlanOnFile(): Promise<void> {
+  if (busy.value || !props.regimen) return
+  const message = 'Show my insulin on file'
+  const outcome = planOnRequest(props.regimen, doseSession)
+  items.value.push({ who: 'you', text: message }, { who: 'assistant', cards: outcome.cards })
+  history = [...history, { role: 'user', content: message }, { role: 'assistant', content: cardsToText(outcome.cards) }]
+  await scrollDown()
+  log.record(message, outcome, []).catch(() => {
+    saveProblem.value = "This conversation couldn't be saved. You can keep chatting."
+  })
 }
 
 function ask(q: string): void {
@@ -251,6 +265,11 @@ const docTitles = (sources: KbPassage[], label: KbPassage['source_label']) =>
               </div>
               <div v-else-if="c.kind === 'dose_refusal'">
                 <p>I can't give advice about insulin or medicine doses. Your care team can help with that. Call the nurse line if you need an answer today.</p>
+                <!-- ADR-0022: an ambiguous dose question may only mean "what's on my plan?". -->
+                <template v-if="c.offerPlan && regimen">
+                  <p class="offer">Did you want to see the insulin on file?</p>
+                  <button type="button" class="chip" :disabled="busy" @click="showPlanOnFile">Show my insulin on file</button>
+                </template>
               </div>
               <!-- ADR-0020: the patient's plan, read back by code from the record. -->
               <div v-else-if="c.kind === 'plan'" class="plan-reply">
@@ -451,6 +470,9 @@ const docTitles = (sources: KbPassage[], label: KbPassage['source_label']) =>
 }
 .dose-head {
   font-weight: 700;
+}
+.offer {
+  margin: 0.75rem 0 0.4rem;
 }
 .chips {
   display: flex;

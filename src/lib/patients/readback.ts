@@ -48,6 +48,15 @@ const clock = (hhmm: string): string => {
   return `${h % 12 === 0 ? 12 : h % 12} ${suffix}`
 }
 
+export const NO_INSULIN_LINE = 'No insulin is on file for this demo patient.'
+
+/** Is there anything to read back: a special plan in force, insulin, or pump settings?
+ *  (ADR-0022: the refusal offers the record only when there is one.) */
+export function hasPlanOnFile(r: Regimen | null | undefined): boolean {
+  if (!r) return false
+  return specialPlanView(r)?.status === 'on' || regimenLines(r)[0] !== NO_INSULIN_LINE
+}
+
 /** End a sentence with exactly one period: a time like "4 p.m." already supplies it. */
 const endSentence = (s: string): string => (s.endsWith('.') ? s : `${s}.`)
 
@@ -78,7 +87,7 @@ export function regimenLines(r: Regimen): string[] {
     if (r.pump.usual_bolus_units !== null)
       lines.push(`Insulin pump meal doses: about ${r.pump.usual_bolus_units} units each.`)
   }
-  return lines.length ? lines : ['No insulin is on file for this demo patient.']
+  return lines.length ? lines : [NO_INSULIN_LINE]
 }
 
 export interface SpecialPlanView {

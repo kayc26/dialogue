@@ -8,6 +8,10 @@
 // rules, not a model, so they can't be argued out of a refusal; when one fires, the
 // turn falls back to the dose refusal, exactly as before ADR-0020.
 
+/** ADR-0022 (Kay, 2026-11-19: A, ship now and tell the sponsor): after the dose refusal,
+ *  offer the insulin on file when the wording is ambiguous. Set false to switch it off. */
+export const OFFER_PLAN_AFTER_REFUSAL = true
+
 /** Words that ask to change, skip, or make up a dose. */
 const CHANGE = /\b(?:more|less|extra|skip\w*|stop\w*|chang\w+|adjust\w*|increas\w+|decreas\w+|rais\w+|lower\w*|doubl\w+|cut|miss\w*|forg[eo]t\w*|instead|correct\w*|bolus|cover\w*|too (?:much|many|little|few))\b/i
 

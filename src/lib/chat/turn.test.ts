@@ -8,7 +8,8 @@ import { describe, expect, it } from 'vitest'
 import type { CompleteFn } from '../agent'
 import type { ChatMessage } from '../types'
 import { buildIndex, type KbPassage } from './retrieve'
-import { runTurn, type TurnModels } from './turn'
+import { planOnRequest, runTurn, type TurnModels } from './turn'
+import { cardsToText } from './persist'
 import { doseAdviceIn } from './guard'
 import { buildCardIndex, CARD_FALLBACK_SCORE, CARD_MIN_SCORE, loadApprovedCards, parsePick, type CardIndex, type TopicCard } from './cards'
 import { DataError, type DataClient } from '../neon/data'
@@ -306,11 +307,52 @@ describe('plan read-back in chat (ADR-0020)', () => {
     expect(o.plan).toEqual({ blocker: 'tier_checkin', mode: null })
   })
 
-  it('without the classifier saying "plan question", a dose question is refused as before', async () => {
+  it('without the classifier saying "plan question", a dose question is refused, with the record offered (ADR-0022)', async () => {
+    // Before ADR-0022 this was a bare refusal; the wording has no reading, symptom or
+    // change word, so the refusal now offers the insulin on file instead of a dead end.
     const { m } = models({ classify: cls('none', true, true) })
     const o = await planTurn("What's my insulin dose today?", m)
-    expect(o.cards.map((c) => c.kind)).toEqual(['dose_refusal'])
-    expect(o.plan).toBeNull()
+    expect(o.cards).toEqual([{ kind: 'dose_refusal', offerPlan: true }])
+    expect(o.plan).toEqual({ blocker: null, mode: null, offered: true })
+  })
+
+  describe('the refusal offers the insulin on file when the question may only be about the plan (ADR-0022)', () => {
+    // Kay, live site, 2026-11-19: "hwo much insulin should i take" got a dead-end refusal,
+    // though "what's my insulin on file" would have read the record back.
+    const doseCls = cls('none', true, true) // dose_intent, not a plan question: what the classifier said live
+
+    it('"how much insulin should I take?" gets the refusal plus the offer, and no answer model', async () => {
+      const { m, calls } = models({ classify: doseCls })
+      const o = await planTurn('how much insulin should I take?', m)
+      expect(o.cards).toEqual([{ kind: 'dose_refusal', offerPlan: true }])
+      expect(o.plan).toMatchObject({ offered: true, mode: null })
+      expect(calls).toMatchObject({ complete: 0, monitor: 0 })
+    })
+
+    it('a decision for today never gets the offer: a reading, a symptom, or a change word', async () => {
+      for (const message of ['my sugar is 300, how much should I take', 'I feel shaky, how much insulin should I take', 'should I take more insulin', 'can I skip my insulin']) {
+        const o = await planTurn(message, models({ classify: doseCls }).m)
+        expect(o.cards.some((c) => c.kind === 'dose_refusal'), message).toBe(true)
+        expect(o.cards.some((c) => c.kind === 'dose_refusal' && c.offerPlan), message).toBe(false)
+      }
+    })
+
+    it('no offer when nothing is on file, or when triage raised a concern', async () => {
+      const empty = await planTurn('how much insulin should I take?', models({ classify: doseCls }).m, {} as Regimen)
+      expect(empty.cards).toEqual([{ kind: 'dose_refusal' }])
+      const concern = await planTurn('how much insulin should I take?', models({ classify: cls('checkin', true, true) }).m)
+      expect(concern.cards.some((c) => c.kind === 'dose_refusal' && c.offerPlan)).toBe(false)
+    })
+
+    it('the tap reads the record back by code, and the history the next model reads holds no doses', () => {
+      const o = planOnRequest(robertRegimen, false)
+      expect(o.cards.map((c) => c.kind)).toEqual(['plan'])
+      expect(o.modelCalls).toBe(0)
+      expect(o.plan).toEqual({ blocker: null, mode: 'special', via: 'offer' })
+      const shown = o.cards[0].kind === 'plan' ? o.cards[0].reply.lines.join(' ') : ''
+      expect(shown).toMatch(/units/) // the patient sees the record…
+      expect(cardsToText(o.cards)).not.toMatch(/units|mg/i) // …the chat history never carries it
+    })
   })
 
   it('no regimen passed in (the rules-only path, an older screen): refused as before', async () => {

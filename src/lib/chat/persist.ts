@@ -17,7 +17,9 @@ export function cardsToText(cards: Card[]): string {
         case 'passage':
           return `[approved passage ${c.passage.id}, shown verbatim (${c.why})]`
         case 'dose_refusal':
-          return '[dose question: referred to the care team]'
+          return c.offerPlan
+            ? '[dose question: referred to the care team; offered to show the insulin on file]'
+            : '[dose question: referred to the care team]'
         // ADR-0020: never the plan's text. This string becomes the chat history that the
         // next turn's classifier and answer model read, and the plan's doses must never
         // reach a model (ADR-0005, rule 1). The care team sees the plan on the record.
